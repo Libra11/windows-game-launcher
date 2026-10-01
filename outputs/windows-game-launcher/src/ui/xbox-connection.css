@@ -1,0 +1,7 @@
+.xbox-connection { border-top:1px solid var(--line); padding-top:22px; }
+.xbox-connection h3 { margin:0; }
+.field select { width:100%; padding:15px 18px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--text); font:inherit; }
+.xbox-connection .settings-tools { flex-wrap:wrap; }
+.xbox-public-source[hidden] { display:none; }
+
+.steam-identity-confirm[hidden] { display:none; }

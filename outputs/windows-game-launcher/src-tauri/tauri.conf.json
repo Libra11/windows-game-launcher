@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "本地游戏启动器",
+  "version": "0.2.1",
+  "identifier": "dev.local.achievementlauncher",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [{ "title": "本地游戏启动器", "decorations": false, "shadow": true, "width": 1280, "height": 800, "minWidth": 900, "minHeight": 600 }],
+    "security": { "csp": "default-src 'self' tauri: asset:; img-src 'self' asset: http: https: data:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost http://127.0.0.1:1420" }
+  },
+  "bundle": { "active": true, "targets": ["nsis", "msi"], "icon": ["icons/icon.png", "icons/icon.ico"], "resources": ["resources/XboxLocalProbe.exe"] }
+}

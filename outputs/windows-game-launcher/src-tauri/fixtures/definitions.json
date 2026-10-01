@@ -1,0 +1,4 @@
+[
+  {"name":"ACH_FIRST_WIN","displayName":"初次胜利","description":"赢得第一场比赛","hidden":"0","icon":"images/first.png"},
+  {"name":"ACH_SECOND_WIN","displayName":"再接再厉","description":"赢得第二场比赛","hidden":"0","icon":"images/second.png"}
+]

@@ -1,0 +1,295 @@
+{
+  "titleId": "64439fe5",
+  "storeId": "9PLH7R84GJWP",
+  "source": "https://www.exophase.com/game/well-dweller-xbox/achievements/",
+  "retrievedAt": "2026-10-01",
+  "items": [
+    {
+      "description": "Collect 50 trinket slots",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/eej51ebg.png?1e3acb99a15035f338add8227c877646",
+      "id": "1",
+      "name": "Fifty Slots"
+    },
+    {
+      "description": "Collect 10 trinket slots",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/40jd10g6.png?1e3acb99a15035f338add8227c877646",
+      "id": "2",
+      "name": "Ten Slots"
+    },
+    {
+      "description": "Kill 500 enemies",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/6de15djb.png?1e3acb99a15035f338add8227c877646",
+      "id": "3",
+      "name": "On Fire"
+    },
+    {
+      "description": "Kill 100 enemies",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/b8b1685b.png?1e3acb99a15035f338add8227c877646",
+      "id": "4",
+      "name": "Warming Up"
+    },
+    {
+      "description": "Upgrade all of your trinkets to the maximum amount",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/gj843jde.png?1e3acb99a15035f338add8227c877646",
+      "id": "5",
+      "name": "Fully Stocked"
+    },
+    {
+      "description": "Juggle a flaming vessel 10 times without it breaking",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/dgde1g63.png?1e3acb99a15035f338add8227c877646",
+      "id": "6",
+      "name": "Bouncing Bottles"
+    },
+    {
+      "description": "Throw 100 flaming vessels",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/j08g5033.png?1e3acb99a15035f338add8227c877646",
+      "id": "7",
+      "name": "Pyromaniac"
+    },
+    {
+      "description": "Reunite the flock",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/13e60346.png?1e3acb99a15035f338add8227c877646",
+      "id": "8",
+      "name": "Together at Last"
+    },
+    {
+      "description": "Learn to soar",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/35dg05b1.png?1e3acb99a15035f338add8227c877646",
+      "id": "9",
+      "name": "Flying High"
+    },
+    {
+      "description": "Visit the spa",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/7763473j.png?1e3acb99a15035f338add8227c877646",
+      "id": "10",
+      "name": "Taking a Break"
+    },
+    {
+      "description": "Collect all pages for \"The Lookout Tower\"",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/551j35j5.png?1e3acb99a15035f338add8227c877646",
+      "id": "11",
+      "name": "Above the Kingdom"
+    },
+    {
+      "description": "Collect all pages for \"The Dollmaker's House\"",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/006ed0e3.png?1e3acb99a15035f338add8227c877646",
+      "id": "12",
+      "name": "The Tattered Doll"
+    },
+    {
+      "description": "Collect all pages for \"The Witch's Bargain\"",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/8jb76j76.png?1e3acb99a15035f338add8227c877646",
+      "id": "13",
+      "name": "The First-Born Daughter"
+    },
+    {
+      "description": "Collect a story page",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/eej51e5g.png?1e3acb99a15035f338add8227c877646",
+      "id": "14",
+      "name": "Once Upon a Time..."
+    },
+    {
+      "description": "Upgrade a trinket",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/40jd10d6.png?1e3acb99a15035f338add8227c877646",
+      "id": "15",
+      "name": "In the Workshop"
+    },
+    {
+      "description": "Return 20 spirits",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/6de15d1b.png?1e3acb99a15035f338add8227c877646",
+      "id": "16",
+      "name": "Full Flock"
+    },
+    {
+      "description": "Return 10 spirits",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/b8b1681b.png?1e3acb99a15035f338add8227c877646",
+      "id": "17",
+      "name": "Halfway There"
+    },
+    {
+      "description": "Return a spirit",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/gj843j4e.png?1e3acb99a15035f338add8227c877646",
+      "id": "18",
+      "name": "Solo Spirit"
+    },
+    {
+      "description": "Collect 32 trinkets",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/dgde1ge3.png?1e3acb99a15035f338add8227c877646",
+      "id": "19",
+      "name": "Expert Collector"
+    },
+    {
+      "description": "Collect 10 trinkets",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/j08g50g3.png?1e3acb99a15035f338add8227c877646",
+      "id": "20",
+      "name": "Experienced Collector"
+    },
+    {
+      "description": "Collect a trinket",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/13e60366.png?1e3acb99a15035f338add8227c877646",
+      "id": "21",
+      "name": "Hobby Collector"
+    },
+    {
+      "description": "Buy something from Looter's shop",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/35dg05g1.png?1e3acb99a15035f338add8227c877646",
+      "id": "22",
+      "name": "First Purchase"
+    },
+    {
+      "description": "Buy a festive hat",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/776347bj.png?1e3acb99a15035f338add8227c877646",
+      "id": "23",
+      "name": "The King's Cap"
+    },
+    {
+      "description": "Battle the Queen",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/551j3505.png?1e3acb99a15035f338add8227c877646",
+      "id": "24",
+      "name": "The End"
+    },
+    {
+      "description": "Defeat the Silver Doll",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/006ed043.png?1e3acb99a15035f338add8227c877646",
+      "id": "25",
+      "name": "Sharp and Shiny"
+    },
+    {
+      "description": "Escape Webdrench Inn",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/8jb76jd6.png?1e3acb99a15035f338add8227c877646",
+      "id": "26",
+      "name": "Late Night Guest"
+    },
+    {
+      "description": "Defeat the Gravedigger",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/eej51e0g.png?1e3acb99a15035f338add8227c877646",
+      "id": "27",
+      "name": "Dig Deep"
+    },
+    {
+      "description": "Put Looter back together again",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/40jd1076.png?1e3acb99a15035f338add8227c877646",
+      "id": "28",
+      "name": "Stitched Up"
+    },
+    {
+      "description": "Defeat the Shrine of the Seven Sons",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/6de15d4b.png?1e3acb99a15035f338add8227c877646",
+      "id": "29",
+      "name": "Stormy Night"
+    },
+    {
+      "description": "Collect Magda",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/b8b168db.png?1e3acb99a15035f338add8227c877646",
+      "id": "30",
+      "name": "In the Dollmaker's House"
+    },
+    {
+      "description": "Defeat the Starsinger",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/gj843jbe.png?1e3acb99a15035f338add8227c877646",
+      "id": "31",
+      "name": "Song of the Stars"
+    },
+    {
+      "description": "Win over the Forest King",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/dgde1g73.png?1e3acb99a15035f338add8227c877646",
+      "id": "32",
+      "name": "Fancy Feast"
+    },
+    {
+      "description": "Collect Thimble and Thistle",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/j08g5073.png?1e3acb99a15035f338add8227c877646",
+      "id": "33",
+      "name": "Double Trouble"
+    },
+    {
+      "description": "Gain access to a water vessel",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/13e603b6.png?1e3acb99a15035f338add8227c877646",
+      "id": "34",
+      "name": "Into the Deep"
+    },
+    {
+      "description": "Evade the Queen",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/35dg0511.png?1e3acb99a15035f338add8227c877646",
+      "id": "35",
+      "name": "Hide and Seek"
+    },
+    {
+      "description": "Collect Egbert",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/776340jj.png?1e3acb99a15035f338add8227c877646",
+      "id": "36",
+      "name": "Littlest Bird"
+    },
+    {
+      "description": "Defeat the Lady of the Drains",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/551j37e5.png?1e3acb99a15035f338add8227c877646",
+      "id": "37",
+      "name": "Down the Drain"
+    },
+    {
+      "description": "Defeat the swarm",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/006ed373.png?1e3acb99a15035f338add8227c877646",
+      "id": "38",
+      "name": "Buggy Business"
+    },
+    {
+      "description": "Go camping with Ilda",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/8jb76516.png?1e3acb99a15035f338add8227c877646",
+      "id": "39",
+      "name": "A Warm File"
+    },
+    {
+      "description": "Meet the Hunter",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/eej513dg.png?1e3acb99a15035f338add8227c877646",
+      "id": "40",
+      "name": "Snatched Up"
+    },
+    {
+      "description": "Defeat the Groundskeeper",
+      "hidden": false,
+      "icon": "https://m.exophase.com/xbox/awards/s/40jd1e56.png?1e3acb99a15035f338add8227c877646",
+      "id": "41",
+      "name": "Dark Garden"
+    }
+  ]
+}

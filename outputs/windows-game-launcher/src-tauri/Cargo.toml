@@ -1,0 +1,32 @@
+[package]
+name = "local_achievement_launcher"
+version = "0.2.1"
+description = "Windows game launcher with local achievements"
+edition = "2021"
+
+[lib]
+name = "local_achievement_launcher_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.40", features = ["bundled"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "system-proxy"], default-features = false }
+tokio = { version = "1", features = ["time", "sync"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+steamlocate = "2.1.1"
+roxmltree = "0.20"
+scraper = "0.24"
+
+[target."cfg(windows)".dependencies]
+winreg = "0.56"

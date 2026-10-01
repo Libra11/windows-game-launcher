@@ -1,0 +1,17 @@
+.DS_Store
+work/
+node_modules/
+dist/
+target/
+outputs/*.exe
+outputs/*.zip
+outputs/windows-game-launcher/*-preview.png
+outputs/windows-game-launcher/*-preview.jpg
+outputs/windows-game-launcher/features-guide.png
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+.env
+.env.*
+!.env.example

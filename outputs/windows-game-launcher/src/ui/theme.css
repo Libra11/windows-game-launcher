@@ -1,0 +1,65 @@
+:root {
+  --text:#e9ece5;
+  --text-secondary:#b4c0ab;
+  --muted:#96a18f;
+  --background:#111411;
+  --sidebar:#151915;
+  --panel:#1b201b;
+  --surface-hover:#293125;
+  --input:#12190f;
+  --line:#30392c;
+  --accent:#d0e99b;
+  --accent-hover:#e2f7b9;
+  --accent-ink:#d0e99b;
+  --accent-text:#29351e;
+  --accent-soft:#d0e99b18;
+  --accent-line:#61764a;
+  --track:#35402e;
+  --placeholder-start:#34432a;
+  --placeholder-end:#1b2519;
+  --success-bg:#293e1ff5;
+  --success-text:#e6f8d7;
+  --error-bg:#442c25;
+  --error-text:#f1d0c3;
+  --error-line:#ac725c;
+  --shadow:#0005;
+  --modal-shadow:#000a;
+  --backdrop:#080e09c9;
+  --on-art:#eef3e8;
+  color-scheme:dark;
+}
+:root[data-theme="light"] {
+  --text:#252e21;
+  --text-secondary:#46553e;
+  --muted:#62705a;
+  --background:#f5f6ef;
+  --sidebar:#edf0e5;
+  --panel:#ffffff;
+  --surface-hover:#e5ebda;
+  --input:#f8faf4;
+  --line:#d6ddcc;
+  --accent-ink:#466526;
+  --accent-soft:#e4edd5;
+  --accent-line:#97ad7e;
+  --track:#dce5cf;
+  --placeholder-start:#e0e9d3;
+  --placeholder-end:#eef3e5;
+  --success-bg:#edf6e5;
+  --success-text:#355622;
+  --error-bg:#fff0e9;
+  --error-text:#923f25;
+  --error-line:#d5a08c;
+  --shadow:#25351a18;
+  --modal-shadow:#25351a33;
+  --backdrop:#23301b55;
+  color-scheme:light;
+}
+:root { color:var(--text); background:var(--background); }
+.theme-toggle .icon { width:18px; height:18px; }
+.theme-setting { display:grid; gap:9px; padding-bottom:20px; border-bottom:1px solid var(--line); }
+.theme-setting h3 { font-size:13px; font-weight:600; }
+.theme-setting p { color:var(--muted); font-size:11px; line-height:1.7; }
+.theme-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:5px; }
+.theme-option { display:flex; align-items:center; justify-content:center; gap:9px; border:1px solid var(--line); background:var(--input); color:var(--text-secondary); border-radius:8px; padding:14px; font-size:12px; }
+.theme-option:hover { background:var(--surface-hover); }
+.theme-option.active { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-ink); }

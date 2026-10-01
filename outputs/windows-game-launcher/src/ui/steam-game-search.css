@@ -1,0 +1,39 @@
+.add-game-modal { width:min(580px,calc(100vw - 32px)); }
+.add-game-fields { border:0; padding:0; margin:0; min-width:0; display:grid; gap:20px; }
+.steam-game-search { display:grid; gap:10px; min-width:0; }
+.steam-search-button { flex-shrink:0; }
+.steam-search-status { margin:0; font-size:11px; color:var(--muted); line-height:1.7; }
+.steam-search-status.error { color:var(--error-text); }
+.steam-search-results { display:grid; gap:6px; max-height:280px; overflow-y:auto; overscroll-behavior:contain; }
+.steam-search-results:empty { display:none; }
+.steam-search-result {
+  width:100%; display:flex; align-items:center; gap:12px; min-width:0;
+  padding:9px; border:1px solid var(--line); border-radius:8px;
+  background:var(--input); color:var(--text); text-align:left;
+  transition:background .16s ease,border-color .16s ease;
+}
+button.steam-search-result { cursor:pointer; }
+button.steam-search-result:hover,button.steam-search-result:focus-visible { background:var(--surface-hover); border-color:var(--accent-line); }
+.steam-search-result.selected { border-color:var(--accent-line); background:var(--surface-hover); }
+.steam-search-art {
+  position:relative; flex:0 0 92px; height:40px; overflow:hidden;
+  display:grid; place-items:center; background:var(--panel); border-radius:4px; color:var(--muted);
+}
+.steam-search-art img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.steam-search-copy { flex:1; min-width:0; display:grid; gap:5px; }
+.steam-search-copy strong { font-size:12px; font-weight:600; line-height:1.45; overflow-wrap:anywhere; }
+.steam-search-copy span { font-size:10px; color:var(--muted); }
+.steam-search-result>.icon { width:17px; height:17px; flex-shrink:0; color:var(--muted); }
+.steam-search-result.selected>.icon { color:var(--accent,#d1e99a); }
+.steam-search-selection { display:grid; gap:7px; }
+.steam-search-change {
+  justify-self:end; padding:3px 0; border:0; background:transparent;
+  color:var(--text-secondary); cursor:pointer; font-size:11px;
+}
+.steam-search-change:hover { color:var(--text); }
+.steam-search-local { font-size:12px; }
+@media (max-width:480px) {
+  .steam-search-art { flex-basis:72px; height:34px; }
+  .steam-search-result { gap:9px; }
+}
+@media (prefers-reduced-motion:reduce) { .steam-search-result { transition:none; } }

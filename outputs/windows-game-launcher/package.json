@@ -1,0 +1,22 @@
+{
+  "name": "local-achievement-launcher",
+  "version": "0.2.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "tauri": "tauri",
+    "test": "cd src-tauri && cargo test",
+    "test:ui": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-notification": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.0",
+    "vite": "8.3.1"
+  }
+}

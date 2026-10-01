@@ -1,0 +1,36 @@
+.detail-overview { display:grid; gap:24px; min-width:0; }
+.collection-progress h2 { display:flex; align-items:center; min-height:35px; font-size:14px; font-weight:600; }
+.collection-stats { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:19px; padding:21px 0; border-top:1px solid var(--line); }
+.collection-stats>div { display:grid; gap:7px; }
+.collection-stats strong { font-size:28px; line-height:1.1; font-weight:550; letter-spacing:-.5px; font-variant-numeric:tabular-nums; }
+.collection-stats span { font-size:11px; color:var(--muted); }
+.collection-completion { display:flex; align-items:baseline; justify-content:space-between; gap:12px; font-size:11px; color:var(--muted); }
+.collection-completion strong { color:var(--accent-ink); font-size:14px; font-weight:550; font-variant-numeric:tabular-nums; }
+.collection-progress h2+.collection-completion { margin-top:19px; padding-top:21px; border-top:1px solid var(--line); }
+.collection-track { height:4px; margin-top:9px; background:var(--track); border-radius:2px; overflow:hidden; }
+.collection-track>span { display:block; height:100%; background:var(--accent-ink); border-radius:inherit; }
+.collection-hint { margin-top:10px; font-size:11px; color:var(--muted); line-height:1.8; }
+.collection-detection { padding-top:18px; border-top:1px solid var(--line); }
+.collection-detection h3 { font-size:12px; font-weight:600; margin-bottom:10px; }
+.detection-state { font-size:11px; color:var(--text-secondary); line-height:1.8; overflow-wrap:anywhere; }
+.diagnostics { margin-top:8px; }
+.diagnostics summary { display:flex; align-items:center; justify-content:space-between; gap:10px; list-style:none; font-size:11px; color:var(--muted); cursor:pointer; padding:8px 0; }
+.diagnostics summary:hover { color:var(--text); }
+.diagnostics summary::-webkit-details-marker { display:none; }
+.diagnostics summary .icon { width:13px; height:13px; transition:transform .2s; }
+.diagnostics[open] summary .icon { transform:rotate(90deg); }
+.diagnostic-fields { display:grid; gap:14px; padding:13px 0; }
+.diagnostic-fields small { display:block; color:var(--muted); font-size:10px; margin-bottom:5px; }
+.diagnostic-fields span { font-size:11px; color:var(--text-secondary); overflow-wrap:anywhere; }
+.collection-detection>.secondary { margin-top:12px; width:100%; font-size:11px; justify-content:center; }
+@media(max-width:900px) {
+  .detail-overview { grid-row:1; grid-template-columns:1fr 1fr; gap:24px; padding-bottom:24px; border-bottom:1px solid var(--line); }
+  .collection-detection { border-top:0; border-left:1px solid var(--line); padding:0 0 0 24px; }
+  .collection-progress h2 { min-height:0; margin-bottom:20px; }
+  .collection-stats { margin-top:0; padding-top:0; border-top:0; }
+  .collection-progress h2+.collection-completion { margin-top:0; padding-top:0; border-top:0; }
+}
+@media(max-width:560px) {
+  .detail-overview { grid-template-columns:1fr; gap:20px; }
+  .collection-detection { border-left:0; border-top:1px solid var(--line); padding:18px 0 0; }
+}

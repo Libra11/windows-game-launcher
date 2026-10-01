@@ -1,0 +1,6 @@
+.remove-game-notice { display:grid; gap:12px; }
+.remove-game-notice strong { font-size:16px; overflow-wrap:anywhere; }
+.remove-game-notice p { color:var(--text-secondary); font-size:12px; line-height:1.8; }
+.secondary.remove-game-action { color:var(--error-text); }
+.primary.remove-game-confirm { background:var(--error-bg); border:1px solid var(--error-text); color:var(--error-text); }
+.primary.remove-game-confirm:hover:not(:disabled) { background:var(--error-bg); filter:brightness(1.08); }

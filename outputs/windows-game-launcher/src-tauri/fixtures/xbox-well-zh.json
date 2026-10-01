@@ -1,0 +1,252 @@
+{
+  "titleId": "64439fe5",
+  "source": "https://www.exophase.com/game/well-dweller-steam/achievements/zh-CN/",
+  "items": [
+    {
+      "id": "1",
+      "englishDescription": "Collect 50 trinket slots",
+      "name": "五十个槽位",
+      "description": "收集50个饰物槽"
+    },
+    {
+      "id": "2",
+      "englishDescription": "Collect 10 trinket slots",
+      "name": "十个槽位",
+      "description": "收集10个饰物槽"
+    },
+    {
+      "id": "3",
+      "englishDescription": "Kill 500 enemies",
+      "name": "火力全开",
+      "description": "击杀500名敌人"
+    },
+    {
+      "id": "4",
+      "englishDescription": "Kill 100 enemies",
+      "name": "热身",
+      "description": "击杀100名敌人"
+    },
+    {
+      "id": "5",
+      "englishDescription": "Upgrade all of your trinkets to the maximum amount",
+      "name": "满额备货",
+      "description": "将所有饰物升级到最高等级"
+    },
+    {
+      "id": "6",
+      "englishDescription": "Juggle a flaming vessel 10 times without it breaking",
+      "name": "弹跳瓶",
+      "description": "让焰瓶在不碎裂的情况下弹跳10次"
+    },
+    {
+      "id": "7",
+      "englishDescription": "Throw 100 flaming vessels",
+      "name": "纵火狂",
+      "description": "投掷100个焰瓶"
+    },
+    {
+      "id": "8",
+      "englishDescription": "Reunite the flock",
+      "name": "终于团聚",
+      "description": "让鸟群重聚"
+    },
+    {
+      "id": "9",
+      "englishDescription": "Learn to soar",
+      "name": "高高飞起",
+      "description": "学会腾空"
+    },
+    {
+      "id": "10",
+      "englishDescription": "Visit the spa",
+      "name": "稍作休息",
+      "description": "造访水疗馆"
+    },
+    {
+      "id": "11",
+      "englishDescription": "Collect all pages for \"The Lookout Tower\"",
+      "name": "王国之上",
+      "description": "收集《瞭望塔》的所有书页"
+    },
+    {
+      "id": "12",
+      "englishDescription": "Collect all pages for \"The Dollmaker's House\"",
+      "name": "破旧玩偶",
+      "description": "收集《玩偶师之家》的所有书页"
+    },
+    {
+      "id": "13",
+      "englishDescription": "Collect all pages for \"The Witch's Bargain\"",
+      "name": "长女",
+      "description": "收集《女巫的交易》的所有书页"
+    },
+    {
+      "id": "14",
+      "englishDescription": "Collect a story page",
+      "name": "很久很久以前……",
+      "description": "收集一页故事"
+    },
+    {
+      "id": "15",
+      "englishDescription": "Upgrade a trinket",
+      "name": "在工坊中",
+      "description": "升级一个饰物"
+    },
+    {
+      "id": "16",
+      "englishDescription": "Return 20 spirits",
+      "name": "完整鸟群",
+      "description": "归还20个灵魂"
+    },
+    {
+      "id": "17",
+      "englishDescription": "Return 10 spirits",
+      "name": "已到半程",
+      "description": "归还10个灵魂"
+    },
+    {
+      "id": "18",
+      "englishDescription": "Return a spirit",
+      "name": "孤独灵魂",
+      "description": "归还一个灵魂"
+    },
+    {
+      "id": "19",
+      "englishDescription": "Collect 32 trinkets",
+      "name": "专家收藏家",
+      "description": "收集32个饰物"
+    },
+    {
+      "id": "20",
+      "englishDescription": "Collect 10 trinkets",
+      "name": "资深收藏家",
+      "description": "收集10个饰物"
+    },
+    {
+      "id": "21",
+      "englishDescription": "Collect a trinket",
+      "name": "业余收藏家",
+      "description": "收集一个饰物"
+    },
+    {
+      "id": "22",
+      "englishDescription": "Buy something from Looter's shop",
+      "name": "第一笔购买",
+      "description": "从拾荒者商店购买物品"
+    },
+    {
+      "id": "23",
+      "englishDescription": "Buy a festive hat",
+      "name": "国王之帽",
+      "description": "购买节日帽"
+    },
+    {
+      "id": "24",
+      "englishDescription": "Battle the Queen",
+      "name": "终局",
+      "description": "与女王战斗"
+    },
+    {
+      "id": "25",
+      "englishDescription": "Defeat the Silver Doll",
+      "name": "锋利又闪亮",
+      "description": "击败银色玩偶"
+    },
+    {
+      "id": "26",
+      "englishDescription": "Escape Webdrench Inn",
+      "name": "深夜来客",
+      "description": "逃离蛛雨旅店"
+    },
+    {
+      "id": "27",
+      "englishDescription": "Defeat the Gravedigger",
+      "name": "深挖",
+      "description": "击败掘墓者"
+    },
+    {
+      "id": "28",
+      "englishDescription": "Put Looter back together again",
+      "name": "重新缝合",
+      "description": "把拾荒者重新拼起来"
+    },
+    {
+      "id": "29",
+      "englishDescription": "Defeat the Shrine of the Seven Sons",
+      "name": "暴风雨之夜",
+      "description": "击败七子神龛"
+    },
+    {
+      "id": "30",
+      "englishDescription": "Collect Magda",
+      "name": "在玩偶师之家",
+      "description": "找到玛格达"
+    },
+    {
+      "id": "31",
+      "englishDescription": "Defeat the Starsinger",
+      "name": "群星之歌",
+      "description": "击败星歌者"
+    },
+    {
+      "id": "32",
+      "englishDescription": "Win over the Forest King",
+      "name": "华丽盛宴",
+      "description": "赢得森林之王的欢心"
+    },
+    {
+      "id": "33",
+      "englishDescription": "Collect Thimble and Thistle",
+      "name": "双重麻烦",
+      "description": "找到针儿和刺儿"
+    },
+    {
+      "id": "34",
+      "englishDescription": "Gain access to a water vessel",
+      "name": "深入深渊",
+      "description": "获得水上载具使用权"
+    },
+    {
+      "id": "35",
+      "englishDescription": "Evade the Queen",
+      "name": "捉迷藏",
+      "description": "躲避女王"
+    },
+    {
+      "id": "36",
+      "englishDescription": "Collect Egbert",
+      "name": "最小的鸟",
+      "description": "找到艾格伯特"
+    },
+    {
+      "id": "37",
+      "englishDescription": "Defeat the Lady of the Drains",
+      "name": "顺流而下",
+      "description": "击败排水道女士"
+    },
+    {
+      "id": "38",
+      "englishDescription": "Defeat the swarm",
+      "name": "虫群麻烦",
+      "description": "击败虫群"
+    },
+    {
+      "id": "39",
+      "englishDescription": "Go camping with Ilda",
+      "name": "温暖篝火",
+      "description": "和伊尔达一起露营"
+    },
+    {
+      "id": "40",
+      "englishDescription": "Meet the Hunter",
+      "name": "被抓走",
+      "description": "遇见猎人"
+    },
+    {
+      "id": "41",
+      "englishDescription": "Defeat the Groundskeeper",
+      "name": "暗之庭院",
+      "description": "击败园丁"
+    }
+  ]
+}

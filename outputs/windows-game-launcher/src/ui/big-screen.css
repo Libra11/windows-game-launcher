@@ -1,0 +1,64 @@
+.big-screen-active body { padding-top:0; overflow:hidden; }
+.big-screen-active .window-titlebar,.big-screen-active #app>.sidebar,.big-screen-active #app>.main { display:none; }
+.big-screen { position:fixed; inset:0; z-index:60; display:grid; grid-template-rows:80px minmax(0,1fr); isolation:isolate; overflow:hidden; background:var(--background); color:var(--text); }
+.big-screen-header { position:relative; z-index:2; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:24px; padding:0 4vw; background:color-mix(in srgb,var(--background) 78%,transparent); backdrop-filter:blur(14px); }
+.big-screen-brand { display:flex; align-items:center; gap:11px; white-space:nowrap; }
+.big-screen-brand>span { display:grid; place-items:center; width:34px; height:34px; font-size:31px; color:var(--accent-ink); }
+.big-screen-brand strong { font-size:18px; font-weight:650; }
+.big-screen-brand small { padding:5px 8px; border:1px solid var(--line); border-radius:999px; font-size:10px; color:var(--muted); margin-left:3px; }
+.big-screen-tabs { display:flex; align-items:center; justify-content:center; gap:6px; }
+.big-screen-tabs button { min-height:42px; padding:10px 17px; font-size:13px; font-weight:500; background:none; color:var(--muted); border-radius:999px; display:flex; align-items:center; justify-content:center; gap:8px; white-space:nowrap; }
+.big-screen-tabs button .icon { width:16px; height:16px; }
+.big-screen-tabs button.active { background:var(--accent-soft); color:var(--accent-ink); font-weight:600; }
+.big-screen-tabs button:hover { color:var(--text); }
+.big-screen-tools { display:flex; justify-self:end; align-items:center; gap:8px; }
+.big-screen-tool { min-height:42px; padding:10px 13px; font-size:12px; background:none; color:var(--text-secondary); border-radius:999px; display:flex; align-items:center; justify-content:center; gap:8px; white-space:nowrap; }
+.big-screen-tool[data-focus-key="theme"] { width:42px; padding:10px; border:1px solid var(--line); }
+.big-screen-tool[data-focus-key="theme"]>span { display:none; }
+.big-screen-tool .icon { width:18px; height:18px; }
+.big-screen button:focus-visible,.big-screen summary:focus-visible { outline:3px solid var(--accent-ink); outline-offset:5px; }
+.big-screen-tool:hover { background:var(--accent-soft); color:var(--accent-ink); }
+.big-screen-content { position:relative; z-index:1; overflow-x:hidden; overflow-y:auto; min-height:0; padding:8px 4vw 30px; scroll-padding-block:20px; overscroll-behavior-y:contain; scrollbar-width:thin; scrollbar-color:var(--line) transparent; }
+.big-screen-content.big-screen-detail { padding-top:22px; }
+.big-screen .primary,.big-screen .secondary,.big-screen .glass { min-height:49px; padding:13px 22px; font-size:15px; }
+.big-screen-detail .detail-view { max-width:1500px; margin:auto; }
+.big-screen-detail .detail-back { font-size:16px; padding:0 0 22px; }
+.big-screen-detail .game-description { font-size:16px; }
+.big-screen-detail .achievement-copy h3 { font-size:18px; }
+.big-screen-detail .achievement-copy p { font-size:15px; }
+.big-screen-detail .achievement-status,.big-screen-detail .manual-button,.big-screen-detail .filter-tabs button { font-size:14px; }
+.big-screen-detail .achievement-status small { font-size:12px; }
+.big-screen-detail .achievement-icon { width:64px; height:64px; }
+.big-screen-detail .achievement-card { min-height:110px; }
+.big-screen-detail .collection-progress h2 { font-size:17px; }
+.big-screen-detail .collection-hint,.big-screen-detail .detection-state,.big-screen-detail .diagnostics summary { font-size:14px; }
+.big-screen-detail .diagnostic-fields span,.big-screen-detail .diagnostic-fields small { font-size:13px; }
+.big-screen-detail .collection-stats span,.big-screen-detail .collection-completion { font-size:13px; }
+.big-screen-detail .collection-completion strong { font-size:18px; }
+.big-screen-active .toast { z-index:80; bottom:24px; font-size:16px; }
+.big-screen-active .modal { width:min(600px,calc(100vw - 40px)); }
+.big-screen-active .modal button,.big-screen-active .field,.big-screen-active .field input { font-size:15px; }
+@media(max-width:1150px) {
+  .big-screen-header { gap:14px; padding:0 3vw; }
+  .big-screen-brand strong { font-size:16px; }
+  .big-screen-brand small { display:none; }
+  .big-screen-tabs button { padding:10px 13px; font-size:12px; }
+  .big-screen-tool { padding:10px; }
+  .big-screen-content { padding-left:3vw; padding-right:3vw; }
+}
+@media(max-height:750px) {
+  .big-screen { grid-template-rows:64px minmax(0,1fr); }
+  .big-screen-brand strong { font-size:16px; }
+  .big-screen-content { padding-top:6px; }
+}
+@media(max-width:800px) {
+  .big-screen { grid-template-rows:auto minmax(0,1fr); }
+  .big-screen-header { display:flex; flex-wrap:wrap; padding:12px 20px 10px; gap:12px; }
+  .big-screen-brand { flex:1; }
+  .big-screen-tabs { order:3; width:100%; }
+  .big-screen-tabs button { flex:1; }
+  .big-screen-tools { gap:6px; }
+  .big-screen-tool { width:40px; padding:9px; }
+  .big-screen-tool>span { display:none; }
+  .big-screen-content { padding:10px 22px 24px; }
+}

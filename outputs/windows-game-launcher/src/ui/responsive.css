@@ -1,0 +1,119 @@
+@media(min-width:1500px) {
+  #app .main {
+    padding-left:56px;
+    padding-right:56px;
+  }
+  #app .game-grid {
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:28px;
+  }
+}
+@media(max-width:1100px) {
+  #app {
+    grid-template-columns:190px minmax(0,1fr);
+  }
+  #app .main {
+    padding:0 26px 20px;
+  }
+  #app .game-grid {
+    grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+    gap:22px 16px;
+  }
+  #app .search-box input {
+    width:140px;
+  }
+}
+@media(max-width:800px) {
+  #app {
+    grid-template-columns:72px minmax(0,1fr);
+  }
+  #app .main {
+    padding:0 22px 20px;
+  }
+  #app .topbar {
+    height:76px;
+  }
+  #app .topbar-actions {
+    gap:10px;
+  }
+  #app .search-box input {
+    width:125px;
+  }
+  #app .breadcrumb {
+    font-size:10px;
+    gap:8px;
+  }
+  #app .page-intro {
+    padding:26px 0 20px;
+  }
+  #app .page-intro>p {
+    display:none;
+  }
+  #app .game-grid {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:22px 14px;
+  }
+}
+@media(max-width:560px) {
+  #app {
+    display:block;
+  }
+  #app .main {
+    padding:0 16px 20px;
+  }
+  #app .topbar {
+    height:68px;
+  }
+  #app .breadcrumb {
+    display:none;
+  }
+  #app .topbar-actions {
+    width:100%;
+    justify-content:space-between;
+  }
+  #app .search-box {
+    flex:1;
+  }
+  #app .search-box input {
+    width:100%;
+  }
+  #app .page-intro h1 {
+    font-size:28px;
+  }
+  #app .collection-toolbar {
+    margin:24px 0 16px;
+  }
+  #app .collection-title h2 {
+    font-size:15px;
+  }
+  #app .collection-controls {
+    gap:4px;
+  }
+  #app .sort-select {
+    max-width:88px;
+    font-size:9px;
+  }
+  #app .game-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:22px 14px;
+  }
+  .modal {
+    padding:23px;
+  }
+  .input-row {
+    flex-wrap:wrap;
+  }
+  .input-row input {
+    flex-basis:100%;
+  }
+  .input-row button {
+    width:100%;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after {
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+}
