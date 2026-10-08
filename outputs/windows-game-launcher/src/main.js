@@ -19,9 +19,9 @@ import { launchState } from './lib/launch-state.js';
 import { detectionGuide } from './ui/detection-guide.js';
 import { libraryView } from './ui/library.js';
 import { detailView } from './ui/detail.js';
-import { addDialog, editDialog, settingsDialog } from './ui/dialogs.js';
+import { addDialog, editDialog } from './ui/dialogs.js';
+import { createSettingsPage } from './ui/settings-dialog.js';
 import { mountTitlebar } from './ui/titlebar.js';
-import { epicLoginDialog } from './ui/epic-connection.js';
 import { librarySnapshot, preserveArtwork } from './lib/library-refresh.js';
 import { createStatisticsController } from './lib/statistics.js';
 import { statisticsView } from './ui/statistics-view.js';
@@ -33,7 +33,7 @@ const app = document.querySelector('#app');
 app.innerHTML = `
   <aside class="sidebar"></aside>
   <main class="main">
-    <header class="topbar"><div class="breadcrumb"><span>收藏室</span><span class="breadcrumb-slash">/</span><strong id="page-name">游戏库</strong>${preview ? '<span class="preview-badge">示例预览</span>' : ''}</div><div class="topbar-actions"><label class="search-box" id="search-box"><input id="search" type="search" placeholder="搜索你的游戏" aria-label="搜索游戏"></label><div id="add-action"></div></div></header>
+    <header class="topbar"><div class="breadcrumb"><span>收藏室</span><span class="breadcrumb-slash">/</span><strong id="page-name">游戏库</strong>${preview ? '<span class="preview-badge">示例预览</span>' : ''}</div><div class="topbar-tools"><div class="topbar-actions"><label class="search-box" id="search-box"><input id="search" type="search" placeholder="搜索你的游戏" aria-label="搜索游戏"></label><div id="add-action"></div></div><div id="header-display-action"></div></div></header>
     <div class="page-intro" id="page-intro"><div><div class="eyebrow">属于你的游戏时光</div><h1>游戏库<span class="title-dot">.</span></h1></div><p>每一次打开，都有新的期待。</p></div>
     <section id="content" aria-label="游戏库内容"></section>
     <footer class="page-footer"><span>让热爱，有迹可循。</span><span>游迹</span></footer>
@@ -75,6 +75,7 @@ async function launch(game) {
   } finally { patchRuntime(app,state.games); }
 }
 let refreshTask, refreshAgain = false, forceRefresh = false;
+let settingsPage;
 function refresh(silent = false) {
   refreshAgain = true; forceRefresh ||= !silent;
   if (refreshTask) return refreshTask;
@@ -105,7 +106,13 @@ const statistics = createStatisticsController({
 });
 const actions = {
   select, launch, exitBigScreen: () => bigMode.exit(),
-  get backLabel(){return state.page==='statistics'?'返回统计':'返回游戏库';},
+  get backLabel(){return state.page==='statistics'?'返回统计':state.page==='settings'?'返回设置':'返回游戏库';},
+  settings:async()=>{
+    if(state.bigScreen)await bigMode.exit();
+    selectionVersion++;state.page='settings';state.selectedId='';
+    settingsPage ||= createSettingsPage({...dialogActions,add:actions.add,importSteam:actions.importSteam});
+    render();window.scrollTo(0,0);
+  },
   statistics:()=>{selectionVersion++; state.page='statistics'; state.selectedId=''; render(); statistics.refresh(true);},
   selectStatistic:async id=>{
     const game=actions.game(id); if(!game)return;
@@ -121,13 +128,6 @@ const actions = {
   bigCollection: value => {selectionVersion++; state.bigCollection = value; state.selectedId = ''; render(`collection-${value}`);},
   add: () => addDialog(dialogActions),
   importSteam: async () => { toast('正在从 Steam 导入游戏…'); const count = await run('import_steam'); await refresh(); toast(`新增 ${count} 款 Steam 游戏`); },
-  importEpic: async () => {
-    const connection = await run('epic_connection_status');
-    if (!connection.connected) return epicLoginDialog(dialogActions, actions.importEpic);
-    toast('正在读取 Epic 账号游戏库…');
-    const count = await run('import_epic'); await refresh();
-    toast(count ? `新增 ${count} 款 Epic 游戏` : 'Epic 游戏库已同步，没有新增游戏');
-  },
   sort: value => { state.sort = value; render(); },
   installed: value => { state.installedOnly = value; render(); },
   view: value => { state.view = value; render(); },
@@ -164,18 +164,24 @@ const bigMode = createBigScreenMode(state, render, toast, {
 });
 mountSidebar($('.sidebar'), {
   category: value => { selectionVersion++; state.page='library'; state.filter = value; state.selectedId = ''; render(); },
-  back:()=>{selectionVersion++;state.page='library';state.selectedId='';render();}, bigScreen: bigMode.enter, importSteam: actions.importSteam, importEpic: actions.importEpic,
-  settings: () => settingsDialog(dialogActions), preview,
+  back:()=>{selectionVersion++;state.page='library';state.selectedId='';render();},
+  settings: actions.settings, preview,
   statistics:actions.statistics,
 });
 $('#add-action').append(button('添加游戏', 'primary add-button', actions.add, 'plus'));
+const displayMode=button('','header-icon-button',bigMode.enter,'screen');
+displayMode.id='big-screen-entry';displayMode.title='大屏模式';displayMode.setAttribute('aria-label','大屏模式');
+$('#header-display-action').append(displayMode);
 $('#search').oninput = event => { selectionVersion++; state.page='library'; state.search = event.target.value; state.selectedId = ''; render(); };
 function render(preferredFocus) {
   // 后台刷新只更新内容，不能重新获取焦点、打断前台游戏。
   const restoreFocus = document.hasFocus();
+  if(state.page!=='settings'&&settingsPage){settingsPage.dispose();settingsPage=null;}
   const host = $('#big-screen-host');
   host.hidden = !state.bigScreen;
   if (state.bigScreen) {
+    app.classList.remove('statistics-active');
+    app.classList.remove('settings-active');
     const focused = host.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
     const diagnosticOpen = host.querySelector('details')?.open;
     if (!state.games.some(game => game.id === state.selectedId)) state.selectedId = '';
@@ -199,19 +205,21 @@ function render(preferredFocus) {
   const focusKey = content.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
   const statisticsScroll=state.page==='statistics' && !state.selectedId ? window.scrollY : null;
   $('#navigation').querySelectorAll('button').forEach(node => {
-    const category = node.dataset.filter; const active=node.dataset.page==='statistics' ? state.page==='statistics' : state.page==='library' && category===state.filter;
+    const category = node.dataset.filter; const active=node.dataset.page ? state.page===node.dataset.page : state.page==='library' && category===state.filter;
     node.classList.toggle('active',active);node.setAttribute('aria-current',active?'page':'false');
     if(category) node.querySelector('.nav-count').textContent = state.games.filter(game => inCategory(game,category)).length;
   });
   const game = state.games.find(item => item.id === state.selectedId);
   if (!game) state.selectedId = '';
-  $('#page-name').textContent = game ? game.title : state.page==='statistics' ? '游戏统计' : '游戏库';
-  $('#page-intro').hidden = !!game || state.page==='statistics';
-  $('.topbar-actions').hidden=state.page==='statistics' && !game;
-  content.setAttribute('aria-label',state.page==='statistics' && !game ? '游戏统计内容' : '游戏库内容');
-  const next = game ? detailView(game, state.achievements, state.achievementFilter, actions) : state.page==='statistics' ? statisticsView(statistics,actions) : libraryView(state, actions);
-  preserveArtwork(content, next);
-  content.replaceChildren(next);
+  app.classList.toggle('statistics-active',state.page==='statistics'&&!game);
+  app.classList.toggle('settings-active',state.page==='settings'&&!game);
+  $('#page-name').textContent = game ? game.title : state.page==='statistics' ? '游戏统计' : state.page==='settings'?'设置':'游戏库';
+  $('#page-intro').hidden = !!game || state.page!=='library';
+  $('.topbar-actions').hidden=state.page!=='library' && !game;
+  content.setAttribute('aria-label',state.page==='settings'&&!game?'设置内容':state.page==='statistics' && !game ? '游戏统计内容' : '游戏库内容');
+  const next = game ? detailView(game, state.achievements, state.achievementFilter, actions) : state.page==='settings'?settingsPage.element:state.page==='statistics' ? statisticsView(statistics,actions) : libraryView(state, actions);
+  // 设置页保留表单节点，后台游戏库刷新不会覆盖用户正在输入的内容。
+  if(content.firstElementChild!==next){preserveArtwork(content,next);content.replaceChildren(next);}
   if (diagnosticOpen && content.querySelector('details')) content.querySelector('details').open = true;
   if (restoreFocus && (preferredFocus||focusKey)) [...content.querySelectorAll('[data-focus-key]')].find(node=>node.dataset.focusKey === (preferredFocus||focusKey))?.focus({preventScroll:true});
   animateView(content.firstElementChild, state);

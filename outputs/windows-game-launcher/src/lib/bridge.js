@@ -36,6 +36,7 @@ try {
 const demoAchievements = [
   ['初次觉醒', '激活你的第一个替身。'], ['吸收', '获得你的第一个特性。'], ['巨石之下', '击败第一个强大的对手。'], ['探索者', '发现一处隐藏区域。'], ['全副武装', '收集新的武器。'], ['新的道路', '解锁新的移动能力。'], ['不屈', '继续你的旅程。'], ['蜕变', '发掘身体中的潜能。'],
 ].map(([name, description], i) => ({ apiName: `DEMO_${i}`, name, description, icon: '', unlockedAt: i < 3 ? '2026-09-28T13:30:00Z' : null, unlockSource: 'local' }));
+const demoSettings={steamApiKey:'',steamId:'',minimizeOnLaunch:false,closeToTray:true,achievementNotifications:true};
 export async function command(name, args = {}) {
   if (!preview) {
     if (!isTauri()) throw new Error('请在桌面启动器中使用此功能。');
@@ -72,7 +73,8 @@ export async function command(name, args = {}) {
     return {state:'ready',message:'示例：已读取本地记录',schemaSource:game.schemaSource,sourceFile:game.sourceFile,lastScan:game.lastScan,definitions:8,unlocked:3,candidates:[{path:game.sourceFile,exists:true,kind:'示例记录'}]};
   }
   if (name === 'list_achievements') return demoAchievements;
-  if (name === 'get_settings') return { steamApiKey: '', steamId: '', minimizeOnLaunch:false, closeToTray:true, achievementNotifications:true };
+  if (name === 'get_settings') return {...demoSettings};
+  if (name === 'save_settings') {Object.assign(demoSettings,args);return;}
   if (name === 'list_recent_unlocks') return [];
   throw new Error('当前为设计预览，请在桌面应用中执行此操作。');
 }

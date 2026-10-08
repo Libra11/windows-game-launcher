@@ -85,9 +85,8 @@ pub(crate) fn initialize(app: &tauri::AppHandle) -> Result<(), String> {
     .skip_taskbar(true)
     .focused(false)
     .focusable(false)
-    .visible(false);
-    #[cfg(windows)]
-    let builder = builder.transparent(true);
+    .visible(false)
+    .transparent(true);
     let window = builder.build().map_err(|e| e.to_string())?;
     window
         .set_ignore_cursor_events(true)

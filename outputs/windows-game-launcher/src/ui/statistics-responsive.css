@@ -1,0 +1,71 @@
+.big-screen-statistics { max-width:none; width:100%; margin:0; padding:0 4vw; }
+.big-screen .statistics-view { gap:28px; padding-top:8px; }
+.big-screen .stats-segment button,.big-screen .stats-small-button { min-height:44px; font-size:13px; }
+.big-screen .stats-game-copy strong,.big-screen .stats-unlock-row strong,.big-screen .stats-session-game { font-size:15px; }
+.big-screen .stats-summary-label h2,.big-screen .stats-summary-caption,.big-screen .stats-period-label,.big-screen .stats-panel-heading p,.big-screen .stats-calendar-header strong,.big-screen .stats-rank-value,.big-screen .stats-table,.big-screen .stats-pagination>span { font-size:13px; }
+.big-screen .stats-calendar-day { min-height:42px; font-size:13px; }
+.big-screen .stats-game-cover { width:44px; height:58px; }
+.big-screen .stats-completed-game .stats-game-cover { width:100%; height:auto; }
+.big-screen .stats-data-note,.big-screen .stats-empty-state p { font-size:12px; }
+@media(max-width:1200px) {
+  .statistics-view { --stats-column-gap:44px; }
+  .stats-overview { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .stats-number strong { font-size:36px; }
+  .stats-completion-ring { flex-basis:66px; width:66px; height:66px; }
+  .stats-completion-ring>div { width:58px; height:58px; }
+  .stats-completion-ring strong { font-size:14px; }
+  .stats-achievement-footer { gap:12px; }
+  .stats-period-strip { --stats-column-gap:24px; }
+  .stats-activity-grid { grid-template-columns:minmax(0,1.4fr) minmax(270px,1fr); }
+  .stats-panel-heading { gap:8px; }
+  .stats-trend-panel .stats-panel-mark { display:none; }
+  .stats-panel-heading>.stats-segment { gap:12px; }
+}
+@media(max-width:1020px) {
+  .stats-activity-grid,.stats-two-columns { grid-template-columns:minmax(0,1fr); gap:38px; }
+  .stats-calendar-day { min-height:36px; }
+  .stats-calendar-grid { gap:7px; }
+  .stats-two-columns>.stats-panel+.stats-panel::before,.stats-activity-grid>.stats-panel+.stats-panel::before {
+    top:-20px; bottom:auto; left:0; width:100%; height:2px;
+    background:linear-gradient(90deg,transparent,var(--line),transparent);
+    clip-path:polygon(0 50%,50% 0,100% 50%,50% 100%);
+  }
+}
+@media(max-width:760px) {
+  .statistics-view { --stats-column-gap:36px; gap:20px; padding-top:20px; }
+  #app.statistics-active .main { padding-inline:22px; }
+  .stats-overview,.stats-skeleton { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .stats-library-summary { grid-column:1/-1; display:grid; grid-template-columns:auto 1fr; column-gap:24px; align-items:center; padding-top:20px; }
+  .stats-library-summary .stats-summary-label { grid-column:1/-1; margin-bottom:10px; }
+  .stats-library-summary>.stats-number { margin:0; }
+  .stats-library-summary .stats-platform-chart { margin:0; }
+  .stats-library-summary>.stats-summary-footnote { grid-column:1/-1; margin-top:10px; }
+  .stats-overview>.stats-library-summary::before { top:0!important; bottom:auto!important; left:0!important; width:100%!important; height:1px; clip-path:none!important; background:linear-gradient(90deg,transparent,var(--line),transparent)!important; }
+  .stats-page-header h1 { font-size:27px; }
+  .stats-page-header { align-items:flex-start; }
+  .stats-date-range { font-size:10px; margin-top:25px; }
+  .stats-date-range .icon { display:none; }
+  .stats-filter-bar { gap:10px; }
+  .stats-filter-bar .stats-segment { gap:14px; }
+  .stats-period-strip { grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; }
+  .stats-period-primary { grid-column:1/-1; padding-bottom:10px; }
+  .stats-period-strip>div:nth-child(2)::before { content:none; }
+  .stats-period-strip strong { font-size:15px; }
+  .stats-period-primary strong { font-size:23px; }
+  .stats-period-label { font-size:10px; }
+  .stats-trend-panel .stats-panel-heading { flex-wrap:wrap; }
+}
+@media(max-width:560px) {
+  #app.statistics-active .topbar { height:28px; border:0; }
+  #app.statistics-active .main { padding-inline:18px; }
+  .stats-overview,.stats-skeleton { grid-template-columns:minmax(0,1fr); gap:28px; }
+  .stats-overview>.stats-summary-module+.stats-summary-module::before { top:-15px; bottom:auto; left:0; width:100%; height:1px; clip-path:none; background:linear-gradient(90deg,transparent,var(--line),transparent); }
+  .stats-library-summary { grid-column:auto; }
+  .stats-date-range { display:none; }
+  .stats-number strong { font-size:40px; }
+  .stats-trend-panel .stats-panel-heading>.stats-segment { flex-basis:100%; width:fit-content; margin:5px 0 0; }
+  .stats-chart-inspector>span { font-size:10px; }
+  .stats-period-strip { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .stats-period-strip>div:nth-child(4)::before { content:none; }
+}
+@media(prefers-reduced-motion:reduce) { .statistics-view * { transition:none!important; } }

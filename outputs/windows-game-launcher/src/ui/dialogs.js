@@ -3,7 +3,6 @@ import { modal, closeModal } from './modal.js';
 import { field, browse, submit } from './form-fields.js';
 import { editLocalDialog } from './edit-local-dialog.js';
 export { addDialog } from './add-game-dialog.js';
-export { settingsDialog } from './settings-dialog.js';
 export function editDialog(game, actions) {
   if (game.source === 'local') return editLocalDialog(game, actions);
   const form = el('form', 'form');

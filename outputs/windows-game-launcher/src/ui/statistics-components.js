@@ -3,7 +3,7 @@ import { duration, percent, localDate } from '../lib/statistics.js';
 import { modal } from './modal.js';
 
 export function segment(options, value, change, key) {
-  const group=el('div','stats-segment'); group.setAttribute('role','group');group.setAttribute('aria-label',key==='period'?'统计周期':key==='source'?'统计平台':'显示方式');
+  const group=el('div','stats-segment');group.dataset.kind=key;group.setAttribute('role','group');group.setAttribute('aria-label',key==='period'?'统计周期':key==='source'?'统计平台':'显示方式');
   for(const [id,label] of options) {
     const control=button(label,id===value?'active':'',()=>change(id));
     control.setAttribute('aria-pressed',String(id===value));control.dataset.focusKey='stats-'+key+'-'+id;group.append(control);
@@ -14,12 +14,10 @@ export function panel(title, subtitle, glyph) {
   const node=el('section','stats-panel');
   const heading=el('div','stats-panel-heading');const copy=el('div');
   copy.append(el('h2','',title),el('p','',subtitle));heading.append(copy);
-  if(glyph)heading.append(icon(glyph));node.append(heading);return node;
+  if(glyph){const mark=el('span','stats-panel-mark');mark.append(icon(glyph));heading.prepend(mark);}node.append(heading);return node;
 }
-export function metricCard(label, value, hint, glyph) {
-  const card=el('div','stats-metric-card');
-  const heading=el('div','stats-metric-label');heading.append(icon(glyph),el('span','',label));
-  card.append(heading,el('strong','stats-metric-value',value),el('small','',hint));return card;
+export function emptyState(title, description, glyph) {
+  const node=el('div','stats-empty-state');node.append(icon(glyph),el('strong','',title),el('p','',description));return node;
 }
 export function gameCover(game, actions, variant='') {
   const cover=el('span','stats-game-cover');
@@ -27,7 +25,7 @@ export function gameCover(game, actions, variant='') {
   cover.dataset.artworkKey=JSON.stringify([variant,cover.dataset.artworkKey]);return cover;
 }
 export function gameRow(game, actions, suffix, index) {
-  const row=button('','stats-game-row',()=>actions.selectStatistic(game.gameId));
+  const row=button('','stats-game-row'+(index===0?' leading':''),()=>actions.selectStatistic(game.gameId));
   row.dataset.focusKey='stats-game-'+suffix+'-'+game.gameId;
   row.setAttribute('aria-label','查看 '+game.title);
   row.append(el('span','stats-rank-index',String(index+1).padStart(2,'0')),gameCover(game,actions,suffix));
@@ -38,7 +36,7 @@ export function completionLabel(game) {
 }
 export function unlockList(events, actions) {
   const list=el('div','stats-unlocks');
-  if(!events.length)list.append(el('p','stats-empty','这个周期还没有新的自动解锁。历史成就保留在累计进度中。'));
+  if(!events.length)list.append(emptyState('新的突破，总会到来','本期还没有新的自动解锁，已有成就仍保留在累计进度中。','trophy'));
   for(const item of events) {
     const row=button('','stats-unlock-row',()=>actions.selectStatistic(item.gameId));
     row.dataset.focusKey='stats-unlock-'+item.gameId+'-'+item.apiName;
@@ -52,7 +50,7 @@ export function unlockList(events, actions) {
 }
 export function sessionList(page, actions, onPage, offset=0) {
   const root=el('div','stats-sessions');
-  if(!page?.items.length)root.append(el('p','stats-empty','这个范围暂时没有游玩记录。'));
+  if(!page?.items.length)root.append(emptyState('留下一段属于你的游戏时光','所选范围还没有游玩会话，开始游戏后会自动记录。','game'));
   else {
     const wrap=el('div','stats-table-wrap');const table=el('table','stats-table');
     const head=el('thead');const titles=el('tr');

@@ -14,6 +14,7 @@ export function createBigScreenMode(state, render, report, actions) {
         await win.setFullscreen(active || previousFullscreen);
       }
       if (active && state.selectedId) { state.bigFocusedId = state.selectedId; state.bigCategory = 'all'; }
+      if (active && state.page === 'settings') state.page = 'library';
       state.bigScreen = active;
       document.documentElement.classList.toggle('big-screen-active', active);
       disposeInput?.(); disposeInput = null;

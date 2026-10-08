@@ -14,12 +14,11 @@ button,select {
   transform:scale(.97);
   transition-duration:80ms;
 }
-.nav-item .icon,.sidebar-import .icon,.big-screen-tool .icon {
+.nav-item .icon,.big-screen-tool .icon {
   transition:transform var(--motion-normal) var(--ease-out);
 }
-.nav-item:hover .icon,.sidebar-import:hover .icon { transform:translateX(2px); }
-.theme-toggle:hover .icon { transform:rotate(18deg); }
-.nav-item:active:not(:disabled),.sidebar-import:active:not(:disabled) { transform:translateX(2px); }
+.nav-item:hover .icon { transform:translateX(2px); }
+.nav-item:active:not(:disabled) { transform:translateX(2px); }
 .detail-back .icon { transition:transform var(--motion-normal) var(--ease-out); }
 .detail-back:hover .icon { transform:translateX(-3px); }
 

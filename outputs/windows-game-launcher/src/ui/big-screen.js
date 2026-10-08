@@ -1,6 +1,5 @@
 import { el, button, artwork, icon, sourceName, appIcon } from '../lib/dom.js';
 import { detailView } from './detail.js';
-import { getTheme, setTheme } from '../lib/theme.js';
 import { queryGames, bigScreenCategories } from '../lib/library-query.js';
 import { runtimeBadge, installationBadge, playtimeBadge } from './game-controls.js';
 import { showBigScreenGame } from './big-screen-hero.js';
@@ -25,8 +24,8 @@ export function bigScreenView(state, actions, statistics) {
     tab.setAttribute('aria-pressed', String(state.bigCategory === value)); tabs.append(tab);
   }
   const tools = el('div', 'big-screen-tools');
-  const theme = control('切换主题', 'big-screen-tool', () => setTheme(getTheme() === 'dark' ? 'light' : 'dark'), getTheme() === 'dark' ? 'sun' : 'moon', 'theme'); theme.title = '切换主题';
-  tools.append(control('游戏统计', 'big-screen-tool', actions.statistics, 'chart', 'statistics'), theme, control('退出大屏', 'big-screen-tool', actions.exitBigScreen, 'screen', 'exit'));
+  const settings=control('','big-screen-tool icon-only',actions.settings,'settings','settings');settings.setAttribute('aria-label','设置');settings.title='设置';
+  tools.append(control('游戏统计', 'big-screen-tool', actions.statistics, 'chart', 'statistics'), settings, control('退出大屏', 'big-screen-tool', actions.exitBigScreen, 'screen', 'exit'));
   header.append(brand, tabs, tools); root.append(header);
   const content = el('div', 'big-screen-content');
   const game = state.games.find(item => item.id === state.selectedId);

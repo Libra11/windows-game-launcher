@@ -55,7 +55,6 @@
   color-scheme:light;
 }
 :root { color:var(--text); background:var(--background); }
-.theme-toggle .icon { width:18px; height:18px; }
 .theme-setting { display:grid; gap:9px; padding-bottom:20px; border-bottom:1px solid var(--line); }
 .theme-setting h3 { font-size:13px; font-weight:600; }
 .theme-setting p { color:var(--muted); font-size:11px; line-height:1.7; }

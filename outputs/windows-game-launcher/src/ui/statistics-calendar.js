@@ -1,10 +1,10 @@
 import { el, button } from '../lib/dom.js';
 import { monthDays, shiftMonth, duration } from '../lib/statistics.js';
-import { panel, segment } from './statistics-components.js';
+import { panel } from './statistics-components.js';
 
 export function activityCalendar(state,controller,onDay) {
-  const node=panel('活动日历','把每一天的热爱，留在日历里。','clock');
-  node.append(segment([['seconds','游玩时长'],['unlocks','新增解锁']],state.metric,value=>controller.change('metric',value),'calendar-metric'));
+  const node=panel('活动日历',state.metric==='seconds'?'每天的游玩时光。':'每天新增的解锁记录。','clock');
+  node.classList.add('stats-calendar-panel');
   const header=el('div','stats-calendar-header');
   const previous=button('上个月','stats-small-button',()=>controller.change('month',shiftMonth(state.month,-1)),'back');
   const next=button('下个月','stats-small-button',()=>controller.change('month',shiftMonth(state.month,1)),'arrow');
@@ -21,7 +21,7 @@ export function activityCalendar(state,controller,onDay) {
     const day=daysByDate.get(date);const value=day?.[state.metric]||0;
     const control=button(String(Number(date.slice(-2))),'stats-calendar-day',()=>onDay(date));
     control.disabled=!day?.recorded;control.dataset.focusKey='stats-day-'+date;
-    const level=day?.recorded ? value>0 ? Math.max(1,Math.ceil(value/max*4)) : 0 : 'unknown';
+    const level=!day?'outside':day.recorded?value>0?Math.max(1,Math.ceil(value/max*4)):0:'unknown';
     control.dataset.level=String(level);control.classList.toggle('today',date===state.data.to);
     const label=day?.recorded ? state.metric==='seconds' ? duration(value) : value+' 项新增解锁' : day?'未记录':'不在所选周期';
     control.title=date+' · '+label;control.setAttribute('aria-label',control.title);

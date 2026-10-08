@@ -1,1 +1,26 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="card"><div class="badge">★</div><div class="copy"><small>游迹 · 成就解锁</small><strong id="name"></strong><span id="game"></span></div><img id="art" alt=""></div><script type="module" src="/src/achievement-overlay.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <script src="/theme-init.js"></script>
+    <title>游迹 · 成就解锁</title>
+  </head>
+  <body>
+    <article id="card" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true">
+      <div class="badge" aria-hidden="true">
+        <div id="art-host" class="badge-art"></div>
+        <span id="unlocked-mark" class="unlocked-mark"></span>
+      </div>
+      <div class="copy">
+        <div class="eyebrow">
+          <span class="unlock-label">成就已解锁</span>
+          <span class="brand">游迹</span>
+        </div>
+        <h1 id="name"></h1>
+        <p id="game"></p>
+      </div>
+    </article>
+    <script type="module" src="/src/achievement-overlay.js"></script>
+  </body>
+</html>

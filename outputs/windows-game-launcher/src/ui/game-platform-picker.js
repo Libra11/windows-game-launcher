@@ -1,13 +1,11 @@
 import { el } from '../lib/dom.js';
 import { field } from './form-fields.js';
 import { command } from '../lib/bridge.js';
+import { customSelect } from './custom-select.js';
 
 export function gamePlatformPicker(exeInput, initial) {
   const root = el('div', 'field');
-  const select = el('select');
-  for (const [value, text] of [['', '请选择成就平台'], ['steam', 'Steam 成就'], ['xbox', 'Xbox 成就'], ['none', '暂不关联成就']]) {
-    const option = el('option', '', text); option.value = value; select.append(option);
-  }
+  const select = customSelect([['','请选择成就平台'],['steam','Steam 成就'],['xbox','Xbox 成就'],['none','暂不关联成就']],'','成就平台');
   const hint = el('p', 'form-hint', '选择游戏启动文件后自动识别；封面和简介可以独立关联 Steam。'); hint.setAttribute('aria-live', 'polite');
   root.append(el('span', '', '成就平台'), select, hint);
   const source = field('Xbox 公开成就页面', initial?.publicSource || '', 'https://www.exophase.com/game/游戏名-xbox/achievements/');

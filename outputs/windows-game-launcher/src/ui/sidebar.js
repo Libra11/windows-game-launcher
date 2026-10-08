@@ -1,6 +1,5 @@
-import { el, button, icon, appIcon } from '../lib/dom.js';
+import { el, button, appIcon } from '../lib/dom.js';
 import { categories, platformCategories } from '../lib/library-query.js';
-import { themeToggle } from './theme-controls.js';
 import './sidebar.css';
 
 export function mountSidebar(host, actions) {
@@ -28,23 +27,13 @@ export function mountSidebar(host, actions) {
   statistics.dataset.page = 'statistics';
   statistics.title = '游戏统计';
   navigation.append(statistics);
-  const tools = el('div', 'sidebar-tools'); tools.setAttribute('role', 'group'); tools.setAttribute('aria-label', '显示模式');
-  const bigScreen = button('大屏模式', 'sidebar-tool', actions.bigScreen, 'screen');
-  bigScreen.id = 'big-screen-entry'; bigScreen.title = '大屏模式';
-  tools.append(bigScreen, themeToggle(true));
-  const steamImport = button('导入 Steam 游戏', 'sidebar-import', actions.importSteam, 'refresh');
-  steamImport.title = '导入 Steam 游戏';
-  const arrow = icon('arrow', 'sidebar-import-arrow'); steamImport.append(arrow);
-  const epicImport = button('导入 Epic 游戏', 'sidebar-import', actions.importEpic, 'epic');
-  epicImport.title = '登录 Epic 账号，导入账号游戏库';
-  epicImport.append(icon('arrow', 'sidebar-import-arrow'));
+  const settings = button('设置','nav-item',actions.settings,'settings');settings.dataset.page='settings';settings.title='设置';
+  navigation.append(settings);
 
   const footer = el('div', 'sidebar-footer');
   const version = el('div', 'app-version');
   version.append(el('span', 'status-dot'), el('span', '', actions.preview ? '设计预览 · 示例数据' : '游迹'));
-  const settings = button('', 'sidebar-settings', actions.settings, 'settings');
-  settings.setAttribute('aria-label', '设置'); settings.title = '设置';
-  footer.append(version, settings);
-  bottom.append(tools, steamImport, epicImport, footer);
+  footer.append(version);
+  bottom.append(footer);
   host.replaceChildren(brand, caption, navigation, bottom);
 }

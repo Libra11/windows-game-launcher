@@ -1,54 +1,69 @@
-import { achievementNotificationSettings } from './achievement-notification-settings.js';
-import { xboxConnection } from './xbox-connection.js';
-import { epicConnection } from './epic-connection.js';
 import { el, button, icon } from '../lib/dom.js';
-import { preview } from '../lib/bridge.js';
-import { themePicker } from './theme-controls.js';
-import { modal, closeModal } from './modal.js';
-import { field, submit } from './form-fields.js';
-import { recentUnlocksDialog } from './recent-unlocks.js';
-import { exitDialog } from './exit-dialog.js';
+import { settingsAppearance } from './settings-appearance.js';
+import { settingsConnections } from './settings-connections.js';
+import { settingsNotifications } from './settings-notifications.js';
+import { settingsGeneral } from './settings-general.js';
+import './settings.css';
 
-function check(label, checked) {
-  const element = el('label','setting-check'); const input = el('input'); input.type = 'checkbox'; input.checked = checked;
-  element.append(input, el('span','',label)); return {element,input};
-}
+const categories=[
+  ['appearance','外观与字体','sun','主题与字体回退'],
+  ['connections','游戏库与账号','library','账号连接与导入'],
+  ['notifications','成就提示','trophy','位置、声音与通知'],
+  ['general','后台与运行','settings','启动与退出行为'],
+];
+let sequence=0;
 
-export async function settingsDialog(actions) {
-  const settings = await actions.run('get_settings');
-  const form = el('form', 'form');
-  const appearance = themePicker(); form.append(appearance.element);
-  const minimize = check('确认游戏运行后最小化，结束后恢复启动器', settings.minimizeOnLaunch);
-  const tray = check('关闭窗口时保留在托盘，继续计时和检测成就', settings.closeToTray);
-  const notifications = check('显示游迹成就弹层', settings.achievementNotifications);
-  form.append(minimize.element, tray.element, notifications.element);
-  const achievementOptions = await achievementNotificationSettings(actions);
-  form.append(achievementOptions.element);
-  const tools = el('div','settings-tools');
-  const test = button('测试通知','secondary',async () => {
-    await achievementOptions.save();
-    const message = await actions.run('test_achievement_notification'); actions.toast(message);
-  },'trophy'); test.disabled = preview; if (preview) test.title = '请在桌面应用中测试成就弹层';
-  const delayed = button('5 秒后测试', 'secondary', async () => {
-    await achievementOptions.save();
-    actions.toast(await actions.run('test_achievement_notification', {delaySeconds:5}));
-  }, 'trophy'); delayed.disabled = preview;
-  tools.append(delayed);
-  tools.append(test, button('最近解锁','secondary',()=>recentUnlocksDialog(actions),'clock'));
-  form.append(tools, el('p','form-hint','游迹弹层置顶显示，不抢焦点，鼠标可穿透。建议游戏使用无边框全屏；独占全屏可能遮挡弹层。错过的成就可在“最近解锁”查看。'));
-  const connection = el('div','connection-card'); connection.append(icon('steam'), el('div','','连接 Steam 游戏库')); form.append(connection);
-  const key = field('Steam Web API Key', settings.steamApiKey, '填写你的 Steam API Key', 'password');
-  const id = field('SteamID64', settings.steamId, '17 位 Steam 账号 ID'); id.input.pattern = '[0-9]*'; id.input.inputMode = 'numeric';
-  form.append(key.wrapper,id.wrapper,el('p','form-hint','用于导入游戏、同步官方成就与累计时长。游戏详情及游玩时长需公开，Key 和记录保存在本机。'));
-  const xbox = xboxConnection(actions); form.append(xbox.element);
-  const epic = epicConnection(actions); form.append(epic.element);
-  const dialog = modal('设置','管理外观、后台运行与游戏账号连接。',form);
-  dialog.addEventListener('close',()=>{appearance.dispose();xbox.dispose();epic.dispose();},{once:true});
-  submit(form,'保存设置',async()=> {
-    await achievementOptions.save();
-    await actions.run('save_settings',{steamApiKey:key.input.value.trim(),steamId:id.input.value.trim(),minimizeOnLaunch:minimize.input.checked,closeToTray:tray.input.checked,achievementNotifications:notifications.input.checked});
-    await closeModal(dialog); await actions.refresh(); actions.toast('设置已保存');
+export function createSettingsPage(actions) {
+  const element=el('div','settings-page'),header=el('header','settings-page-header');
+  const copy=el('div');copy.append(el('span','settings-overline','偏好与连接'),el('h1','','设置'),el('p','settings-description','让游迹更适合你的习惯。'));
+  const status=el('p','settings-save-status','外观与开关自动保存');status.setAttribute('role','status');
+  header.append(copy,status);element.append(header);
+  const layout=el('div','settings-layout'),navigation=el('nav','settings-navigation'),content=el('div','settings-content');
+  navigation.setAttribute('role','tablist');navigation.setAttribute('aria-label','设置分类');
+  layout.append(navigation,content);element.append(layout);
+  const id='settings-'+sequence++;let active='appearance',disposed=false,parts=[],savedSettings,queue=Promise.resolve();
+  function saved(message='设置已保存'){if(!disposed)status.textContent=message;}
+  const tabs=categories.map(([key,label,glyph,description])=>{
+    const tab=button('','settings-category',()=>show(key,true));tab.setAttribute('role','tab');tab.id=id+'-tab-'+key;tab.setAttribute('aria-controls',id+'-'+key);
+    const text=el('span');text.append(el('strong','',label),el('small','',description));tab.append(icon(glyph),text);navigation.append(tab);return tab;
   });
-  const exit = button('退出启动器','settings-exit',async()=> {await closeModal(dialog); await exitDialog(actions);},'close'); exit.disabled = preview;
-  form.append(exit);
+  function show(key,scroll=false) {
+    active=key;
+    tabs.forEach((tab,index)=>{const selected=categories[index][0]===key;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',String(selected));});
+    parts.forEach((part,index)=>{part.element.hidden=categories[index][0]!==key;});
+    if(scroll)window.scrollTo({top:0});
+  }
+  function save(patch) {
+    // 串行合并已保存值，避免快速切换不同开关时覆盖其他偏好。
+    const task=queue.then(async()=>{
+      const next={...savedSettings,...patch};await actions.run('save_settings',next);savedSettings=next;saved();return next;
+    });
+    queue=task.catch(()=>{});return task;
+  }
+  async function load() {
+    content.replaceChildren(el('p','settings-loading','正在读取设置…'));
+    try {
+      const [settings,options]=await Promise.all([actions.run('get_settings'),actions.run('get_achievement_overlay_options')]);
+      if(disposed)return;savedSettings={...settings};
+      const appearance=settingsAppearance(actions,saved);
+      const connections=settingsConnections(settings,actions,save);
+      const notifications=await settingsNotifications(settings,actions,save,options,saved);
+      const general=settingsGeneral(settings,actions,save);
+      const built=[appearance,connections,notifications,general];
+      if(disposed){built.forEach(part=>part.dispose());return;}
+      parts=built;
+      parts.forEach((part,index)=>{
+        part.element.id=id+'-'+categories[index][0];part.element.setAttribute('role','tabpanel');part.element.setAttribute('aria-labelledby',tabs[index].id);
+      });
+      content.replaceChildren(...parts.map(part=>part.element));show(active);
+    }catch(error){
+      if(disposed)return;
+      content.replaceChildren(el('p','settings-description','设置暂时无法读取：'+String(error)),button('重新读取','secondary',load,'refresh'));
+    }
+  }
+  show(active);load();
+  return {element,dispose(){
+    disposed=true;parts.forEach(part=>part.dispose());
+    element.querySelectorAll('.custom-select-menu:popover-open').forEach(menu=>menu.hidePopover());
+  }};
 }

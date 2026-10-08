@@ -1,1 +1,127 @@
-*{box-sizing:border-box}html,body{margin:0;background:transparent;overflow:hidden;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#f4f5e9}body{padding:10px}#card{width:400px;height:112px;display:flex;align-items:center;gap:16px;padding:18px 20px;border:1px solid #738653;border-left:4px solid #d8ec9c;border-radius:15px;background:linear-gradient(120deg,#263322,#111a16);box-shadow:0 5px 12px #0007;opacity:0;transform:translateY(15px);transition:opacity .25s,transform .3s}.visible#card{opacity:1;transform:translateY(0)}.badge{width:48px;height:48px;flex-shrink:0;border-radius:13px;display:grid;place-items:center;background:#d8ec9c;color:#263322;font-size:30px}.copy{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}small{color:#d8ec9c;font-size:11px;letter-spacing:2px}strong{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}span{color:#acb7a5;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}img{width:48px;height:48px;border-radius:10px;object-fit:cover}img[hidden]{display:none}
+* { box-sizing:border-box; }
+html,body {
+  margin:0;
+  background:transparent;
+  overflow:hidden;
+  font-family:var(--app-font-family,"Segoe UI","Microsoft YaHei",sans-serif);
+  color:#f4f5ee;
+}
+body { padding:10px; }
+#card {
+  position:relative;
+  isolation:isolate;
+  display:flex;
+  align-items:center;
+  gap:18px;
+  width:400px;
+  height:112px;
+  padding:14px 18px;
+  border:1px solid #ffffff1c;
+  border-radius:18px;
+  background:linear-gradient(110deg,#242825,#181c1b 65%);
+  box-shadow:0 4px 9px #0006,inset 0 1px 0 #ffffff07;
+  opacity:0;
+  pointer-events:none;
+}
+#card::before {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:0;
+  border-radius:inherit;
+  background:radial-gradient(ellipse at 0 50%,#d0e99b0e,transparent 65%);
+}
+#card::after {
+  content:"";
+  position:absolute;
+  top:-1px;
+  left:24px;
+  right:24px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,#dceabb66 25%,#ffffff14 75%,transparent);
+}
+/* 内容立即可见；仅徽章光泽使用动画，避免后台帧暂停时隐藏通知。 */
+#card.visible { opacity:1; }
+.badge {
+  position:relative;
+  flex:0 0 60px;
+  width:60px;
+  height:60px;
+  padding:5px;
+  border:1px solid #d5e7a94d;
+  border-radius:18px;
+  background:linear-gradient(145deg,#d4e8a726,#d4e8a708);
+  box-shadow:0 0 20px #d0e99b0a,inset 0 1px 0 #eaffcf12;
+}
+.badge-art {
+  position:relative;
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  border-radius:12px;
+  color:#d8eab2;
+  background:#d0e99b08;
+}
+.badge-art > .icon { width:30px; height:30px; }
+.badge-art.has-art > .icon { visibility:hidden; }
+.badge-art img {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.badge-art img[hidden] { display:none; }
+.badge-art::after {
+  content:"";
+  position:absolute;
+  inset:-50%;
+  background:linear-gradient(110deg,transparent 40%,#ffffff18 50%,transparent 60%);
+  transform:translateX(-100%);
+}
+.visible .badge-art::after { animation:badge-glint .9s ease-out; }
+.unlocked-mark {
+  position:absolute;
+  right:-5px;
+  bottom:-4px;
+  display:grid;
+  place-items:center;
+  width:20px;
+  height:20px;
+  border:3px solid #222724;
+  border-radius:50%;
+  background:#d0e99b;
+  color:#28351e;
+}
+.unlocked-mark .icon { width:11px; height:11px; stroke-width:2.6; }
+.copy { flex:1; min-width:0; }
+.eyebrow { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.unlock-label { color:#d0e99b; font-size:10px; font-weight:600; letter-spacing:1.5px; }
+.brand { color:#8b958d; font-size:10px; letter-spacing:2px; }
+#name {
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+  overflow-wrap:anywhere;
+  margin:6px 0 5px;
+  font-size:19px;
+  font-weight:600;
+  line-height:1.2;
+  letter-spacing:.2px;
+}
+#game {
+  margin:0;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#a3ada6;
+  font-size:11px;
+  line-height:1.5;
+}
+@keyframes badge-glint { to { transform:translateX(100%); } }
+@media (prefers-reduced-motion:reduce) {
+  .visible .badge-art::after { animation:none; }
+}

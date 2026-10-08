@@ -1,5 +1,5 @@
 :root {
-  font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  font-family:var(--app-font-family,"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif);
   color:var(--text);
   background:var(--background);
   font-synthesis:none;
@@ -69,7 +69,6 @@ h1,h2,h3,p {
 .main {
   min-width:0;
   padding:0 40px 22px;
-  max-width:1800px;
   width:100%;
   margin:0 auto;
 }

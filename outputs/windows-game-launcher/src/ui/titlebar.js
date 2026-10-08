@@ -36,15 +36,20 @@ export function mountTitlebar(report) {
     controls.append(control); return control;
   };
   add('minimize', '最小化', () => win.minimize());
-  const maximize = add('maximize', '最大化', async () => { await win.toggleMaximize(); await update(); });
+  const maximize = add('maximize', '最大化', async () => {
+    if (await win.isFullscreen()) await win.setFullscreen(false);
+    else await win.toggleMaximize();
+    await update();
+  });
   add('close', '关闭窗口', () => win.close());
   bar.append(drag, controls); document.body.prepend(bar);
   let alive = true;
   const listeners = [];
   async function update() {
     if (!win || !alive) return;
-    const maximized = await win.isMaximized();
-    if (alive) paint(maximize, maximized ? 'restore' : 'maximize', maximized ? '还原窗口' : '最大化');
+    const [maximized,fullscreen] = await Promise.all([win.isMaximized(),win.isFullscreen()]);
+    const expanded = maximized || fullscreen;
+    if (alive) paint(maximize, expanded ? 'restore' : 'maximize', expanded ? '还原窗口' : '最大化');
   }
   if (win) {
     update().catch(error => report(String(error), true));
