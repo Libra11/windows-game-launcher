@@ -23,6 +23,7 @@ export function steamGameSearch(initial = null) {
     clearTimeout(timer); version++; selected = null;
     results.replaceChildren(); results.removeAttribute('aria-busy');
     status.classList.remove('error');
+    element.dispatchEvent(new Event('change'));
   }
 
   function select(game) {
@@ -35,6 +36,7 @@ export function steamGameSearch(initial = null) {
     });
     const summary = el('div', 'steam-search-selection');
     summary.append(chosen, change); results.append(summary);
+    element.dispatchEvent(new Event('change'));
   }
 
   function candidate(game, selectable = false) {
@@ -45,7 +47,7 @@ export function steamGameSearch(initial = null) {
       image.onerror = () => image.remove(); image.src = game.image; art.append(image);
     }
     const copy = el('div', 'steam-search-copy');
-    copy.append(el('strong', '', game.name), el('span', '', `Steam · AppID ${game.appid}`));
+    copy.append(el('strong', '', game.name), el('span', '', `Steam 官方资料 · AppID ${game.appid}`));
     item.append(art, copy, icon(selectable ? 'plus' : 'check'));
     if (selectable) item.setAttribute('aria-label', `选择 ${game.name}，AppID ${game.appid}`);
     return item;
@@ -64,7 +66,7 @@ export function steamGameSearch(initial = null) {
       if (disposed || request !== version) return;
       status.textContent = games.length
         ? `${preview ? '预览示例 · ' : ''}找到 ${games.length} 个候选，请确认名称与版本；结果可能包含 DLC 或原声带。`
-        : '没有找到匹配项，试试英文名称或更短的关键词。也可以仅添加本地游戏。';
+        : '没有找到匹配项，试试英文名称或更短的关键词，也可以勾选“跳过 Steam 资料关联”。';
       results.replaceChildren(...games.map(game => candidate(game, true)));
     } catch (error) {
       if (disposed || request !== version) return;
@@ -77,7 +79,7 @@ export function steamGameSearch(initial = null) {
 
   function changed() {
     invalidate();
-    if (localOnly) { status.textContent = '仅保存游戏名称和本地启动文件，不关联 Steam。'; return; }
+    if (localOnly) { status.textContent = '请输入游戏名称；不获取 Steam 封面、简介和成就资料，Xbox 成就仍可单独关联。'; return; }
     status.textContent = name.input.value.trim() ? '等待搜索…' : '输入名称后，从 Steam 候选中选择正确的游戏。';
     if (!composing && name.input.value.trim()) timer = setTimeout(find, 400);
   }

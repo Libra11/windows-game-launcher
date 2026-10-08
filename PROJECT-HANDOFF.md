@@ -1,5 +1,34 @@
 # 项目交接状态
 
+## 2026-10-08 添加游戏时提前识别编号冲突
+
+- 添加与编辑界面选择 Steam 搜索结果后立即核对编号，区分所选游戏的 Steam 官方资料编号与本地配置编号。确认项按游戏名称表述，用户无需猜哪个数字正确。
+- detect_game_platform 支持所选 appid 与排除当前 gameId，返回共用配置编号的已有游戏名称。平台资料在扫描时重新检查冲突；共用的备用配置编号不再参与自动记录路径查找，官方编号与明确指定的自定义记录路径仍需通过真实成就定义校验。游戏配置和存档不会自动改写。
+- 新增界面交互回归测试及后端共享编号测试，覆盖即时提示、确认失效、排除自身、同游戏条目、修正配置后解除冲突，以及不读取共用备用目录。
+- 前端构建、新界面测试、平台与记录路径 6 项后端测试通过，开发桌面已自动重新编译。全量测试尚有原有失败：界面启动状态 1 项，后端 Windows 路径分隔符断言与 SQLite 文件占用清理 2 项；本轮未改对应实现或断言。未操作掌机、未打包、未执行 Git 提交。
+
+## 2026-10-08 本机米娜成就记录目录冲突已修正
+
+- 用户要求仅在本机解决米娜成就记录不匹配，不操作掌机。本轮未连接掌机、未改业务源码、未打包或执行 Git。
+- 根因是 `D:/games/Mina the Hollower/steam_emu.ini` 的实际 AppId=2456740，与 GRIME II 共用 Public/Documents/Steam/RUNE/2456740；该 achievements.ini 中三项 APPETIZER/FIRST_SHAPE/SHELL 属于 GRIME II，米娜定义为 1875580 下的 50 项，因此读取器正确拒绝串入。
+- 已将米娜本机运行配置修正为 AppId=1875580，并更新本机数据库中该游戏的平台配置，取消旧备用目录关联。将 shared runtime 的 Mina 专属 remote/savedata.yc、remote/savedata.bak.yc 和 filemappings.ini 复制至 RUNE/1875580；未复制 GRIME II 的 achievements.ini、未改本机 Roaming/Yacht Club Games/Mina the Hollower 存档、未修改共享目录内容或任何已有解锁。
+- 操作前备份在 `work/mina-achievement-fix-20261008/backup-195920/`，包含原配置、原存档、共享运行记录和 SQLite 一致备份，可能含 Steam API Key，不得公开或输出完整设置表。核对报告在同目录上一级的 report.json。
+- 实时后端扫描已由「解锁标识与当前游戏定义不匹配」变为「未找到解锁记录文件」，source_file 清空；GRIME II 仍正确读取原目录，原三项成就、米娜存档及所有解锁数量保持不变。独立目录尚未由实际游戏产生新的 achievements.ini，当前不宣称自动解锁已实测成功；下次重新启动米娜并触发真实条件后再确认。没有根据存档进度伪造或补写成就。
+
+## 2026-10-08 掌机数据与 7 个游戏已迁移到当前 Windows 电脑
+
+- 当前工作目录为 `C:/Users/Admin/Desktop/Projects/windows-game-launcher`，主源码仍在 `outputs/windows-game-launcher/`。本次用户要求从掌机复制数据库、本地游戏和存档，目标游戏目录为 `D:/games`；未修改业务源码、未打包、未执行 Git 操作。
+- 实时连接目标为 `lixin@192.168.1.9`，SSH 登录核对 `COMPUTER=LIBRA`。当前电脑新连接钥匙在 `work/handheld-ssh/`，由用户在掌机管理员 PowerShell 添加公钥。SSH 使用已有记录严格校验、`KexAlgorithms=ecdh-sha2-nistp256`；传输仍用 `scp -O`。密钥内容不得输出。
+- 通过 Windows SQLite 在线备份接口取得一致数据库快照并校验；本机导入后为 88 条游戏、7023 项成就定义、997 条解锁、33 条游玩记录。本机原数据库为 0 条游戏，已备份；全部历史记录保留，GRIME 原有 72000 秒未重置。迁移副本改写游戏路径和 lixin 用户目录引用，移除跨设备无效的运行进程恢复状态，不修改掌机数据库。
+- 已复制全部 7 个游戏：黯井微光、GRIME、尘埃异变 2、浣熊推币机、Zad Archery、闰跃之年、挖掘者米娜。完整游戏目录约 29 GB，逐个归档 SHA-256 校验并核对解压文件；GRIME II 仅复制实际游戏子目录，不复制旁边的分卷安装包。
+- 本机已有 `D:/games/GRIME.Build.10718218` 和 `D:/games/Leap Year` 已移入迁移备份，其他现有游戏未修改。7 个游戏的本机启动文件均存在。
+- 恢复 12 个保存位置，源快照 45 个文件逐文件 SHA-256 校验；包括 LocalLow 的 GRIME 两代/RACCOIN/Zad、Local 的 Leap_Year、Roaming 的 Mina/GSE、Public 的 Steam RUNE 及 MicrosoftStore RUNE Well Dweller。Xbox 事件日志保留；旧 control.txt/interface-ready.txt 仅保留在迁移快照，不当作本机捕获状态使用。
+- 本机备份、源存档快照和迁移记录：`D:/games/.youji-migration-20261008/`，其中 `backups/` 保留原游戏目录、原存档及原应用数据库；`install-journal.json` 标记 verified=true。数据库快照及脚本还在 `work/migration-20261008/`。这些数据库包含 Steam 连接信息，不得公开托管或输出完整设置表。
+- 本机游迹已正常退出后导入并重新以 Tauri 开发模式启动，验证进程响应、数据库 integrity_check=ok、7 个路径存在及本地读取状态。未自动启动游戏，实际进入游戏后的存档进度尚未由用户确认。
+- 米娜成就检测的「解锁标识与当前游戏定义不匹配」在掌机源快照中已存在，引用 RUNE/2456740 的记录；本次保留原数据，没有推算或伪造解锁。米娜两份 yc 存档及 RUNE remote 副本均已迁移。
+- 掌机休眠曾中断大文件传输；最终通过 256 MB 分块校验复用 75 个已传分块，仅补传剩余数据并验证完整归档。传输期间使用临时执行状态保持唤醒，完成后已确认 TEMPORARY_AWAKE_RELEASED，未修改永久电源设置。
+- 远端本次生成的游戏 tar/part 已清理，掌机原游戏和存档保留。本机组合清理操作被自动审批以「策略阻止」拒绝，未执行：`archives/` 下的本机游戏 tar/part 仍保留，临时授权网页 `http://192.168.1.8:8765/` 及仅供专用局域网访问此端口的 `Youji-Handheld-Connect-8765` 防火墙规则尚未移除。网页只提供公钥和用户执行命令，不托管数据库或私钥。
+
 记录日期：2026-10-02。此文记录已经完成的工作，连接和部署步骤见 `HANDHELD-OPERATIONS.md`。新会话应以源码、实时日志和掌机状态核实后续问题，不重复从零搭建环境。
 
 ## 目录与技术栈

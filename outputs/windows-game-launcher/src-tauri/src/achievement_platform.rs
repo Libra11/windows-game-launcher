@@ -20,6 +20,32 @@ pub(crate) struct Profile {
     pub automatic: bool,
     #[serde(default)]
     pub definition_error: String,
+    #[serde(default)]
+    pub record_conflicts: Vec<String>,
+}
+
+// 只比较当前配置，不递归加载平台资料；旧配置不能证明当前记录归属。
+fn record_conflicts(
+    conn: &Connection,
+    appid: &str,
+    runtime_id: &str,
+    exclude: &str,
+) -> Result<Vec<String>, String> {
+    if runtime_id.is_empty() || appid.is_empty() || runtime_id == appid {
+        return Ok(Vec::new());
+    }
+    Ok(db::games(conn)?
+        .into_iter()
+        .filter(|other| {
+            other.id != exclude
+                && !other.appid.is_empty()
+                && other.appid != appid
+                && (other.appid == runtime_id
+                    || (other.source == "local"
+                        && detect(&other.exe_path).steam_appid == runtime_id))
+        })
+        .map(|other| other.title)
+        .collect())
 }
 
 fn read_small(path: &Path) -> Option<String> {
@@ -131,6 +157,7 @@ pub(crate) fn for_game(conn: &Connection, game: &Game) -> Result<Profile, String
         }
         p.definition_error =
             db::setting(conn, &format!("achievement_definition_error:{}", game.id))?;
+        p.record_conflicts = record_conflicts(conn, &game.appid, &p.steam_appid, &game.id)?;
         return Ok(p);
     }
     let mut profile = detect(&game.exe_path);
@@ -146,6 +173,7 @@ pub(crate) fn for_game(conn: &Connection, game: &Game) -> Result<Profile, String
     }
     profile.definition_error =
         db::setting(conn, &format!("achievement_definition_error:{}", game.id))?;
+    profile.record_conflicts = record_conflicts(conn, &game.appid, &profile.steam_appid, &game.id)?;
     Ok(profile)
 }
 
@@ -206,16 +234,46 @@ pub(crate) fn save(
 }
 
 #[tauri::command]
-pub(crate) fn detect_game_platform(exe_path: String) -> Result<Profile, String> {
+pub(crate) fn detect_game_platform(
+    state: tauri::State<'_, crate::AppState>,
+    exe_path: String,
+    appid: Option<String>,
+    game_id: Option<String>,
+) -> Result<Profile, String> {
     if !Path::new(&exe_path).is_file() {
         return Err("请选择存在的启动文件".into());
     }
-    Ok(detect(&exe_path))
+    let mut profile = detect(&exe_path);
+    let conn = crate::lock_db(&state)?;
+    profile.record_conflicts = record_conflicts(
+        &conn,
+        appid.as_deref().unwrap_or(""),
+        &profile.steam_appid,
+        game_id.as_deref().unwrap_or(""),
+    )?;
+    Ok(profile)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn detects_shared_configuration_and_refreshes_after_repair() {
+        let folder = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("steam_emu.ini"), "AppId=2456740").unwrap();
+        let conn = db::open(&folder.join("games.sqlite")).unwrap();
+        let other = Game { id:"other".into(), source:"local".into(), title:"GRIME II".into(), appid:"2529790".into(), exe_path:folder.join("game.exe").to_string_lossy().into(), ..Default::default() };
+        db::upsert_game(&conn, &other).unwrap();
+        assert_eq!(record_conflicts(&conn, "1875580", "2456740", "mina").unwrap(), vec!["GRIME II"]);
+        assert!(record_conflicts(&conn, "1875580", "2456740", "other").unwrap().is_empty());
+        assert!(record_conflicts(&conn, "2529790", "2456740", "mina").unwrap().is_empty());
+        std::fs::write(folder.join("steam_emu.ini"), "AppId=2529790").unwrap();
+        assert!(record_conflicts(&conn, "1875580", "2456740", "mina").unwrap().is_empty());
+        assert_eq!(record_conflicts(&conn, "1875580", "2529790", "mina").unwrap(), vec!["GRIME II"]);
+        drop(conn);
+        std::fs::remove_dir_all(folder).unwrap();
+    }
     #[test]
     fn recognizes_xbox_and_reports_conflicting_steam_id() {
         let folder = std::env::temp_dir().join(uuid::Uuid::new_v4().to_string());

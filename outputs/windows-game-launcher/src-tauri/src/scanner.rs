@@ -81,10 +81,18 @@ pub(crate) fn scan_one(
             }
         }
     } else {
+        let status = if profile.record_conflicts.is_empty() {
+            runtime_environment::missing_record_status(game)
+        } else {
+            format!(
+                "本地配置编号 {} 与《{}》共用，已停止从共用编号自动读取成就；请修正游戏配置或指定本游戏的独立记录文件",
+                profile.steam_appid, profile.record_conflicts.join("》《")
+            )
+        };
         db::update_scan(
             &*lock_db(state)?,
             &game.id,
-            &runtime_environment::missing_record_status(game),
+            &status,
             "",
         )?;
         return Ok(Vec::new());

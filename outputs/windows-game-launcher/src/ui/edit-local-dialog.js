@@ -10,10 +10,12 @@ export function editLocalDialog(game, actions) {
   const controls = el('fieldset', 'add-game-fields');
   const search = steamGameSearch(game);
   const exe = field('游戏启动文件', game.exePath, '选择实际游戏的 .exe'); exe.input.required = true; browse(exe, ['exe']);
-  const platform = gamePlatformPicker(exe.input, game.achievementPlatform);
+  const platform = gamePlatformPicker(exe.input, game.achievementPlatform, game.id);
+  search.element.addEventListener('change', () => platform.setGame(search.appid, search.title));
+  platform.setGame(search.appid, search.title);
   const record = field('自定义解锁记录（可选）', game.customUnlockPath, 'achievements.json 或 achievements.ini 的完整路径'); browse(record, ['json', 'ini']);
   const local = el('label', 'setting-check'); const localOnly = el('input'); localOnly.type = 'checkbox'; localOnly.checked = !game.appid;
-  local.append(localOnly, el('span', '', '暂不关联 Steam'));
+  local.append(localOnly, el('span', '', '跳过 Steam 资料关联（不获取 Steam 成就）'));
   if (localOnly.checked) search.setLocalOnly(true);
   localOnly.onchange = () => search.setLocalOnly(localOnly.checked);
   const confirm = el('label', 'setting-check'); const rebind = el('input'); rebind.type = 'checkbox';
@@ -30,7 +32,7 @@ export function editLocalDialog(game, actions) {
     if (!platform.value) throw new Error('请确认成就平台。');
     const platformChanged = platform.value !== game.achievementPlatform?.platform || (changed && platform.value === 'steam');
     if (platformChanged && !rebind.checked) throw new Error('关联已变更，请勾选确认清除旧资料和解锁记录。');
-    await platform.validate(appid);
+    await platform.validate(appid, search.title);
     controls.disabled = true;
     try {
       await actions.run('update_local', { gameId:game.id, title:search.title, exePath:exe.input.value.trim(), appid, customUnlockPath:record.input.value.trim(), achievementPlatform:platform.value, publicAchievementUrl:platform.publicSource, steamIdentityConfirmed:platform.identityConfirmed });

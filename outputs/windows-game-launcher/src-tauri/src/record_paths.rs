@@ -9,6 +9,7 @@ fn confirmed_runtime_appid<'a>(game: &Game, profile: &'a Profile) -> Option<&'a 
     // 配置编号只用于查找记录；资料和解锁仍归属于用户确认的游戏。
     (profile.platform == "steam"
         && profile.confirmed_steam_appid == game.appid
+        && profile.record_conflicts.is_empty()
         && profile.steam_appid != game.appid
         && valid_appid(&profile.steam_appid)
         && crate::steam_identity::detect(Path::new(&game.exe_path)).appid == profile.steam_appid)
@@ -107,6 +108,11 @@ mod tests {
         assert_eq!(confirmed_runtime_appid(&game, &profile), Some("2456740"));
         let files = runtime_candidates(&game, &profile, None, Some(&root));
         assert!(files.contains(&root.join("Documents/Steam/RUNE/2456740/achievements.ini")));
+        profile.record_conflicts = vec!["另一个游戏".into()];
+        let files = runtime_candidates(&game, &profile, None, Some(&root));
+        assert!(!files.contains(&root.join("Documents/Steam/RUNE/2456740/achievements.ini")));
+        assert!(files.contains(&root.join("Documents/Steam/RUNE/2529790/achievements.ini")));
+        profile.record_conflicts.clear();
         std::fs::write(root.join("steam_emu.ini"), "AppId=480").unwrap();
         assert!(confirmed_runtime_appid(&game, &profile).is_none());
         std::fs::remove_dir_all(root).unwrap();

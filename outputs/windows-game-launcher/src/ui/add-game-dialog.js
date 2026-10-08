@@ -12,21 +12,22 @@ export function addDialog(actions) {
   const exe = field('游戏启动文件', '', '选择游戏的 .exe 文件');
   exe.input.required = true; browse(exe, ['exe']);
   const platform = gamePlatformPicker(exe.input);
+  search.element.addEventListener('change', () => platform.setGame(search.appid, search.title));
   const localLabel = el('label', 'setting-check steam-search-local');
   const localOnly = el('input'); localOnly.type = 'checkbox';
-  localLabel.append(localOnly, el('span', '', '仅添加本地游戏，暂不关联 Steam'));
+  localLabel.append(localOnly, el('span', '', '跳过 Steam 资料关联（不获取 Steam 成就）'));
   localOnly.addEventListener('change', () => search.setLocalOnly(localOnly.checked));
   controls.append(exe.wrapper, platform.element, search.element, localLabel,
-    el('p', 'form-hint', 'Steam 搜索用于补全封面和简介。成就按上方选择的平台获取，解锁记录独立保存在本地。'));
+    el('p', 'form-hint', '勾选后不获取 Steam 封面、简介和成就资料；Xbox 成就仍可在上方单独关联。'));
   form.append(controls);
   const dialog = modal('添加本地游戏', '先识别本地版本，再选择资料和成就来源。', form);
   dialog.classList.add('add-game-modal');
   dialog.addEventListener('close', () => { search.dispose(); platform.dispose(); }, { once: true });
   submit(form, '添加到游戏库', async () => {
     const appid = localOnly.checked ? '' : search.appid;
-    if (!localOnly.checked && !appid) throw new Error('请先选择正确的 Steam 游戏，或勾选“仅添加本地游戏”。');
+    if (!localOnly.checked && !appid) throw new Error('请先选择正确的 Steam 游戏，或勾选“跳过 Steam 资料关联”。');
     if (!platform.value) throw new Error('请确认成就平台；无法识别时可暂不关联。');
-    await platform.validate(appid);
+    await platform.validate(appid, search.title);
     controls.disabled = true;
     try {
       const game = await actions.run('import_local', { exePath: exe.input.value.trim(), title: search.title, appid, achievementPlatform: platform.value, publicAchievementUrl: platform.publicSource, steamIdentityConfirmed: platform.identityConfirmed });
