@@ -14,7 +14,7 @@ pub(crate) fn show(app: &tauri::AppHandle) {
 }
 
 pub(crate) fn initialize(app: &tauri::AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "show", "打开游戏收藏室", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "show", "打开游迹", true, None::<&str>)?;
     let quit = MenuItem::with_id(
         app,
         "quit",
@@ -24,7 +24,7 @@ pub(crate) fn initialize(app: &tauri::AppHandle) -> tauri::Result<()> {
     )?;
     let menu = Menu::with_items(app, &[&open, &quit])?;
     let mut tray = TrayIconBuilder::with_id("launcher")
-        .tooltip("游戏收藏室 · 后台计时与成就检测")
+        .tooltip("游迹 · 后台计时与成就检测")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {

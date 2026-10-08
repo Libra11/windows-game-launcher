@@ -29,6 +29,10 @@ body {
   cursor: default;
 }
 .window-brand {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
   color: var(--accent-ink);
   font-size: 19px;
   line-height: 1;

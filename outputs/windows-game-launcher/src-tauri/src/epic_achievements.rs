@@ -223,6 +223,7 @@ fn save(conn: &mut rusqlite::Connection, game: &Game, snapshot: &Snapshot) -> Re
         return Err("Epic 游戏身份已更换，已丢弃旧资料".into());
     }
     let key = format!("epic:{}", game.id);
+    let previous = db::achievements(&tx, &game.id)?;
     // 仅在完整响应通过校验后替换 Epic 快照，失败时保留已有缓存。
     tx.execute("DELETE FROM achievements WHERE appid=?1", [&key])
         .map_err(|e| e.to_string())?;
@@ -267,6 +268,7 @@ fn save(conn: &mut rusqlite::Connection, game: &Game, snapshot: &Snapshot) -> Re
         &format!("achievement_definition_error:{}", game.id),
         "",
     )?;
+    crate::statistics::store::official_changes(&tx, &current, &previous)?;
     tx.commit().map_err(|e| e.to_string())
 }
 pub(crate) async fn sync(app: &tauri::AppHandle, game: &Game) -> Result<String, String> {

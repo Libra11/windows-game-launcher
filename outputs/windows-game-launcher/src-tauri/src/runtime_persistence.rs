@@ -28,7 +28,8 @@ pub(crate) fn restore(app: &tauri::AppHandle) -> Result<(), String> {
             .map_err(|error| error.to_string())?;
         if let Some(seconds) = seconds {
             let seconds = u64::try_from(seconds).map_err(|_| "运行恢复记录中的时长无效")?;
-            if tracker.recover(&record, game, seconds) {
+            let days = crate::statistics::store::session_days(&conn, &record.session_id)?;
+            if tracker.recover(&record, game, seconds, days) {
                 restored.insert(record.session_id);
             }
         }
@@ -108,6 +109,7 @@ pub(crate) fn checkpoint(
                     &update.session_id,
                     update.seconds,
                     update.finished,
+                    &update.daily,
                 )?;
             }
             Ok(())

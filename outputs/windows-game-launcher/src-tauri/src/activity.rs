@@ -33,7 +33,8 @@ pub fn initialize(conn: &Connection) -> Result<(), String> {
          id TEXT PRIMARY KEY, game_id TEXT NOT NULL, started_at TEXT NOT NULL,
          ended_at TEXT NOT NULL DEFAULT '', seconds INTEGER NOT NULL DEFAULT 0);",
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    crate::statistics::store::initialize(conn)
 }
 
 pub fn all(conn: &Connection) -> Result<HashMap<String, Activity>, String> {
@@ -101,6 +102,7 @@ pub fn checkpoint(
     session_id: &str,
     seconds: u64,
     finished: bool,
+    days: &std::collections::BTreeMap<String, u64>,
 ) -> Result<(), String> {
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     let seconds = i64::try_from(seconds).map_err(|_| "游玩时长超出范围")?;
@@ -127,6 +129,7 @@ pub fn checkpoint(
         params![total - previous, game_id],
     )
     .map_err(|e| e.to_string())?;
+    crate::statistics::store::save_days(&tx, session_id, &game_id, days)?;
     tx.commit().map_err(|e| e.to_string())
 }
 
@@ -142,13 +145,16 @@ mod tests {
         set_favorite(&conn, "g", true).unwrap();
         start(&mut conn, "s1", "g", "2026-09-30T00:00:00Z").unwrap();
         start(&mut conn, "s1", "g", "2026-09-30T01:00:00Z").unwrap();
-        checkpoint(&mut conn, "s1", 30, false).unwrap();
-        checkpoint(&mut conn, "s1", 30, false).unwrap();
-        checkpoint(&mut conn, "s1", 42, true).unwrap();
-        checkpoint(&mut conn, "s1", 40, true).unwrap();
+        let days = std::collections::BTreeMap::from([("2026-09-30".into(), 30)]);
+        checkpoint(&mut conn, "s1", 30, false, &days).unwrap();
+        checkpoint(&mut conn, "s1", 30, false, &days).unwrap();
+        let days = std::collections::BTreeMap::from([("2026-09-30".into(), 42)]);
+        checkpoint(&mut conn, "s1", 42, true, &days).unwrap();
+        checkpoint(&mut conn, "s1", 40, true, &days).unwrap();
         let activity = all(&conn).unwrap().remove("g").unwrap();
         assert!(activity.favorite);
         assert_eq!(activity.played_seconds, 42);
+        assert_eq!(crate::statistics::store::session_days(&conn, "s1").unwrap()["2026-09-30"], 42);
         assert_eq!(activity.last_played, "2026-09-30T00:00:00Z");
         assert!(set_favorite(&conn, "missing", true).is_err());
     }

@@ -19,7 +19,7 @@ pub(crate) fn remove_local_game(app: tauri::AppHandle, game_id: String) -> Resul
     ) {
         return Err("游戏正在启动或运行，请退出游戏后再移除".into());
     }
-    for table in ["unlocks", "game_activity", "play_sessions"] {
+    for table in ["unlocks", "game_activity", "play_sessions", "daily_playtime", "statistics_unlock_events"] {
         tx.execute(&format!("DELETE FROM {table} WHERE game_id=?1"), [&game_id])
             .map_err(|error| error.to_string())?;
     }

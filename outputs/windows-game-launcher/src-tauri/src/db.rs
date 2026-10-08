@@ -29,6 +29,9 @@ pub fn open(path: &Path) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
     ).map_err(|e| e.to_string())?;
     crate::activity::initialize(&conn)?;
+    if setting(&conn, "statistics_started_at")?.is_empty() {
+        set_setting(&conn, "statistics_started_at", &chrono::Local::now().to_rfc3339())?;
+    }
     Ok(conn)
 }
 
@@ -299,21 +302,21 @@ pub fn toggle_manual(conn: &Connection, game_id: &str, api_name: &str) -> Result
 }
 
 pub fn replace_steam_unlocks(
-    conn: &mut Connection,
+    conn: &Connection,
     game_id: &str,
     items: &[(String, String)],
 ) -> Result<(), String> {
-    let tx = conn.transaction().map_err(|e| e.to_string())?;
-    tx.execute(
+    // 调用方使用事务，将官方快照与新增解锁统计一起提交。
+    conn.execute(
         "DELETE FROM unlocks WHERE game_id=?1 AND source='steam'",
         [game_id],
     )
     .map_err(|e| e.to_string())?;
     for (api_name, unlocked_at) in items {
-        tx.execute("INSERT INTO unlocks(game_id,api_name,source,unlocked_at,evidence) VALUES (?1,?2,'steam',?3,'Steam Web API')",
+        conn.execute("INSERT INTO unlocks(game_id,api_name,source,unlocked_at,evidence) VALUES (?1,?2,'steam',?3,'Steam Web API')",
             params![game_id, api_name, unlocked_at]).map_err(|e| e.to_string())?;
     }
-    tx.commit().map_err(|e| e.to_string())
+    Ok(())
 }
 
 pub fn setting(conn: &Connection, key: &str) -> Result<String, String> {

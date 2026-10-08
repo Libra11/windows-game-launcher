@@ -4,7 +4,14 @@ export function el(tag, className = '', text = '') {
   node.textContent = text;
   return node;
 }
+export function appIcon(className = '') {
+  const image = el('img', className);
+  image.src = '/app-icon.png'; image.alt = ''; image.setAttribute('aria-hidden', 'true');
+  image.width = 34; image.height = 34;
+  return image;
+}
 const paths = {
+  chart: '<path d="M4 3v17h17M8 15v-4m5 4V7m5 8V4"/>',
   trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
   star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -65,15 +72,16 @@ export function artwork(host, game, wide = false) {
   const info = metadata(game);
   const base = /^\d+$/.test(game.appid) ? `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${game.appid}` : '';
   const sources = [...new Set([base && `${base}/${wide ? 'library_hero' : 'library_600x900'}.jpg`, info.cover, base && `${base}/header.jpg`, info.icon].filter(Boolean))];
-  const next = () => {
+  host.dataset.artworkKey = JSON.stringify([game.id, wide, game.title, sources]);
+  const next = (target = host) => {
     const url = sources.shift();
     if (!url) return;
-    if (failed.has(url)) return next();
+    if (failed.has(url)) return next(target);
     const image = el('img');
     image.alt = ''; image.loading = wide ? 'eager' : 'lazy';
-    image.onload = () => host.classList.add('art-loaded');
-    image.onerror = () => { failed.add(url); image.remove(); next(); };
-    image.src = url; host.append(image);
+    image.onload = () => image.parentElement?.classList.add('art-loaded');
+    image.onerror = () => { const current = image.parentElement; failed.add(url); image.remove(); if (current) next(current); };
+    image.src = url; target.append(image);
   };
   next();
 }

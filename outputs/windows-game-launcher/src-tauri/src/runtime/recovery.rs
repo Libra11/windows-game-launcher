@@ -49,7 +49,13 @@ impl Tracker {
             .collect()
     }
 
-    pub(crate) fn recover(&mut self, record: &Record, game: Game, seconds: u64) -> bool {
+    pub(crate) fn recover(
+        &mut self,
+        record: &Record,
+        game: Game,
+        seconds: u64,
+        days: std::collections::BTreeMap<String, u64>,
+    ) -> bool {
         self.refresh_processes(game.source == "steam");
         let known: HashMap<_, _> = record
             .processes
@@ -89,22 +95,30 @@ impl Tracker {
                 empty_ticks: 0,
                 credited: seconds,
                 clock: Clock::new(seconds, true),
+                daily: super::daily::DailyClock::new(seconds, days),
             },
         );
         true
     }
 
-    pub(crate) fn checkpoints(&self) -> Vec<super::Update> {
+    pub(crate) fn checkpoints(&mut self) -> Vec<super::Update> {
         self.sessions
-            .iter()
+            .iter_mut()
             .filter(|(_, session)| session.started.is_some())
-            .map(|(game_id, session)| super::Update {
-                game_id: game_id.clone(),
-                session_id: session.id.clone(),
-                started_at: session.pending_start.clone(),
-                seconds: session.clock.seconds(),
-                finished: false,
-                failed: false,
+            .map(|(game_id, session)| {
+                let seconds = session.clock.seconds();
+                session
+                    .daily
+                    .sample(seconds, chrono::Local::now().fixed_offset());
+                super::Update {
+                    game_id: game_id.clone(),
+                    session_id: session.id.clone(),
+                    started_at: session.pending_start.clone(),
+                    seconds,
+                    finished: false,
+                    failed: false,
+                    daily: session.daily.days.clone(),
+                }
             })
             .collect()
     }

@@ -1,6 +1,6 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { el } from '../lib/dom.js';
+import { el, appIcon } from '../lib/dom.js';
 import './titlebar.css';
 
 const symbols = {
@@ -21,7 +21,7 @@ export function mountTitlebar(report) {
   const drag = el('div', 'window-drag-region');
   // 使用 Tauri 原生拖动区域，同时处理 Windows 和 macOS 的双击最大化。
   drag.setAttribute('data-tauri-drag-region', 'deep');
-  drag.append(el('span', 'window-brand', '✳'), el('span', 'window-title', '游戏收藏室'));
+  drag.append(appIcon('window-brand'), el('span', 'window-title', '游迹'));
   const controls = el('div', 'window-controls');
   controls.setAttribute('data-tauri-drag-region', 'false');
   const add = (symbol, label, operation) => {

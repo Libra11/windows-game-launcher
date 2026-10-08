@@ -15,7 +15,7 @@ export function createViewMotion() {
   return (root, state) => {
     const current = {
       mode: state.bigScreen,
-      page: state.selectedId || 'library',
+      page: state.selectedId || state.page || 'library',
       collection: JSON.stringify(state.bigScreen ? [state.bigCategory,state.bigCollection] : [state.filter, state.sort, state.view]),
       achievements: state.achievementFilter,
     };

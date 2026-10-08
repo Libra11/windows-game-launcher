@@ -123,7 +123,7 @@ pub(crate) async fn sync_game_internal(
         }
     } else if game.source == "steam" && !key.is_empty() && !steamid.is_empty() {
         let unlocks = steam::player_unlocks(&game.appid, &key, &steamid).await?;
-        db::replace_steam_unlocks(&mut *lock_db(&state)?, &game.id, &unlocks)?;
+        crate::statistics::store::save_steam_snapshot(&mut *lock_db(&state)?, &game, &unlocks)?;
         db::update_scan(
             &*lock_db(&state)?,
             &game.id,

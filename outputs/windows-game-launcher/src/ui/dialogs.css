@@ -50,7 +50,8 @@
   font-size:11px;
   color:var(--text-secondary);
 }
-.field input {
+.field input,
+.field select {
   width:100%;
   min-width:0;
   padding:12px;

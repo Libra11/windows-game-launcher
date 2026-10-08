@@ -1,4 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import { createStatisticsPreview } from './statistics-preview.js';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 export const preview = import.meta.env.DEV && !isTauri();
@@ -40,6 +41,9 @@ export async function command(name, args = {}) {
     if (!isTauri()) throw new Error('请在桌面启动器中使用此功能。');
     return invoke(name, args);
   }
+  if (name === 'get_statistics' || name === 'list_statistics_sessions') return statisticsPreview(name,args);
+  if (name === 'get_achievement_overlay_options') return {position:'bottom-right',duration:5,sound:'chime'};
+  if (name === 'save_achievement_overlay_options') return;
   if (name === 'list_games') return demoGames;
   if (name === 'epic_connection_status') return { connected:false, displayName:'' };
   if (name === 'remove_local_game') {
@@ -73,6 +77,7 @@ export async function command(name, args = {}) {
   throw new Error('当前为设计预览，请在桌面应用中执行此操作。');
 }
 export const chooseFile = options => preview ? Promise.resolve(null) : open(options);
+const statisticsPreview = preview ? createStatisticsPreview(demoGames) : null;
 export const onUnlock = handler => isTauri() ? listen('achievement-unlocked', handler) : Promise.resolve(() => {});
 export const onLibraryChange = handler => isTauri() ? listen('library-changed', handler) : Promise.resolve(() => {});
 export const onLauncherError = handler => isTauri() ? listen('launcher-error', handler) : Promise.resolve(() => {});

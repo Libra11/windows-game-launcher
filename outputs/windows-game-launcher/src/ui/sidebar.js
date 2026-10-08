@@ -1,13 +1,13 @@
-import { el, button, icon } from '../lib/dom.js';
+import { el, button, icon, appIcon } from '../lib/dom.js';
 import { categories, platformCategories } from '../lib/library-query.js';
 import { themeToggle } from './theme-controls.js';
 import './sidebar.css';
 
 export function mountSidebar(host, actions) {
   const brand = el('a', 'brand');
-  brand.href = '#'; brand.setAttribute('aria-label', '游戏收藏室，返回游戏库');
-  const symbol = el('span', 'brand-symbol', '✳'); symbol.setAttribute('aria-hidden', 'true');
-  brand.append(symbol, el('span', 'brand-name', '游戏收藏室'));
+  brand.href = '#'; brand.setAttribute('aria-label', '游迹，返回游戏库');
+  const symbol = appIcon('brand-symbol');
+  brand.append(symbol, el('span', 'brand-name', '游迹'));
   brand.onclick = event => { event.preventDefault(); actions.back(); };
 
   const caption = el('div', 'nav-caption', '游戏库');
@@ -24,6 +24,10 @@ export function mountSidebar(host, actions) {
   }
 
   const bottom = el('div', 'sidebar-bottom'); bottom.id = 'sidebar-bottom';
+  const statistics = button('游戏统计', 'nav-item', actions.statistics, 'chart');
+  statistics.dataset.page = 'statistics';
+  statistics.title = '游戏统计';
+  navigation.append(statistics);
   const tools = el('div', 'sidebar-tools'); tools.setAttribute('role', 'group'); tools.setAttribute('aria-label', '显示模式');
   const bigScreen = button('大屏模式', 'sidebar-tool', actions.bigScreen, 'screen');
   bigScreen.id = 'big-screen-entry'; bigScreen.title = '大屏模式';
@@ -37,7 +41,7 @@ export function mountSidebar(host, actions) {
 
   const footer = el('div', 'sidebar-footer');
   const version = el('div', 'app-version');
-  version.append(el('span', 'status-dot'), el('span', '', actions.preview ? '设计预览 · 示例数据' : '本地游戏启动器'));
+  version.append(el('span', 'status-dot'), el('span', '', actions.preview ? '设计预览 · 示例数据' : '游迹'));
   const settings = button('', 'sidebar-settings', actions.settings, 'settings');
   settings.setAttribute('aria-label', '设置'); settings.title = '设置';
   footer.append(version, settings);

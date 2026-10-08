@@ -1,4 +1,5 @@
 mod achievement_notifications;
+mod achievement_overlay;
 mod achievement_platform;
 mod achievement_repair;
 mod activity;
@@ -28,6 +29,7 @@ mod steam_identity;
 mod steam_playtime;
 mod steam_search;
 mod steam_sync;
+mod statistics;
 mod xbox;
 mod xbox_local;
 
@@ -75,6 +77,9 @@ pub fn run() {
                 appdata: std::env::var_os("APPDATA").map(PathBuf::from),
                 public: std::env::var_os("PUBLIC").map(PathBuf::from),
             });
+            if let Err(error) = achievement_overlay::initialize(app.handle()) {
+                eprintln!("成就弹层初始化失败：{error}");
+            }
             runtime_persistence::restore(app.handle()).map_err(std::io::Error::other)?;
             if let Err(error) = desktop_lifecycle::initialize(app.handle()) {
                 eprintln!("托盘初始化失败：{error}");
@@ -116,6 +121,8 @@ pub fn run() {
         .on_window_event(desktop_lifecycle::closing)
         .invoke_handler(tauri::generate_handler![
             library_commands::list_games,
+            statistics::get_statistics,
+            statistics::list_statistics_sessions,
             library_commands::list_achievements,
             library_commands::import_local,
             achievement_platform::detect_game_platform,
@@ -139,13 +146,16 @@ pub fn run() {
             detection::check_detection,
             detection::set_record_path,
             scanner::scan_now,
+            achievement_overlay::achievement_overlay_ready,
+            achievement_overlay::get_achievement_overlay_options,
+            achievement_overlay::save_achievement_overlay_options,
             achievement_notifications::list_recent_unlocks,
             achievement_notifications::test_achievement_notification,
             desktop_lifecycle::quit_launcher,
             steam_sync::sync_game
         ])
         .build(tauri::generate_context!())
-        .expect("无法启动本地游戏启动器")
+        .expect("无法启动游迹")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
                 xbox_local::stop_all();

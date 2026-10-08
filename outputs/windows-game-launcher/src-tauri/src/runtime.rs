@@ -7,6 +7,7 @@ use std::{
 };
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 mod clock;
+mod daily;
 mod recovery;
 pub(crate) use recovery::Record as RecoveryRecord;
 
@@ -35,6 +36,7 @@ pub struct Update {
     pub seconds: u64,
     pub finished: bool,
     pub failed: bool,
+    pub daily: std::collections::BTreeMap<String, u64>,
 }
 
 struct Session {
@@ -48,6 +50,7 @@ struct Session {
     empty_ticks: u8,
     credited: u64,
     clock: clock::Clock,
+    daily: daily::DailyClock,
 }
 
 pub struct Tracker {
@@ -131,6 +134,7 @@ impl Tracker {
                 empty_ticks: 0,
                 credited: 0,
                 clock: clock::Clock::new(0, already_running),
+                daily: daily::DailyClock::new(0, Default::default()),
             },
         );
         self.last.remove(&game.id);
@@ -239,6 +243,7 @@ impl Tracker {
                 session.started.is_none() && session.requested.elapsed() >= Duration::from_secs(90);
             let finished = session.started.is_some() && session.empty_ticks >= 2;
             let seconds = session.clock.seconds();
+            session.daily.sample(seconds, chrono::Local::now().fixed_offset());
             if session.pending_start.is_some()
                 || finished
                 || failed
@@ -251,6 +256,7 @@ impl Tracker {
                     seconds,
                     finished,
                     failed,
+                    daily: session.daily.days.clone(),
                 });
                 session.credited = seconds;
             }
@@ -405,6 +411,7 @@ mod tests {
         assert_eq!(finished.len(), 1);
         assert!(finished[0].finished);
         assert!(finished[0].seconds >= 2);
+        assert_eq!(finished[0].daily.values().sum::<u64>(),finished[0].seconds);
         assert_eq!(tracker.info(&game.id).state, "idle");
         assert!(tracker.is_empty());
         std::fs::remove_dir_all(root).unwrap();

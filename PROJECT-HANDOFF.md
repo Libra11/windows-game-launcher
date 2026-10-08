@@ -1,6 +1,6 @@
 # 项目交接状态
 
-记录日期：2026-10-01。此文记录已经完成的工作，连接和部署步骤见 `HANDHELD-OPERATIONS.md`。新会话应以源码、实时日志和掌机状态核实后续问题，不重复从零搭建环境。
+记录日期：2026-10-02。此文记录已经完成的工作，连接和部署步骤见 `HANDHELD-OPERATIONS.md`。新会话应以源码、实时日志和掌机状态核实后续问题，不重复从零搭建环境。
 
 ## 目录与技术栈
 
@@ -78,3 +78,134 @@ C:/Users/Public/Documents/Steam/RUNE/2456740/achievements.ini
 - 后续重新构建必须计算新散列，不能把上面的历史值作为新产物校验值。
 
 本文编写时掌机 SSH 超时，未安装新版本、未卸载、未修改掌机或游戏文件。后续先恢复连接，再读取实时状态。
+
+## 2026-10-01 19:38 掌机最新版同步
+
+- 已实时确认 `lixin@192.168.10.96`（Libra）在线。用户正常退出启动器后，确认启动器和 XboxLocalProbe 均已退出，再更新。
+- 从主源码同步到 Windows 构建副本，Windows x64 NSIS 构建成功（游迹 0.2.1）。此次直接更新原安装目录内主程序与捕获资源，保留原安装位置和卸载项，不重新安装第二份应用。
+- 主程序 SHA-256：`540bc676ed3695f3e779d235d6cd89f0be1c4580681618252c4d49e0796d206a`。
+- XboxLocalProbe SHA-256：`2aae7a303aa91d232a5e77fa32dfa2081c069a0df780115e827cd3f3fe9095eb`。上传和安装后均校验匹配。
+- 数据目录及原程序备份：`C:/Users/lixin/Downloads/launcher-backup-20261001-193857`。数据原位保留。
+- 通过 `CodexLauncherStart20261001` 启动，新进程 PID 31688、SessionId 1，与 explorer 一致，Responding=true。尚未由用户确认窗口可见；MainWindowTitle 为空，不作为可见窗口证据。
+- 同步脚本 `work/sync-youji.ps1`；最新安装包已上传 Downloads，但本次未执行安装包。未执行 Git 提交。
+
+## 自定义成就弹层开发（尚未部署）
+
+- 新增 `achievement_overlay.rs`：独立无边框窗口、前端就绪握手、有限队列、按前台游戏屏幕定位、可选四角及 3–10 秒显示。`achievement_overlay_native.rs` 单独处理 Windows Z 序与内嵌 WAV 提示音。
+- 使用非激活置顶窗口与鼠标穿透，弹层显示期间重新刷新 Z 序；不依赖 Windows 解锁横幅。窗口或队列失败时保留系统通知回退。
+- 新页面 `achievement-overlay.html` 通过 Vite 多入口构建，专用事件监听权限。设置支持“星光”“轻响”“静音”及测试弹层，历史解锁仍不补发。
+- 前端构建、58 项 Rust 测试、Windows x64 `cargo xwin check --lib` 已通过；原生全屏层级、游戏焦点和提示音尚需掌机实测。本次未打包、未部署、未提交 Git。
+- 普通置顶窗口不能保证覆盖真正独占全屏；建议无边框全屏，当前未注入游戏渲染链。
+- 原构建容器 `codex-launcher-windows-t9` 的 `/app` 和 `/build-tools` 挂载本次失效，重启报 mount not a directory，当前已停止。临时验证容器 `codex-overlay-check-20261001` 可用，源码及 SDK 是容器内副本，以 tar 同步，不是自动挂载主源码。SDK 从 macOS 复制到 Linux 后补齐头文件大小写别名，Windows 检查成功。后续构建先实时核实容器与挂载，不复用旧假设。
+
+## 成就弹层版本同步进度（连接中断，待继续）
+
+- 用户要求同步掌机，并已明确回复退出启动器。实时检查未发现启动器或 XboxLocalProbe 进程。
+- 在 `codex-overlay-check-20261001` 中重新安装容器前端依赖后，Windows x64 release 与 NSIS 构建成功。产物保存在 `work/youji-overlay-release/`。
+- 新主程序 SHA-256：`d0426d85c29c97aacb2dc80e73831a05e912e4dc4e92a7f5a5e60fade1639675`；捕获资源保持 `2aae7a303aa91d232a5e77fa32dfa2081c069a0df780115e827cd3f3fe9095eb`。`work/sync-youji.ps1` 已更新预期散列。
+- 上传时 `192.168.10.96:22` 超时并报 Host is down，远程更新脚本未运行，尚未替换程序、尚未创建本次备份、尚未启动新版本。首个文件可能传输不完整，恢复后重新上传全部文件并校验，不能复用未确认传输结果。
+- 已请求用户唤醒掌机、保持联网或提供新 IP。恢复后使用现有同步脚本备份数据及旧程序，更新主程序与捕获资源，再通过桌面会话计划任务启动。
+
+## 2026-10-01 23:01 成就弹层版本已同步
+
+- 用户唤醒掌机后，重新确认 LIBRA 在线、启动器及捕获组件均已退出，完整重传程序、捕获资源、安装包及更新脚本。
+- 更新脚本执行成功，更新前数据与旧程序备份：`C:/Users/lixin/Downloads/launcher-backup-20261001-230110`。保留原安装位置和现有数据，采用直接替换主程序及捕获资源，未重复安装。
+- 已安装主程序散列与新版产物一致：`d0426d85c29c97aacb2dc80e73831a05e912e4dc4e92a7f5a5e60fade1639675`；捕获资源散列同预期一致。
+- 已通过计划任务启动新版本 PID 16280，SessionId 1，与 explorer 同桌面会话。实际游戏内弹层、焦点与提示音仍需用户通过设置“测试通知”及真实解锁验证，不能把进程启动视作全屏显示验证。
+
+## 2026-10-01 23:26 弹层位置修复及游戏显示问题
+
+- 用户确认桌面显示游迹深绿色卡片，但位置控制不生效，《黯井微光》游戏中看不到。实机发现旧弹层被最大化，大小与主窗口一致；已禁止最大化/最小化，并通过原生 `SetWindowPos` 同时应用位置、物理尺寸和置顶状态。
+- 实机屏幕缩放 175%，弹层实际尺寸 735×231 像素。四角已实测：左上 (28,28)、右上 (1157,28)、左下 (28,779)、右下 (1157,779)。选项即时保存，并可调整正在显示的卡片。
+- Windows 显示/隐藏改用明确 `NOACTIVATE` 的原生 API，实测卡片 `Topmost=true`、`NoActivate=true`、`Foreground=false`，避免框架 show 引起焦点变化。设置新增“5 秒后测试”，用于切回游戏后验证。
+- 该版主程序 SHA-256：`4fe815a2456c39f408d5019b153ca2be51c9311817cc36241c6b7da179ca32d6`；捕获组件保持 `2aae7a303aa91d232a5e77fa32dfa2081c069a0df780115e827cd3f3fe9095eb`。备份：`C:/Users/lixin/Downloads/launcher-backup-20261001-232642`。
+- **用户手动延迟测试仍反馈游戏中看不到卡片，显示问题尚未解决。** 自动测试中游戏在卡片出现前就最小化；无通知基线亦如此，不能据此认定弹层抢焦点，也不能把置顶属性视为画面已显示。
+- 进一步发现发布版 `main.rs` 缺少 Windows 图形子系统声明，启动器额外打开 Windows Terminal，曾取得游戏焦点。已补 `windows_subsystem="windows"`，Windows release 构建通过、PE Subsystem=2。主程序 SHA-256：`a83442829fa119ab2ac1e73b3d340f7c7d84124801aa8e0e184529ae8d7f4739`；23:48 原位更新成功，备份 `C:/Users/lixin/Downloads/launcher-backup-20261001-234834`。额外 Terminal 已消失，但游戏画面没有卡片。
+- 诊断脚本与报告留在 `work/` 和掌机 Downloads；窗口查询须通过 Interactive、Limited、电池允许运行且隐藏控制台的计划任务执行。SSH Session 0 看不到桌面窗口。游戏设置、存档未修改，游戏进程未强杀；更新前均通过界面正常退出启动器和捕获组件。
+
+## 2026-10-02 游戏前台弹层继续排查
+
+- 已取得有效对照：桌面截图有绿色卡片；游戏保持前台且 1920×1080 全屏时，通知区域只有游戏画面。弹层 Owner=0、Cloaked=0、Topmost=true、NoActivate=true，单看窗口属性不足以确认绘制。
+- 使用 Intel 官方签名的 PresentMon 2.3.1 做只读 ETW 采样，527 帧均为 DXGI `Composed: Flip`。当前采样不是硬件独占显示，不能再笼统归因于独占全屏。没有安装服务、没有修改系统权限或游戏配置；工具和 CSV 留在诊断目录/Downloads。
+- 已移除卡片显示前的双重 `requestAnimationFrame` 等待，防止后台 WebView 暂停帧回调时一直保持透明；先发送内容事件，再显示原生窗口。23:58 原位更新成功，最新主程序 SHA-256：`b83796a96944138d461e6eb9bdfc7fba59b395bca30b6444704042b27336ef1e`。备份 `C:/Users/lixin/Downloads/launcher-backup-20261001-235855`；捕获组件散列未变。**此改动的游戏内视觉验证还在进行，不能视为已解决。**
+- Windows release 与前端构建通过。UI 回归测试 17/18 通过，一项既有 `launch-state.test.js` 用例把本地游戏设为 Steam 专属的 `client_missing` 安装状态，与现有本地安装检测逻辑不符；本轮没有改动该模块或用例。
+- Windows PowerShell 5.1 对无 BOM 的中文脚本可能按 ANSI 解码并在执行前解析失败；诊断脚本 `test-overlay-game.ps1` 已改为 UTF-8 BOM 并通过远程 Parser 校验。旧错误文件和旧截图可能仍存在，必须核对任务运行时间、报告 At、进程 ID 和截图修改时间，不以旧报告充当新结果。
+- 临时在启动器父进程设置 `--disable-features=CalculateNativeWinOcclusion`，没有改善游戏前台显示；没有持久化到源码、注册表或用户/系统环境。后续已正常退出并以普通启动方式清除此诊断参数。
+- 可见期间的窗口排序实测弹层位于游戏上方，二者 Window Band 均为 1、弹层 DWM 边界与实际 735×231 像素坐标一致，没有其他覆盖该区域的更高窗口。自动恢复游戏时窗口矩形有时仅 236×38，虽然屏幕截图仍呈现游戏画面；不要只凭前台 PID 和非最小化属性当作正常游戏模式证据，也没有修改游戏显示设置。
+- 00:20 已进一步同步 WebView 控件与原生 HWND 的 show/hide，保持 `NOACTIVATE`。Windows release 构建成功，新主程序 SHA-256：`4ee8189b95bbaa1dd0c78fd07e7f844b29d840175368e227e75ce38da52d5d9e`；备份 `C:/Users/lixin/Downloads/launcher-backup-20261002-002002`。捕获组件散列未变。此版仍待用户实际游戏画面确认，不能宣称已解决。
+- 仅针对游迹独立弹层进行临时 CDP 诊断，进程参数 `--remote-debugging-port=9337 --remote-debugging-address=127.0.0.1`，实时确认仅监听 127.0.0.1，通过 SSH 本地端口 19337 转发。网页计算样式 opacity=1、文档 visible、内容与位置正确，内部截图 `work/diagnostics/overlay-position/overlay-cdp-render.png` 有完整绿色卡片。当前应查合成显示路径而非继续猜测 DOM 未绘制；结束诊断后需正常重启启动器清除临时调试参数、关闭 SSH 转发。
+- GDI `CopyFromScreen(SourceCopy)` 不适合作为透明窗口显示的唯一证据。诊断脚本已改用原生 `BitBlt(SRCCOPY | CAPTUREBLT)`，避免 .NET 枚举参数拒绝组合值；新截图与人工实测尚待核对。
+
+- 自动测试的隐藏 PowerShell 在掌机仍可能打开 Windows Terminal，新的报告已观察到诊断终端取得前台；因此停止用它主动切换游戏，不能把该测试的前台变化当作用户正常游玩结果。新增 `work/ObserveOverlay.cs`，以 .NET GUI 子系统编译，只读观察游戏前台和弹层区域、原生 BitBlt 截图，不改变焦点、不会打开控制台。用户再次手动复测结果待回复。
+
+## 2026-10-02 00:30 游戏窗口恢复，弹层验证暂缓
+
+- 无控制台观察程序已正常完成，并用 `CAPTUREBLT` 截到绿色卡片：`work/diagnostics/overlay-position/game-popup-native-observation.png`。捕获时游戏 HWND 虽报告前台，但实际处于最小化，图中也有桌面内容；该截图只能说明桌面合成有卡片，**不能视作正常游戏画面已成功显示**。此前仅用 `SRCCOPY` 的截图可能遗漏 layered 窗口，不能再据此断言网页已绘制而屏幕合成一定失败。
+- 用户操作期间重新启动了游戏及启动器；00:27 实时主程序 PID 31500、游戏 PID 32260。已核对安装仍为 `4ee8189b95bbaa1dd0c78fd07e7f844b29d840175368e227e75ce38da52d5d9e`；临时浏览器参数匹配进程数为 0、9337 不再监听，本地 SSH 转发已关闭。
+- 用户反馈任务栏无法恢复游戏。原生检查发现主窗 `YYGameMakerYY` 消息队列仍响应，但处于最小化，`WINDOWPLACEMENT.Flags=2`（恢复到最大化）、ShowCommand=2；普通异步/同步还原均未解决。
+- 已通过新无控制台 UIA 工具 `work/QuitLauncher.cs` 调用应用自身“退出启动器”→“保存并退出”，启动器和 XboxLocalProbe 均正常结束，游戏没有退出。退出启动器后游戏仍最小化，不能将问题直接归因于捕获组件。
+- `work/RestoreGameWindow.cs` 在确认游戏消息队列响应后，把现有 WINDOWPLACEMENT 的 Flags 清为 0、ShowCommand 设为 1，保留原 normal rect。00:30:41 实测同一个游戏 PID 32260、HWND 2428224 恢复为 `Minimized=false`、`Foreground=true`，矩形 (277,156)-(1643,924)，即原来的 1366×768 普通窗口。未修改游戏配置、程序或存档，也没有重启/强杀游戏。
+- **当前启动器及捕获组件已退出**，游戏窗口已恢复，正在等待用户确认画面和操作。不要再次运行旧 PowerShell 自动前台切换测试，避免诊断终端干扰游戏。后续先确认游戏正常，再恢复启动器与实际弹层验证；游戏内显示问题仍未确认解决。
+
+## 2026-10-02 00:43 启动器影响游戏恢复的组件对照（进行中）
+
+- 用户进一步确认“只要打开游戏启动器，就无法从任务栏打开游戏”。实时观察原安装版再次运行，主程序 PID 28232、捕获 PID 30840、游戏仍 PID 32260。使用 GUI 恢复工具时，启动器及捕获仍运行，游戏仍可恢复为前台且非最小化；因此不能说游戏进程被启动器阻塞，也不能把一次原生恢复成功当作任务栏问题解决。
+- 修改 `src/main.js`：重绘前记录 `document.hasFocus()`，仅在启动器拥有焦点时恢复控件焦点，后台刷新只更新内容。Windows release/前端构建通过；`test/library-refresh.test.js` 两项通过。该改动尚未在正式安装路径部署、尚未证明是唯一根因。
+- 为临时组件对照，在 `lib.rs` 加启动参数 `--diagnose-without-overlay` 跳过弹层初始化，在 `xbox_local/service.rs` 加 `--diagnose-without-xbox-capture` 暂停新捕获并继续读取旧事件。**仅诊断用，得到结果后删除这些临时分支，再构建正式版本；不要把诊断版本直接当最终修复版发布。**
+- 诊断版散列 `4ca5d77e8b725a7a5fc8bba2574bd1ec5f3278eb59b4b98e36cc8c24abf8d8ad`，本地产物 `work/youji-game-focus-diagnostics/local_achievement_launcher.exe`。未替换原安装 EXE（正式路径仍为 4ee8189b...）。诊断版放掌机 Downloads，`Downloads/resources/XboxLocalProbe.exe` 是原组件副本、散列未变。数据库一致备份 `C:/Users/lixin/Downloads/launcher-focus-diagnosis-20261002-004115/games.sqlite`。
+- 当前通过 GUI 启动辅助 `work/LaunchFocusDiagnosis.cs`、任务 `CodexLauncherFocusIsolation` 启动 **关闭弹层、保留捕获** 的对照：launcher PID 16284（Downloads 路径）、probe PID 13756，游戏仍 PID 32260。临时 WebView 参数启用回环 CDP 9337，仅监听 127.0.0.1；本地 SSH 转发 19337 的 exec 会话 63399。结束后正常退出诊断版、关闭转发，以正式路径普通启动清除调试参数。
+- 已向用户请求“当前关闭成就弹层、启动器和捕获仍运行，任务栏能否正常切回游戏”，**答案待回复**。下一步按结果决定启用弹层/关闭捕获的第二组对照，勿在用户进行这次测试时切换组件、抢焦点。
+- `work/TestTaskbarRestore.cs` 以 GUI 程序查询任务栏；游戏按钮目前只有 ScrollItemPattern，IsOffscreen=true、BoundingRectangle=Empty，ScrollIntoView 后仍如此。报告 Invoked=false，工具并未真正点击任务栏，不能当用户点击结果。该工具主动前台显示主程序会令游戏最小化，暂停继续运行。
+- 最新恢复报告显示游戏 normal rect 又变为 (842,521)-(1078,559)，仅 236×38；原生工具能标记非最小化和前台，但不能当正常游戏画面的证据。此前实测可用的普通 rect 为 (277,156)-(1643,924)，1366×768；不要无条件 ShowWindow(9) 或混淆 tiny window 与真正游戏显示。
+- 连接曾瞬时中断，重试已恢复 LIBRA 在线；没有关闭/强杀游戏，没有提交 Git。
+
+## 2026-10-02 用户决定暂时忽略游戏切换问题
+
+- 第一组“关闭弹层、保留 Xbox 捕获”用户确认仍打不开游戏，因此不能归因于弹层置顶。
+- 第二组“保留启动器和弹层、暂停 Xbox 捕获”用户反馈“成功了一次，再切又不行了，有可能是我掌机的问题，先忽略这个问题”。**用户已明确要求暂时忽略，不继续排查、切换游戏或重复请求复测。** 该对照也不能证明捕获组件是根因，不能报告已修复。
+- 已删除源码里的两个 `--diagnose-without-*` 临时分支，`xbox_local/service.rs` 与本次对照前一致。保留 `src/main.js` 后台重绘焦点限制，Windows 诊断构建及 JS 语法检查通过；该焦点改动尚未部署到正式路径，下一次用户要求更新时再构建。
+- 正常退出诊断版，通过 `CodexLauncherStart20261001` 恢复原安装路径的普通启动，程序散列保持 `4ee8189b95bbaa1dd0c78fd07e7f844b29d840175368e227e75ce38da52d5d9e`，成就捕获与弹层恢复。启动结果和清理状态见后续实时记录。
+- 回环 CDP/遮挡参数为临时父进程设置；本地 SSH 63399 转发已关闭。相关诊断启动、自动前台/任务栏测试、窗口恢复任务已禁用，正常启动任务保留。Downloads 中诊断 EXE 改名 `youji-focus-diagnostic.exe`，避免与正式安装版本混淆；没有删除数据或游戏文件。
+- 游戏内弹层是否稳定显示仍未完成最终实机确认，当前以用户暂时忽略切换问题的指示为准，不继续操作游戏窗口。
+- 清理后实时确认：正式安装主程序 PID 30012、捕获 PID 33864 均在桌面 Session 1，游戏原 PID 32260 保持运行；9337 监听数为 0、含临时 WebView 参数的进程数为 0。相关诊断任务禁用成功，正常启动任务未禁用。
+
+## 2026-10-02 01:12 后台焦点保护正式版已同步
+
+- 用户明确要求“同步”。重新将最终源码同步到 `codex-overlay-check-20261001`，删除临时诊断分支后的 Windows release 构建通过，使用 `--no-bundle`，未生成安装包。保留 `src/main.js` 的后台重绘焦点限制；没有继续排查或切换游戏窗口。
+- 正式产物：`work/youji-background-focus-release/local_achievement_launcher.exe`，SHA-256 `eb06aa89b6cc4e813f83c77448993bd04d2730a1229ff41994484865b1839e60`。捕获组件保持 `2aae7a303aa91d232a5e77fa32dfa2081c069a0df780115e827cd3f3fe9095eb`。`work/sync-youji.ps1` 已更新散列，上传和安装后的两个文件均校验一致。
+- 更新前通过 `CodexLauncherWindowlessExit` 调用应用自身保存并退出，主程序与捕获组件均正常结束，游戏原 PID 32260 持续运行。原位覆盖正式安装目录中的 EXE 和捕获资源，数据库、游戏文件与用户设置未修改；更新前数据与旧程序备份：`C:/Users/lixin/Downloads/launcher-backup-20261002-011233`。
+- 01:12:52 实时确认 LIBRA：正式主程序 PID 7344、捕获 PID 31364，均在 Session 1；《黯井微光》仍为原 PID 32260。正常启动任务只指向正式安装 EXE，无诊断参数；临时调试参数匹配进程数 0，9337 监听数 0。此前六个诊断/自动切换/窗口恢复任务继续保持禁用。
+- 本次验证覆盖构建、文件散列、正常退出与重启、捕获恢复及游戏进程保留，未进行游戏窗口或弹层复测。后台焦点改动不等于已确认任务栏问题解决，游戏内弹层稳定显示仍未确认。没有 Git 提交。
+
+## 2026-10-02 综合统计功能开发完成（未部署）
+
+- 用户批准完整统计方案，本轮仅开发和验证：不生成安装包、不连接或同步掌机、不提交 Git。普通侧栏「游戏统计」与大屏顶部入口复用同一页面，支持平台与周期筛选、累计总览、逐日趋势、月度热力日历及日期详情、时长和成就排行、全成就游戏、近期解锁、平台分布及每页 20 条会话记录。
+- 后端新增 `statistics/` 聚合与存储模块、`runtime/daily.rs` 清醒计时分日模块，以及 `get_statistics`、`list_statistics_sessions` 命令。新增 `daily_playtime`、`statistics_unlock_events` 表；首次运行保存 `statistics_started_at`。旧累计与会话保留，不估算或回填旧日分布，启用前日期显示「未记录」。逐日累计与会话检查点同事务保存，重试幂等；跨午夜拆分，休眠与启动器退出期间不补算，恢复时加载已保存的日桶。
+- Steam 官方累计与本机累计分别展示和排行，缺失官方时长显示「未获取」，缓存标注时间。成就按真实平台命名空间匹配，完整且非空定义才参与完成率和全成就判断；部分定义、未知和暂无成就分别展示。手动记录计当前完成度并单独标注，不计新事件。首次历史导入和测试弹层不计新事件；Steam／Epic 官方同步先建立基线，后续只记录真实解锁时间晚于统计启用的新条目，事件日期按本地检测日期记录。
+- 前端统计控制器、视图、图表、日历、组件与样式独立拆分，使用 SVG／CSS，无新增图表依赖。可见页自动请求最多每 5 秒一次，失败保留旧数据；筛选竞态丢弃旧结果，后台不取焦点。进入游戏详情再返回时恢复筛选、滚动及焦点；封面复用原图片节点。大屏方向键／摇杆移动、A 确认、B 返回、LB／RB 切换周期。
+- 验证：Rust 67／67 通过；统计、封面刷新和大屏导航相关 JavaScript 测试 13／13 通过；完整 UI 测试 23／24 通过，唯一失败仍是既有 `test/launch-state.test.js:32`，该用例把本地游戏设为 Steam 专属 `client_missing` 状态，与现有安装检测逻辑不符，本轮未修改该模块或用例。前端生产构建及 `git diff --check` 通过，Windows x64 release 使用 `--no-bundle` 编译通过。
+- 新主程序保存在 `work/youji-statistics-release/local_achievement_launcher.exe`，SHA-256：`ee703aa0973e432994b294e7af6b4ed1bba0f8803bfe995e61bf9cdc330c339c`。构建容器仍是 `codex-overlay-check-20261001`，`/app` 为手动同步的构建副本；最后仅开发预览数据修正未重构建 Windows，但前端生产产物哈希名称保持一致。不要把上一版已部署的焦点保护产物当统计版本，`work/sync-youji.ps1` 尚未切换到新散列。
+- 界面截图与实际点击／手柄验收未完成：两次本地浏览器预览都被工具拒绝，原因是管理员策略校验不可用，不能绕过。亮暗主题、窄窗口、掌机缩放和真实手柄操作仍需后续实际视觉验收；本轮未连接掌机，未进行游戏弹层或任务栏复测。
+
+## 2026-10-06 闰跃之年与 Zad Archery 的 GSE 成就配置已补齐
+
+- 用户先请求排查两款游戏没有解锁的原因，随后明确要求补齐配置。实时确认掌机为 `lixin@192.168.10.96`（LIBRA）。两款游戏在游迹中均为本地游戏，已缓存 Steam 完整定义，但本地解锁为 0，游戏运行环境缺少 `steam_settings/achievements.json`，受支持的保存位置也没有解锁记录。
+- 闰跃之年游戏 ID `local-82a2210b-b87d-4e9f-a6e6-236ec7e10fe6`，资料及运行编号 `2951770`。已从掌机缓存取得 19 项定义，全部 API 标识在 `data.win` 中匹配。新增 `C:/Games/Leap Year/steam_settings/achievements.json` 和 19 个本地图标；定义文件 SHA-256 为 `6328b3a6397fc5089cea12323efe9c3cd90f542a0539064aa1cf2f18face4e3a`。
+- Zad Archery 游戏 ID `local-dcc15fb6-9d0f-48ef-8908-d805844c7d65`，已确认资料编号 `4412000`，实际运行编号 `2009780`。12 项缓存定义的 API 标识全部在 `Assembly-CSharp.dll` 中匹配。新增 `C:/Games/Zad.Archery/Zad Archery_Data/Plugins/x86_64/steam_settings/achievements.json` 和 12 个本地图标；定义文件 SHA-256 为 `07c77d0c06dddde81958e4699d2b76d2cb8ad3de97ab7faf0f68012bdf468071`。保留原 AppID 及已确认关联，现有读取器会核对配置并检查运行编号目录，不能擅自将运行编号改为资料编号。
+- Zad 缓存中的旧 Steam CDN 图标地址返回 404；已按相同图标哈希与 Steam 官方公开成就页核对，使用当前 `shared.akamai.steamstatic.com/community_assets/images/apps/4412000/` 地址下载。定义与解锁记录仍严格分开，没有写入 `earned`、`earned_time`，没有手动解锁或按存档进度推算。
+- 00:51 安装及独立复核通过：定义数量、唯一标识、31 个图标和 SHA-256 均一致；原有 18 个游戏程序、运行配置和存档文件的散列未变化。更新前备份为 `C:/Users/lixin/Downloads/youji-gse-backup-20261006-005059-38f7b6`，其中有原配置、现有存档及安装报告。本机构建资料和报告在 `work/achievement-configs-20261006/`。
+- 本轮只补游戏运行配置，没有更新游迹程序、修改数据库、生成安装包或提交 Git。启动器原 PID 7344 持续运行，未操作其他游戏或 Xbox 捕获。脚本使用单次 PowerShell 进程执行策略参数，前后策略列表均为 Undefined，没有持久更改系统策略。
+- **两款游戏在配置写入时均未运行，尚未验证真实游玩产生的新解锁。** 下次启动游戏后需要用户触发真实条件，核对 GSE 保存记录及游迹导入；旧进度是否重新上报不可保证，不能把配置安装成功报告为成就捕获或游戏内弹层已经实测成功。
+- 后续针对用户“旧成就能否自动补回、是否需重启游迹”的问题做了只读检查。Zad 的 `ManagerOfTheGame.Awake` 先加载存档，再调用 `AchievementsManager.AwakeMe`，后者调用 `GrantRetroactiveAchievements`，按存档检查招募、六类系统解锁、现有传奇弓／护甲、首领状态和等级 40；通过原游戏的 `SetAchievement`／`StoreStats` 重新上报。`DestroyTarget` 和 `OpenChest` 不在此补发函数中。**这是代码确认的重报路径，尚未实际启动游戏确认补回数量。**
+- 闰跃之年当前 `save.ini` 仅有设置及 `progress.month=0`、`progress.victory=1`，没有完整已解锁标识、旧死亡事件或实际速通时长。只读检查其 GameMaker 保存／载入代码和成就调用位置，未发现与 Zad 相同的批量历史补发路径；不能据通关标记补齐所有成就。分析副本和相关片段在 `work/achievement-configs-20261006/analysis/`，没有改写游戏、存档或解锁记录。
+- 游迹现有循环每 3 秒重新查找并读取成就记录文件，本次新增运行环境定义不要求更新或重启游迹；游戏自身在启动时加载 GSE 定义。两款游戏需下次启动后才能使用新配置。此前未部署的统计版本仍未部署。
+
+## 2026-10-06 01:28 游迹最新版与综合统计已同步掌机
+
+- 用户明确要求更新游迹到最新版本。实时核对设备为 LIBRA、用户 lixin，原安装主程序仍为后台焦点保护版本 `eb06aa89...`；更新前启动器、Xbox 捕获和游戏进程均已退出。准备期间 SSH 一度超时，用户确认唤醒联网后恢复连接，未强杀任何程序。
+- 启动已有 Docker 构建环境，将主源码重新同步至 `codex-overlay-check-20261001:/app`，Windows x64 release 以 `--no-bundle` 编译成功。前端生产构建、67 项 Rust 测试、13 项统计／封面刷新／大屏导航相关 JavaScript 测试通过；本轮未生成安装包、未提交 Git。
+- 本次重新构建产物在 `work/youji-latest-20261006/`，主程序 SHA-256 为 `bed94ffb3a0b07041ac02e65c6c1ff51685a646d45ab956d8e6ddd6da9c515b3`，捕获资源保持 `2aae7a303aa91d232a5e77fa32dfa2081c069a0df780115e827cd3f3fe9095eb`。`work/sync-youji.ps1` 已更新预期散列并增加设备身份检查。不要再用此前 `ee703aa0...` 或 `eb06aa89...` 作为本次安装产物的校验值。
+- 已上传并原位替换安装目录内主程序和捕获资源，前后散列校验一致。更新前完整应用数据及原程序备份为 `C:/Users/lixin/Downloads/launcher-backup-20261006-012757`。通过正常桌面启动任务启动，01:30 再确认新进程 PID 4208、SessionId 1，与 explorer 一致，Responding=true，无临时诊断参数、9337 无监听。MainWindowTitle 在 SSH 查询中为空，未以此声称实际画面已验收。
+- 数据前后只读核对一致：87 款游戏、997 条解锁记录、31 条游玩会话、本机累计 182589 秒，收藏数 0。新增 `daily_playtime`、`statistics_unlock_events` 表正常初始化，统计起始时间为 `2026-10-06T01:28:00.290248600+08:00`。旧累计与会话保留，没有估算或回填旧逐日记录。部署和核对报告在 `work/youji-latest-20261006/`。
+- 闰跃之年及 Zad Archery 刚补的 GSE 定义文件散列均保持一致，没有改动其运行编号或存档。此次更新没有增加专属历史成就恢复器；Zad 仍由游戏读档时的原有补发逻辑产生真实记录，实际补回数量待用户下次启动游戏验证。
+- 综合统计已部署，但亮暗主题、掌机缩放、真实手柄导航及游戏内弹层的视觉验收仍未完成；没有继续排查用户已要求忽略的游戏窗口切换问题。

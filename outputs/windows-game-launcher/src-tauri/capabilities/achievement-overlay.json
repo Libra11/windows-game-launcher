@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "achievement-overlay",
+  "description": "成就弹层仅监听通知事件",
+  "windows": [
+    "achievement-overlay"
+  ],
+  "permissions": [
+    "core:event:allow-listen"
+  ]
+}

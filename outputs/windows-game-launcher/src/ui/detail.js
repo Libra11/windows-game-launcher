@@ -6,7 +6,7 @@ import { removeGameDialog } from './remove-game-dialog.js';
 
 export function detailView(game, achievements, filter, actions) {
   const root = el('div', 'detail-view');
-  root.append(button('返回游戏库', 'detail-back', actions.back, 'back'));
+  root.append(button(actions.backLabel || '返回游戏库', 'detail-back', actions.back, 'back'));
   const hero = el('section', 'game-banner');
   const background = el('div', 'game-banner-art'); artwork(background, game, true);
   const copy = el('div', 'game-banner-copy');

@@ -22,8 +22,12 @@ import { detailView } from './ui/detail.js';
 import { addDialog, editDialog, settingsDialog } from './ui/dialogs.js';
 import { mountTitlebar } from './ui/titlebar.js';
 import { epicLoginDialog } from './ui/epic-connection.js';
+import { librarySnapshot, preserveArtwork } from './lib/library-refresh.js';
+import { createStatisticsController } from './lib/statistics.js';
+import { statisticsView } from './ui/statistics-view.js';
+import { closeModal } from './ui/modal.js';
 
-const state = { games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
+const state = { page:'library', games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
 const animateView = createViewMotion();
 const app = document.querySelector('#app');
 app.innerHTML = `
@@ -32,7 +36,7 @@ app.innerHTML = `
     <header class="topbar"><div class="breadcrumb"><span>收藏室</span><span class="breadcrumb-slash">/</span><strong id="page-name">游戏库</strong>${preview ? '<span class="preview-badge">示例预览</span>' : ''}</div><div class="topbar-actions"><label class="search-box" id="search-box"><input id="search" type="search" placeholder="搜索你的游戏" aria-label="搜索游戏"></label><div id="add-action"></div></div></header>
     <div class="page-intro" id="page-intro"><div><div class="eyebrow">属于你的游戏时光</div><h1>游戏库<span class="title-dot">.</span></h1></div><p>每一次打开，都有新的期待。</p></div>
     <section id="content" aria-label="游戏库内容"></section>
-    <footer class="page-footer"><span>让热爱，有迹可循。</span><span>游戏收藏室</span></footer>
+    <footer class="page-footer"><span>让热爱，有迹可循。</span><span>游迹</span></footer>
   </main>
   <div id="big-screen-host" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>`;
@@ -87,21 +91,33 @@ async function refreshOnce(silent) {
     if (selectedId && !selectedExists && selectedId === state.selectedId) {
       selectionVersion++; state.selectedId = ''; state.achievements = [];
     }
-    const stable = games => games.map(({lastScan,runtime,playedSeconds,playtime,installation,...rest})=>({...rest,playtime:playtime && {...playtime,seconds:undefined},installation:installation && {state:installation.state,reason:installation.reason}}));
     const timeOrderChanged = state.sort === 'time' && queryGames(games,{sort:'time'}).map(game=>game.id).join('|') !== queryGames(state.games,{sort:'time'}).map(game=>game.id).join('|');
-    const changed = timeOrderChanged || JSON.stringify(stable(games)) !== JSON.stringify(stable(state.games)) || (selectedId === state.selectedId && JSON.stringify(items) !== JSON.stringify(state.achievements));
+    const changed = timeOrderChanged || librarySnapshot(games) !== librarySnapshot(state.games) || (selectedId === state.selectedId && JSON.stringify(items) !== JSON.stringify(state.achievements));
     state.games = games;
     if (selectedId === state.selectedId) state.achievements = items;
     if (!silent || changed) render();
     patchRuntime(app,state.games);
+    statistics.refresh();
 }
 const dialogActions = { run, refresh, toast, added: async game => { await refresh(); await select(game); toast('游戏已加入收藏'); actions.guide(actions.game(game.id) || game); } };
+const statistics = createStatisticsController({
+  command, render, visible:()=>state.page==='statistics' && !state.selectedId && !document.hidden && !document.querySelector('dialog[open]'),
+});
 const actions = {
   select, launch, exitBigScreen: () => bigMode.exit(),
+  get backLabel(){return state.page==='statistics'?'返回统计':'返回游戏库';},
+  statistics:()=>{selectionVersion++; state.page='statistics'; state.selectedId=''; render(); statistics.refresh(true);},
+  selectStatistic:async id=>{
+    const game=actions.game(id); if(!game)return;
+    statistics.state.scroll=state.bigScreen ? $('#big-screen-host .big-screen-content')?.scrollTop||0 : window.scrollY;
+    for(const dialog of document.querySelectorAll('dialog[open]')) await closeModal(dialog);
+    statistics.state.returnFocus=document.activeElement?.dataset.focusKey||'';
+    await select(game);
+  },
   game: id => state.games.find(game=>game.id === id),
   favorite: async game => {const current = actions.game(game.id) || game; await run('set_favorite',{gameId:game.id,favorite:!current.favorite}); await refresh();},
   guide: game => detectionGuide(game,{...dialogActions,game:actions.game,edit:actions.edit}),
-  bigCategory: value => { selectionVersion++; state.bigCategory = value; state.selectedId = ''; render(`category-${value}`); },
+  bigCategory: value => { selectionVersion++; state.page='library'; state.bigCategory = value; state.selectedId = ''; render(`category-${value}`); },
   bigCollection: value => {selectionVersion++; state.bigCollection = value; state.selectedId = ''; render(`collection-${value}`);},
   add: () => addDialog(dialogActions),
   importSteam: async () => { toast('正在从 Steam 导入游戏…'); const count = await run('import_steam'); await refresh(); toast(`新增 ${count} 款 Steam 游戏`); },
@@ -115,7 +131,12 @@ const actions = {
   sort: value => { state.sort = value; render(); },
   installed: value => { state.installedOnly = value; render(); },
   view: value => { state.view = value; render(); },
-  back: () => { selectionVersion++; state.selectedId = ''; render(); },
+  back: () => {
+    selectionVersion++; const returning=!!state.selectedId && state.page==='statistics';
+    if(!state.selectedId) state.page='library';
+    state.selectedId = ''; render(returning?statistics.state.returnFocus:undefined);
+    if(returning){if(state.bigScreen)$('#big-screen-host .big-screen-content').scrollTop=statistics.state.scroll;else window.scrollTo(0,statistics.state.scroll);statistics.refresh();}
+  },
   sync: async game => {
     try { toast(await run('sync_game', { gameId: game.id })); }
     finally { await refresh(); }
@@ -133,56 +154,68 @@ const actions = {
   manual: async (game, item) => { await run('toggle_manual', { gameId: game.id, apiName: item.apiName }); await refresh(); },
 };
 const bigMode = createBigScreenMode(state, render, toast, {
-  back: () => state.selectedId ? actions.back() : bigMode.exit(),
+  back: () => state.selectedId || state.page==='statistics' ? actions.back() : bigMode.exit(),
   category: direction => {
+    if(state.page==='statistics' && !state.selectedId) return statistics.cycle(direction);
     const categories = bigScreenCategories.map(([value]) => value);
     const index = categories.indexOf(state.bigCategory);
     actions.bigCategory(categories[(index + direction + categories.length) % categories.length]);
   },
 });
 mountSidebar($('.sidebar'), {
-  category: value => { selectionVersion++; state.filter = value; state.selectedId = ''; render(); },
-  back: actions.back, bigScreen: bigMode.enter, importSteam: actions.importSteam, importEpic: actions.importEpic,
+  category: value => { selectionVersion++; state.page='library'; state.filter = value; state.selectedId = ''; render(); },
+  back:()=>{selectionVersion++;state.page='library';state.selectedId='';render();}, bigScreen: bigMode.enter, importSteam: actions.importSteam, importEpic: actions.importEpic,
   settings: () => settingsDialog(dialogActions), preview,
+  statistics:actions.statistics,
 });
 $('#add-action').append(button('添加游戏', 'primary add-button', actions.add, 'plus'));
-$('#search').oninput = event => { selectionVersion++; state.search = event.target.value; state.selectedId = ''; render(); };
+$('#search').oninput = event => { selectionVersion++; state.page='library'; state.search = event.target.value; state.selectedId = ''; render(); };
 function render(preferredFocus) {
+  // 后台刷新只更新内容，不能重新获取焦点、打断前台游戏。
+  const restoreFocus = document.hasFocus();
   const host = $('#big-screen-host');
   host.hidden = !state.bigScreen;
   if (state.bigScreen) {
     const focused = host.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
     const diagnosticOpen = host.querySelector('details')?.open;
     if (!state.games.some(game => game.id === state.selectedId)) state.selectedId = '';
-    const samePage = host.firstElementChild?.dataset.view === (state.selectedId || 'library');
+    const samePage = host.firstElementChild?.dataset.view === (state.selectedId || state.page);
     const scrollTop = samePage && !preferredFocus ? host.querySelector('.big-screen-content')?.scrollTop || 0 : 0;
-    host.replaceChildren(bigScreenView(state, actions));
+    const next = bigScreenView(state, actions, statistics);
+    preserveArtwork(host, next);
+    host.replaceChildren(next);
     if (diagnosticOpen && host.querySelector('details')) host.querySelector('details').open = true;
     host.querySelector('.big-screen-content').scrollTop = scrollTop;
     const key = preferredFocus || focused || `game-${state.bigFocusedId}`;
     const target = [...host.querySelectorAll('[data-focus-key]')].find(node => node.dataset.focusKey === key && !node.disabled)
       || host.querySelector('.game-actions .primary:not(:disabled)') || host.querySelector('.game-actions button:not(:disabled)') || host.querySelector('.big-screen-card.selected') || host.querySelector('.big-screen-tabs .active');
-    target?.focus({ preventScroll: true });
-    target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (restoreFocus) target?.focus({ preventScroll: true });
+    if (restoreFocus && state.page !== 'statistics') target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     animateView(host.firstElementChild, state);
     return;
   }
   host.replaceChildren();
   const content = $('#content'); const diagnosticOpen = content.querySelector('details')?.open;
   const focusKey = content.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
+  const statisticsScroll=state.page==='statistics' && !state.selectedId ? window.scrollY : null;
   $('#navigation').querySelectorAll('button').forEach(node => {
-    const category = node.dataset.filter; node.classList.toggle('active', category === state.filter);
-    node.setAttribute('aria-current', category === state.filter ? 'page' : 'false');
-    node.querySelector('.nav-count').textContent = state.games.filter(game => inCategory(game,category)).length;
+    const category = node.dataset.filter; const active=node.dataset.page==='statistics' ? state.page==='statistics' : state.page==='library' && category===state.filter;
+    node.classList.toggle('active',active);node.setAttribute('aria-current',active?'page':'false');
+    if(category) node.querySelector('.nav-count').textContent = state.games.filter(game => inCategory(game,category)).length;
   });
   const game = state.games.find(item => item.id === state.selectedId);
   if (!game) state.selectedId = '';
-  $('#page-name').textContent = game ? game.title : '游戏库';
-  $('#page-intro').hidden = !!game;
-  content.replaceChildren(game ? detailView(game, state.achievements, state.achievementFilter, actions) : libraryView(state, actions));
+  $('#page-name').textContent = game ? game.title : state.page==='statistics' ? '游戏统计' : '游戏库';
+  $('#page-intro').hidden = !!game || state.page==='statistics';
+  $('.topbar-actions').hidden=state.page==='statistics' && !game;
+  content.setAttribute('aria-label',state.page==='statistics' && !game ? '游戏统计内容' : '游戏库内容');
+  const next = game ? detailView(game, state.achievements, state.achievementFilter, actions) : state.page==='statistics' ? statisticsView(statistics,actions) : libraryView(state, actions);
+  preserveArtwork(content, next);
+  content.replaceChildren(next);
   if (diagnosticOpen && content.querySelector('details')) content.querySelector('details').open = true;
-  if (focusKey) [...content.querySelectorAll('[data-focus-key]')].find(node=>node.dataset.focusKey === focusKey)?.focus({preventScroll:true});
+  if (restoreFocus && (preferredFocus||focusKey)) [...content.querySelectorAll('[data-focus-key]')].find(node=>node.dataset.focusKey === (preferredFocus||focusKey))?.focus({preventScroll:true});
   animateView(content.firstElementChild, state);
+  if(statisticsScroll!=null)window.scrollTo(0,statisticsScroll);
 }
 onUnlock(async event => {
   toast(`${event.payload.gameTitle} · 成就解锁：${event.payload.achievementName}`);

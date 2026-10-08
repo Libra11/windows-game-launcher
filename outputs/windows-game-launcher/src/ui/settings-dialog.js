@@ -1,3 +1,4 @@
+import { achievementNotificationSettings } from './achievement-notification-settings.js';
 import { xboxConnection } from './xbox-connection.js';
 import { epicConnection } from './epic-connection.js';
 import { el, button, icon } from '../lib/dom.js';
@@ -19,14 +20,22 @@ export async function settingsDialog(actions) {
   const appearance = themePicker(); form.append(appearance.element);
   const minimize = check('确认游戏运行后最小化，结束后恢复启动器', settings.minimizeOnLaunch);
   const tray = check('关闭窗口时保留在托盘，继续计时和检测成就', settings.closeToTray);
-  const notifications = check('发送 Windows 成就通知', settings.achievementNotifications);
+  const notifications = check('显示游迹成就弹层', settings.achievementNotifications);
   form.append(minimize.element, tray.element, notifications.element);
+  const achievementOptions = await achievementNotificationSettings(actions);
+  form.append(achievementOptions.element);
   const tools = el('div','settings-tools');
   const test = button('测试通知','secondary',async () => {
+    await achievementOptions.save();
     const message = await actions.run('test_achievement_notification'); actions.toast(message);
-  },'trophy'); test.disabled = preview; if (preview) test.title = '请在桌面应用中测试 Windows 通知';
+  },'trophy'); test.disabled = preview; if (preview) test.title = '请在桌面应用中测试成就弹层';
+  const delayed = button('5 秒后测试', 'secondary', async () => {
+    await achievementOptions.save();
+    actions.toast(await actions.run('test_achievement_notification', {delaySeconds:5}));
+  }, 'trophy'); delayed.disabled = preview;
+  tools.append(delayed);
   tools.append(test, button('最近解锁','secondary',()=>recentUnlocksDialog(actions),'clock'));
-  form.append(tools, el('p','form-hint','成就通知由 Windows 显示。勿扰模式或全屏游戏可能隐藏横幅，错过的解锁可以在“最近解锁”查看。'));
+  form.append(tools, el('p','form-hint','游迹弹层置顶显示，不抢焦点，鼠标可穿透。建议游戏使用无边框全屏；独占全屏可能遮挡弹层。错过的成就可在“最近解锁”查看。'));
   const connection = el('div','connection-card'); connection.append(icon('steam'), el('div','','连接 Steam 游戏库')); form.append(connection);
   const key = field('Steam Web API Key', settings.steamApiKey, '填写你的 Steam API Key', 'password');
   const id = field('SteamID64', settings.steamId, '17 位 Steam 账号 ID'); id.input.pattern = '[0-9]*'; id.input.inputMode = 'numeric';
@@ -36,6 +45,7 @@ export async function settingsDialog(actions) {
   const dialog = modal('设置','管理外观、后台运行与游戏账号连接。',form);
   dialog.addEventListener('close',()=>{appearance.dispose();xbox.dispose();epic.dispose();},{once:true});
   submit(form,'保存设置',async()=> {
+    await achievementOptions.save();
     await actions.run('save_settings',{steamApiKey:key.input.value.trim(),steamId:id.input.value.trim(),minimizeOnLaunch:minimize.input.checked,closeToTray:tray.input.checked,achievementNotifications:notifications.input.checked});
     await closeModal(dialog); await actions.refresh(); actions.toast('设置已保存');
   });

@@ -29,6 +29,9 @@ pub(crate) fn notify(app: &tauri::AppHandle, events: Vec<UnlockEvent>) {
         let conn = lock_db(&state)?;
         let mut recent = read(&conn)?;
         for event in &events {
+            if let Err(error) = crate::statistics::store::record_unlock(&conn, event) {
+                eprintln!("新解锁统计未保存：{error}");
+            }
             recent.insert(
                 0,
                 RecentUnlock {
@@ -51,12 +54,30 @@ pub(crate) fn notify(app: &tauri::AppHandle, events: Vec<UnlockEvent>) {
     for event in events {
         let _ = app.emit("achievement-unlocked", &event);
         if enabled {
-            if let Err(error) = show(
+            let icon = {
+                let state = app.state::<AppState>();
+                lock_db(&state)
+                    .and_then(|conn| db::achievements(&conn, &event.game_id))
+                    .unwrap_or_default()
+                    .into_iter()
+                    .find(|item| item.api_name == event.api_name)
+                    .map(|item| item.icon)
+                    .unwrap_or_default()
+            };
+            if let Err(error) = crate::achievement_overlay::show(
                 app,
-                &format!("成就解锁 · {}", event.game_title),
-                &event.achievement_name,
+                crate::achievement_overlay::Notice {
+                    name: event.achievement_name.clone(),
+                    game: event.game_title.clone(),
+                    icon,
+                },
             ) {
-                eprintln!("成就通知未发送：{error}");
+                eprintln!("成就弹层未发送：{error}");
+                let _ = show(
+                    app,
+                    &format!("成就解锁 · {}", event.game_title),
+                    &event.achievement_name,
+                );
             }
         }
     }
@@ -93,11 +114,37 @@ pub(crate) fn list_recent_unlocks(
 }
 
 #[tauri::command]
-pub(crate) fn test_achievement_notification(app: tauri::AppHandle) -> Result<String, String> {
-    show(
+pub(crate) fn test_achievement_notification(
+    app: tauri::AppHandle,
+    delay_seconds: Option<u64>,
+) -> Result<String, String> {
+    let delay = delay_seconds.unwrap_or(0);
+    if delay > 10 {
+        return Err("测试延迟不得超过 10 秒".into());
+    }
+    if delay > 0 {
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+            if let Err(error) = crate::achievement_overlay::show(
+                &app,
+                crate::achievement_overlay::Notice {
+                    name: "每一步都值得记录".into(),
+                    game: "游迹 · 游戏内弹层测试".into(),
+                    icon: String::new(),
+                },
+            ) {
+                eprintln!("延迟测试失败：{error}");
+            }
+        });
+        return Ok(format!("{delay} 秒后显示测试弹层，请切回游戏。"));
+    }
+    crate::achievement_overlay::show(
         &app,
-        "游戏收藏室 · 通知测试",
-        "成就通知已提交。可以在全屏游戏中再次测试显示效果。",
+        crate::achievement_overlay::Notice {
+            name: "每一步都值得记录".into(),
+            game: "游迹 · 成就弹层测试".into(),
+            icon: String::new(),
+        },
     )?;
-    Ok("测试通知已提交；若未弹出，请查看 Windows 通知设置、勿扰模式和通知中心。".into())
+    Ok("测试弹层已排队；可在无边框游戏中测试，独占全屏可能遮挡弹层。".into())
 }
