@@ -101,6 +101,24 @@ fn empty_unknown_and_cached_steam_time_are_distinct() {
 }
 
 #[test]
+fn unavailable_epic_unlocks_do_not_count_as_zero_completion() {
+    let conn = fixture();
+    let mut epic = game(&conn, "1", "epic", "Epic 官方成就");
+    epic.appid = "epic:1".into();
+    epic.metadata_json = r#"{"epicAchievementSyncError":"账号记录暂不可用"}"#.into();
+    db::upsert_game(&conn, &epic).unwrap();
+    definitions(&conn, &epic, 2);
+    let stats = aggregation::snapshot(&conn, &query("all")).unwrap();
+    assert_eq!(stats.games[0].definition_state, "complete");
+    assert!(stats.games[0].completion_rate.is_none());
+    assert!(stats.summary.completion_rate.is_none());
+    epic.metadata_json = "{}".into();
+    db::upsert_game(&conn, &epic).unwrap();
+    let stats = aggregation::snapshot(&conn, &query("all")).unwrap();
+    assert_eq!(stats.games[0].completion_rate, Some(0.0));
+}
+
+#[test]
 fn complete_partial_and_manual_achievements_use_correct_denominators() {
     let conn = fixture();
     let full = game(&conn, "1", "steam", "Steam Web API");

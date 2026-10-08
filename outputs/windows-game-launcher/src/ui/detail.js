@@ -3,6 +3,7 @@ import { achievementList } from './detail-achievements.js';
 import { launchButton, favoriteButton, activitySummary } from './game-controls.js';
 import { collectionOverview } from './detail-overview.js';
 import { removeGameDialog } from './remove-game-dialog.js';
+import { epicUnlockError } from '../lib/achievement-state.js';
 
 export function detailView(game, achievements, filter, actions) {
   const root = el('div', 'detail-view');
@@ -25,7 +26,7 @@ export function detailView(game, achievements, filter, actions) {
   }
   intro.append(description, buttons); root.append(intro);
   root.append(activitySummary(game));
-  const detected = achievements.some(item => item.unlockedAt) || /^(已读取|Steam 成就已同步|Epic 成就已同步)/.test(game.scanStatus || '');
+  const detected = !epicUnlockError(game) && (achievements.some(item => item.unlockedAt) || /^(已读取|Steam 成就已同步|Epic 成就已同步)/.test(game.scanStatus || ''));
   const body = el('div', 'detail-body');
   body.append(achievementList(game, achievements, filter, detected, actions), collectionOverview(game, achievements, detected, actions));
   root.append(body); return root;

@@ -224,8 +224,12 @@ pub(super) fn snapshot(conn: &Connection, query: &Query) -> Result<Snapshot, Str
         } else {
             "unknown"
         };
-        let completion_rate =
-            (definition_state == "complete").then(|| unlocked as f64 / total as f64 * 100.0);
+        let unavailable_epic_records = game.source == "epic"
+            && serde_json::from_str::<serde_json::Value>(&game.metadata_json).ok()
+                .is_some_and(|metadata| metadata.get("epicAchievementSyncError")
+                    .and_then(serde_json::Value::as_str).is_some_and(|error| !error.is_empty()));
+        let completion_rate = (definition_state == "complete" && !unavailable_epic_records)
+            .then(|| unlocked as f64 / total as f64 * 100.0);
         if completion_rate.is_some() {
             eligible_total += total;
             eligible_unlocked += unlocked;

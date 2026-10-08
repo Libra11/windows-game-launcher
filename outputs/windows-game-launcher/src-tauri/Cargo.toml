@@ -30,3 +30,4 @@ scraper = "0.24"
 
 [target."cfg(windows)".dependencies]
 winreg = "0.56"
+windows-sys = { version = "0.61", features = ["Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }

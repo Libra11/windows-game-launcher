@@ -1,6 +1,11 @@
+import { epicUnlockError, epicDefinitionsUnavailable } from './achievement-state.js';
+
 export function detectionState(game) {
   if (game.source === 'epic') {
     const error = game.achievementPlatform?.definitionError;
+    if (epicDefinitionsUnavailable(game)) return { label:'Epic 商店成就资料暂不可用', detail:'Epic 当前未返回此游戏的官方成就列表；可以正常游玩，已有记录保留，当前无法确认成就总数。', state:'unsupported' };
+    const unlockError = epicUnlockError(game);
+    if (!error && unlockError) return { label:'Epic 成就列表已获取，解锁状态待确认', detail:`${unlockError}。已有解锁记录保留，可稍后点击“更新资料”重试。`, state:'pending' };
     return { label:error ? 'Epic 成就同步失败' : game.schemaSource === 'Epic 官方成就（暂无成就）' ? '暂无 Epic 成就' : game.scanStatus === 'Epic 成就已同步' ? 'Epic 官方成就已同步' : '等待 Epic 官方同步', detail:error || game.scanStatus || '点击“更新资料”，通过已连接的 Epic 账号读取成就详情和解锁状态。', state:error ? 'error' : game.scanStatus === 'Epic 成就已同步' ? 'ready' : 'pending' };
   }
   const status = game.scanStatus || '';

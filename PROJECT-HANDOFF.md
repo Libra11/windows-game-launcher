@@ -1,5 +1,32 @@
 # 项目交接状态
 
+## 2026-10-08 Epic 空资料响应误判身份冲突修复
+
+- 第二张截图对应 INSIDE。官方查询 sandbox 为 13bb5776b9e1424d84ce42d9ba61c0ca，返回 productAchievementsRecordBySandbox 对象但 sandboxId/totalAchievements/achievements 全为 null、无接口 errors。原解析先比较空标识导致误报游戏身份不一致。
+- 现在先识别空资料响应，显示「Epic 当前未提供此游戏的商店成就资料」，界面状态为资料暂不可用，隐藏重复的同步失败报错；不当作零成就，不放宽真实身份不一致或不完整响应的校验。无法据此断言游戏在其他平台没有成就。
+- Epic 后端 5 项和相关界面 6 项测试通过，Windows release/NSIS 构建成功。outputs/游迹_0.2.1_x64-setup-epic-achievements-fix.exe 已替换为本轮最新包；之前该文件的散列已失效。安装后需点击更新资料刷新旧错误。沙盒外只读诊断任务已移除，未修改安装版数据库或账号设置。
+
+## 2026-10-08 Epic 资料与账号解锁记录独立同步
+
+- 用户截图显示 Epic 未返回有效账号记录且整页没有成就列表。通过沙盒外临时任务读取安装版授权并向官方接口只读查询，核对 City of Gangsters 定义为 80 项且无 GraphQL errors，账号 records 为 null。诊断输出只保留结构和数量，不输出凭据、账号标识或原始账号记录；临时任务已移除。
+- 原 fetch 将账号记录不可用视为整个定义获取失败，现将定义与账号记录独立处理。定义完整即保存名称/图标/条件；账号缺失、格式/身份不符或请求失败时保留已有解锁，不导入部分解锁；未授权仍刷新授权重试。null 为未知，明确空数组才是有效零解锁快照。
+- 元数据 epicAchievementSyncError 用于显示列表已获取/解锁状态待确认；未知状态不显示解锁总数或完成度，也不进入综合统计完成度分母。后续有效同步清除提示并正常更新快照。
+- Epic 成就 4 项、统计既有 7 项及新增未知完成度测试、相关界面 5 项通过，前端及 Windows release/NSIS 构建成功。更新包 outputs/游迹_0.2.1_x64-setup-epic-achievements-fix.exe，SHA-256 为 23FC3B027673D8D9EB8D5D9747D0910763EC93AF15DA007A279230C539BB307D，包含上一轮浏览器登录修复。尚未替用户安装或写入账号解锁，仍需覆盖安装后点击更新资料实测。
+
+## 2026-10-08 Epic 登录打开默认浏览器修复
+
+- 原 Windows 登录入口直接启动 explorer.exe 并传入 Epic 登录 URL，用户实机弹出资源管理器；HTTPS 默认关联已核对为 ChromeHTML，未修改系统默认关联。
+- Windows 改用 ShellExecuteW(open) 直接打开完整登录 URL，检查返回值并在关联失败时显示错误；Epic 授权登录与账号提示登录入口共用此修复。新增测试验证官方登录域名、编码后的 redirectUrl 与 clientId/responseType 不丢失。
+- Epic 授权模块 4 项测试通过，Windows release/NSIS 打包成功。更新包为 outputs/游迹_0.2.1_x64-setup-epic-fix.exe；尚未覆盖用户当前安装版，需要用户正常退出后安装此包，再实测登录按钮。
+- 首次 debug 编译因 C 盘不足失败，缓存删除被自动审批阻止且未执行；测试改用 D:/youji-build-cache/target 和 temp 完成。未修改系统配置或账号数据，未自动提交、推送。
+
+## 2026-10-08 Windows 安装包与开发版数据恢复
+
+- 已从提交 51b28f5 同步主源码到 work/windows-build/project，在当前 Windows 的 VS2022 Build Tools 环境用 Tauri release/NSIS 构建。安装包为 outputs/游迹_0.2.1_x64-setup.exe，4735741 字节，SHA-256 为 5FF8E587112FB2F009295AAEE32F9E129778559D855C12AF155EFF4C54619E94。
+- 用户已安装至 D:/Program Files/youji，发现游戏库为空。真实原因是 Microsoft Store Codex 子进程的文件系统虚拟化：开发版访问 APPDATA 时，实际文件位于 C:/Users/Admin/AppData/Local/Packages/OpenAI.Codex_2p2nqsd0c76g0/LocalCache/Roaming/dev.local.achievementlauncher；安装版从桌面启动使用普通 C:/Users/Admin/AppData/Roaming/dev.local.achievementlauncher。GetFinalPathNameByHandle 已确认重定向，不能只按逻辑路径判断两者共用数据库。
+- 通过当前用户 Interactive/Limited 临时任务在沙盒外核对：开发库 88 游戏/997 解锁、安装库 0 游戏/0 解锁。用户正常退出安装版后，在线 SQLite 备份两库，再将开发库恢复到普通 Roaming 目录，复制 Xbox 历史文件（排除旧 control.txt/interface-ready.txt）。完整性检查 ok，游戏与解锁数量一致。
+- 备份在 work/installed-data-recovery/backup-20261008-202512，恢复脚本与核对结果在同一上级目录。数据库可能包含凭据，不得输出设置表或公开分享。安装版已从沙盒外重新启动，临时任务 YoujiLocalDataRecovery20261008 已移除。后续用户应从安装的快捷方式启动正式版；从 Codex 启动开发程序仍可能使用独立的虚拟化数据。
+
 ## 2026-10-08 添加游戏时提前识别编号冲突
 
 - 添加与编辑界面选择 Steam 搜索结果后立即核对编号，区分所选游戏的 Steam 官方资料编号与本地配置编号。确认项按游戏名称表述，用户无需猜哪个数字正确。

@@ -11,3 +11,12 @@ export function achievementEmptyMessage(game, achievements) {
   if (game.scanStatus?.startsWith('同步失败：')) return '成就资料暂未获取成功，请查看右侧记录状态了解原因。';
   return '尚未获取成就定义，点击“更新资料”从 Steam 获取；API Key 可在设置中配置。';
 }
+export function epicUnlockError(game) {
+  if (game.source !== 'epic') return '';
+  try { return JSON.parse(game.metadataJson || '{}').epicAchievementSyncError || ''; }
+  catch { return ''; }
+}
+
+export function epicDefinitionsUnavailable(game) {
+  return game.source === 'epic' && (game.achievementPlatform?.definitionError || '').startsWith('Epic 当前未提供此游戏的商店成就资料');
+}

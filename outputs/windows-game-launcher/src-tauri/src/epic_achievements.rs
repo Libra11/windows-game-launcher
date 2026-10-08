@@ -11,6 +11,7 @@ use tauri::Manager;
 
 pub(crate) const SCHEMA: &str = "Epic 官方成就";
 pub(crate) const EMPTY_SCHEMA: &str = "Epic 官方成就（暂无成就）";
+const UNAVAILABLE: &str = "Epic 当前未提供此游戏的商店成就资料，无法获取官方成就列表";
 const DEFINITIONS: &str = r#"query Achievement($sandboxId: String!, $locale: String!) {
  Achievement { productAchievementsRecordBySandbox(sandboxId: $sandboxId, locale: $locale) {
  sandboxId totalAchievements achievements { achievement {
@@ -27,6 +28,7 @@ struct Snapshot {
     definitions: Vec<AchievementDefinition>,
     details: Value,
     unlocks: Vec<(String, String)>,
+    player_error: Option<String>,
 }
 fn text<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or("").trim()
@@ -46,7 +48,12 @@ fn definitions(data: &Value, namespace: &str) -> Result<Snapshot, String> {
     let record = data
         .pointer("/data/Achievement/productAchievementsRecordBySandbox")
         .filter(|record| record.is_object())
-        .ok_or("此游戏尚未公开 Epic 商店成就资料，无法获取成就列表")?;
+        .ok_or(UNAVAILABLE)?;
+    if ["sandboxId", "totalAchievements", "achievements"]
+        .iter().all(|key| record.get(key).is_none_or(Value::is_null))
+    {
+        return Err(UNAVAILABLE.into());
+    }
     if text(record, "sandboxId") != namespace {
         return Err("Epic 返回的成就游戏身份不一致".into());
     }
@@ -61,6 +68,7 @@ fn definitions(data: &Value, namespace: &str) -> Result<Snapshot, String> {
         definitions: Vec::new(),
         details: serde_json::json!({}),
         unlocks: Vec::new(),
+        player_error: None,
     };
     let mut seen = HashSet::new();
     for row in rows {
@@ -116,7 +124,7 @@ fn player(
     let records = data
         .pointer("/data/PlayerAchievement/playerAchievementGameRecordsBySandbox/records")
         .and_then(Value::as_array)
-        .ok_or("Epic 未返回有效的账号成就记录，请检查账号资料可见性")?;
+        .ok_or("Epic 暂未提供此账号的游戏解锁记录；可能尚未产生记录或记录不可见，当前无法确认解锁状态")?;
     let known: HashSet<_> = snapshot
         .definitions
         .iter()
@@ -199,17 +207,20 @@ async fn fetch(session: &epic_auth::Session, namespace: &str) -> Result<Snapshot
         namespace,
     )?;
     if !snapshot.definitions.is_empty() {
-        player(
-            &query(
-                &session.access_token,
-                PLAYER,
-                serde_json::json!({"sandboxId":namespace,"epicAccountId":session.account_id}),
-            )
-            .await?,
-            namespace,
-            &session.account_id,
-            &mut snapshot,
-        )?;
+        let result = query(
+            &session.access_token,
+            PLAYER,
+            serde_json::json!({"sandboxId":namespace,"epicAccountId":session.account_id}),
+        ).await;
+        let error = match result {
+            Ok(data) => player(&data, namespace, &session.account_id, &mut snapshot).err(),
+            Err(Error::Unauthorized) => return Err(Error::Unauthorized),
+            Err(Error::Message(message)) => Some(message),
+        };
+        if let Some(error) = error {
+            snapshot.unlocks.clear();
+            snapshot.player_error = Some(error);
+        }
     }
     Ok(snapshot)
 }
@@ -224,22 +235,24 @@ fn save(conn: &mut rusqlite::Connection, game: &Game, snapshot: &Snapshot) -> Re
     }
     let key = format!("epic:{}", game.id);
     let previous = db::achievements(&tx, &game.id)?;
-    // 仅在完整响应通过校验后替换 Epic 快照，失败时保留已有缓存。
+    // 定义独立更新；只有账号记录完整通过校验，才能替换官方解锁快照。
     tx.execute("DELETE FROM achievements WHERE appid=?1", [&key])
         .map_err(|e| e.to_string())?;
     for item in &snapshot.definitions {
         tx.execute("INSERT INTO achievements(appid,api_name,name,description,icon,hidden) VALUES(?1,?2,?3,?4,?5,?6)",
             rusqlite::params![key,item.api_name,item.name,item.description,item.icon,item.hidden]).map_err(|e| e.to_string())?;
     }
-    tx.execute(
-        "DELETE FROM unlocks WHERE game_id=?1 AND source='epic'",
-        [&game.id],
-    )
-    .map_err(|e| e.to_string())?;
-    for (id, time) in &snapshot.unlocks {
-        tx.execute("INSERT INTO unlocks(game_id,api_name,source,unlocked_at,evidence) VALUES(?1,?2,'epic',?3,'Epic 官方成就') ON CONFLICT(game_id,api_name) DO UPDATE SET source='epic',unlocked_at=excluded.unlocked_at,evidence=excluded.evidence", rusqlite::params![game.id,id,time]).map_err(|e| e.to_string())?;
+    if snapshot.player_error.is_none() {
+        tx.execute(
+            "DELETE FROM unlocks WHERE game_id=?1 AND source='epic'",
+            [&game.id],
+        ).map_err(|e| e.to_string())?;
+        for (id, time) in &snapshot.unlocks {
+            tx.execute("INSERT INTO unlocks(game_id,api_name,source,unlocked_at,evidence) VALUES(?1,?2,'epic',?3,'Epic 官方成就') ON CONFLICT(game_id,api_name) DO UPDATE SET source='epic',unlocked_at=excluded.unlocked_at,evidence=excluded.evidence", rusqlite::params![game.id,id,time]).map_err(|e| e.to_string())?;
+        }
     }
     metadata["epicAchievementDetails"] = snapshot.details.clone();
+    metadata["epicAchievementSyncError"] = serde_json::json!(snapshot.player_error);
     db::save_metadata(&tx, &game.id, &metadata)?;
     tx.execute(
         "UPDATE games SET schema_source=?1 WHERE id=?2",
@@ -258,6 +271,8 @@ fn save(conn: &mut rusqlite::Connection, game: &Game, snapshot: &Snapshot) -> Re
         &game.id,
         if snapshot.definitions.is_empty() {
             "此游戏暂无 Epic 成就"
+        } else if snapshot.player_error.is_some() {
+            "Epic 成就资料已更新，账号解锁记录暂不可用"
         } else {
             "Epic 成就已同步"
         },
@@ -294,6 +309,8 @@ pub(crate) async fn sync(app: &tauri::AppHandle, game: &Game) -> Result<String, 
     save(&mut *lock_db(&app.state::<AppState>())?, game, &snapshot)?;
     Ok(if snapshot.definitions.is_empty() {
         "此游戏暂无 Epic 成就".into()
+    } else if let Some(error) = &snapshot.player_error {
+        format!("已更新 Epic 成就资料：{} 项；{}", snapshot.definitions.len(), error)
     } else {
         format!(
             "已更新 Epic 成就：{} 项，已解锁 {} 项",
@@ -323,6 +340,16 @@ mod tests {
         assert!(definitions(&serde_json::json!({"data":{"Achievement":{"productAchievementsRecordBySandbox":null}}}),"ns").is_err());
     }
     #[test]
+    fn null_definition_fields_are_unavailable_not_identity_mismatch_or_zero() {
+        let data = serde_json::json!({"data":{"Achievement":{"productAchievementsRecordBySandbox":{"sandboxId":null,"totalAchievements":null,"achievements":null}}}});
+        assert_eq!(definitions(&data, "ns").err().unwrap(), UNAVAILABLE);
+        let mut wrong = super::tests::data();
+        wrong["data"]["Achievement"]["productAchievementsRecordBySandbox"]["sandboxId"] = serde_json::json!("other");
+        assert_eq!(definitions(&wrong, "ns").err().unwrap(), "Epic 返回的成就游戏身份不一致");
+        let empty = serde_json::json!({"data":{"Achievement":{"productAchievementsRecordBySandbox":{"sandboxId":"ns","totalAchievements":0,"achievements":[]}}}});
+        assert!(definitions(&empty, "ns").unwrap().definitions.is_empty());
+    }
+    #[test]
     fn validates_account_and_unlock_timestamp_before_accepting_snapshot() {
         let mut snapshot = definitions(&data(), "ns").unwrap();
         let data = serde_json::json!({"data":{"PlayerAchievement":{"playerAchievementGameRecordsBySandbox":{"records":[{"playerAchievements":[{"playerAchievement":{"sandboxId":"ns","epicAccountId":"account","achievementName":"FIRST","unlocked":true,"unlockDate":"2026-10-01T00:00:00Z"}}]}]}}}});
@@ -335,6 +362,16 @@ mod tests {
             [0]["playerAchievements"][0]["playerAchievement"]["unlockDate"] =
             serde_json::json!("invalid");
         assert!(player(&invalid, "ns", "account", &mut fresh).is_err());
+    }
+    #[test]
+    fn null_player_records_are_unavailable_not_zero_unlocks() {
+        let mut snapshot = definitions(&data(), "ns").unwrap();
+        let null = serde_json::json!({"data":{"PlayerAchievement":{"playerAchievementGameRecordsBySandbox":{"records":null}}}});
+        assert!(player(&null, "ns", "account", &mut snapshot).is_err());
+        assert_eq!(snapshot.definitions.len(), 1);
+        let empty = serde_json::json!({"data":{"PlayerAchievement":{"playerAchievementGameRecordsBySandbox":{"records":[]}}}});
+        player(&empty, "ns", "account", &mut snapshot).unwrap();
+        assert!(snapshot.unlocks.is_empty());
     }
     #[test]
     fn saves_platform_scoped_cache_and_empty_snapshot() {
@@ -354,6 +391,17 @@ mod tests {
         let achievements = db::achievements(&conn, &game.id).unwrap();
         assert_eq!(achievements.len(), 1);
         assert_eq!(achievements[0].unlock_source.as_deref(), Some("epic"));
+        let mut unavailable = definitions(&data(), "ns").unwrap();
+        unavailable.player_error = Some("账号记录暂不可用".into());
+        save(&mut conn, &game, &unavailable).unwrap();
+        let cached = db::achievements(&conn, &game.id).unwrap();
+        assert_eq!(cached.len(), 1);
+        assert_eq!(cached[0].unlock_source.as_deref(), Some("epic"));
+        assert!(cached[0].unlocked_at.is_some());
+        let current = db::game(&conn, &game.id).unwrap().unwrap();
+        assert_eq!(current.schema_source, SCHEMA);
+        assert!(current.scan_status.contains("暂不可用"));
+        assert_eq!(serde_json::from_str::<Value>(&current.metadata_json).unwrap()["epicAchievementSyncError"], "账号记录暂不可用");
         let mut changed = data();
         changed["data"]["Achievement"]["productAchievementsRecordBySandbox"]["achievements"][0]
             ["achievement"]["lockedDescription"] = serde_json::json!("更新的说明");
@@ -365,6 +413,8 @@ mod tests {
         assert!(db::achievements(&conn, &game.id).unwrap()[0]
             .unlocked_at
             .is_none());
+        let current = db::game(&conn, &game.id).unwrap().unwrap();
+        assert!(serde_json::from_str::<Value>(&current.metadata_json).unwrap()["epicAchievementSyncError"].is_null());
         save(
             &mut conn,
             &game,
@@ -372,6 +422,7 @@ mod tests {
                 definitions: vec![],
                 details: serde_json::json!({}),
                 unlocks: vec![],
+                player_error: None,
             },
         )
         .unwrap();

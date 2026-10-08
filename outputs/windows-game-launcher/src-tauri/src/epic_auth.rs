@@ -152,6 +152,10 @@ fn authorization_code(input: &str) -> Result<String, String> {
 
 #[tauri::command]
 pub(crate) fn epic_begin_login() -> Result<(), String> {
+    open_browser(login_url()?.as_str())
+}
+
+fn login_url() -> Result<reqwest::Url, String> {
     let mut url = reqwest::Url::parse("https://www.epicgames.com/id/login")
         .map_err(|_| "无法生成 Epic 登录地址")?;
     url.query_pairs_mut().append_pair(
@@ -160,7 +164,7 @@ pub(crate) fn epic_begin_login() -> Result<(), String> {
             "https://www.epicgames.com/id/api/redirect?clientId={CLIENT_ID}&responseType=code"
         ),
     );
-    open_browser(url.as_str())
+    Ok(url)
 }
 
 #[tauri::command]
@@ -170,9 +174,25 @@ pub(crate) fn epic_open_account_login() -> Result<(), String> {
 
 fn open_browser(url: &str) -> Result<(), String> {
     #[cfg(target_os = "windows")]
-    let result = std::process::Command::new("explorer.exe")
-        .arg(url)
-        .spawn();
+    {
+        use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
+        // 通过 HTTPS 默认关联打开完整 URL，避免 Explorer 将登录参数当成文件路径。
+        let operation: Vec<u16> = "open\0".encode_utf16().collect();
+        let target: Vec<u16> = url.encode_utf16().chain(Some(0)).collect();
+        let result = unsafe {
+            ShellExecuteW(
+                std::ptr::null_mut(), operation.as_ptr(), target.as_ptr(),
+                std::ptr::null(), std::ptr::null(), SW_SHOWNORMAL,
+            )
+        } as isize;
+        return if result > 32 {
+            Ok(())
+        } else {
+            Err("无法打开系统浏览器，请在 Windows 设置中确认默认浏览器及 HTTPS 链接关联后重试".into())
+        };
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
     #[cfg(target_os = "macos")]
     let result = std::process::Command::new("open").arg(url).spawn();
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
@@ -184,6 +204,7 @@ fn open_browser(url: &str) -> Result<(), String> {
         let _ = child.wait();
     });
     Ok(())
+    }
 }
 
 #[tauri::command]
@@ -215,6 +236,21 @@ pub(crate) async fn epic_disconnect(app: tauri::AppHandle) -> Result<(), String>
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn browser_login_preserves_official_redirect_parameters() {
+        let url = login_url().unwrap();
+        assert_eq!(url.scheme(), "https");
+        assert_eq!(url.host_str(), Some("www.epicgames.com"));
+        assert_eq!(url.path(), "/id/login");
+        let pairs: Vec<_> = url.query_pairs().collect();
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0].0, "redirectUrl");
+        let redirect = reqwest::Url::parse(&pairs[0].1).unwrap();
+        assert_eq!(redirect.host_str(), Some("www.epicgames.com"));
+        assert_eq!(redirect.path(), "/id/api/redirect");
+        assert!(redirect.query_pairs().any(|(key, value)| key == "clientId" && value == CLIENT_ID));
+        assert!(redirect.query_pairs().any(|(key, value)| key == "responseType" && value == "code"));
+    }
     #[test]
     fn privacy_policy_error_is_actionable_and_does_not_expose_continuation() {
         let data = serde_json::json!({"errorCode":"errors.com.epicgames.oauth.corrective_action_required","metadata":{"correctiveAction":"PRIVACY_POLICY_ACCEPTANCE","continuation":"private-continuation"}});

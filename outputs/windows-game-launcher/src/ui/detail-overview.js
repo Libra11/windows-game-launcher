@@ -1,5 +1,5 @@
 import { el, button, icon, metadata } from '../lib/dom.js';
-import { hasNoSteamAchievements } from '../lib/achievement-state.js';
+import { hasNoSteamAchievements, epicUnlockError, epicDefinitionsUnavailable } from '../lib/achievement-state.js';
 import './detail-overview.css';
 import { detectionState } from '../lib/detection-state.js';
 
@@ -23,7 +23,7 @@ function progressSection(game, achievements, detected) {
   }
 
   const summary = el('div', 'collection-completion');
-  summary.append(el('span', '', noAchievements ? `暂无 ${platform} 成就` : known ? '完成度' : partial ? '等待补全定义' : '等待检测'));
+  summary.append(el('span', '', noAchievements ? `暂无 ${platform} 成就` : epicDefinitionsUnavailable(game) && !total ? '成就资料暂不可用' : epicUnlockError(game) ? '解锁状态待确认' : known ? '完成度' : partial ? '等待补全定义' : '等待检测'));
   if (known) summary.append(el('strong', '', `${progress}%`));
   panel.append(summary);
   if (known) {
@@ -37,7 +37,9 @@ function progressSection(game, achievements, detected) {
   }
   const hint = noAchievements ? `${platform} 当前未为此游戏提供成就。`
     : partial ? '目前仅发现已解锁项，补全定义后可计算进度。'
+    : epicDefinitionsUnavailable(game) && !total ? 'Epic 尚未提供此游戏的商店成就列表，当前无法确认成就总数。'
     : !total ? '成就资料尚未就绪，请查看记录状态。'
+    : epicUnlockError(game) ? '成就列表已获取，账号解锁记录暂不可用；已有记录保留，当前无法计算完成度。'
     : !detected ? '成就定义已就绪，等待读取解锁记录。'
     : progress === 100 ? '全部成就已解锁。' : `剩余 ${total - unlocked} 个成就`;
   panel.append(el('p', 'collection-hint', hint));
@@ -52,7 +54,7 @@ export function collectionOverview(game, achievements, detected, actions) {
   const detection = detectionState(game);
   const stateLabel = el('p', 'detection-state', detection.label); stateLabel.dataset.state = detection.state;
   status.append(el('h3', '', '记录状态'), stateLabel, el('p', 'detection-explanation', detection.detail));
-  if (game.achievementPlatform?.definitionError) status.append(el('p', 'form-error', `成就资料获取失败：${game.achievementPlatform.definitionError}。已有缓存和本地解锁仍保留。`));
+  if (game.achievementPlatform?.definitionError && !epicDefinitionsUnavailable(game)) status.append(el('p', 'form-error', `成就资料获取失败：${game.achievementPlatform.definitionError}。已有缓存和本地解锁仍保留。`));
   const diagnostics = el('details', 'diagnostics');
   const summary = el('summary'); summary.append(el('span', '', '检测详情'), icon('chevron')); diagnostics.append(summary);
   const fields = el('div', 'diagnostic-fields');
