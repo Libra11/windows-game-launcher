@@ -62,6 +62,7 @@ Release 说明由 GitHub 根据合并的 PR、贡献者和版本对比生成，�
 
 - 只读取 Steam 官方接口、游戏程序和本地成就记录；不会修改游戏文件或运行环境。
 - 本地游戏自动解锁需要运行环境写出受支持的记录。没有记录时，详情页会显示“未找到解锁记录文件”，并允许手动记录成就。
+- 本地游戏要求管理员权限时，启动器会在 Windows 返回“需要提升权限”后弹出系统 UAC 确认，授权后启动并继续跟踪进程。取消授权会提示游戏未启动，可以重新尝试；启动器本身无需以管理员身份运行。
 - RUNE／CODEX INI 仅以对应成就分区的 `Achieved=1` 判定解锁，读取 `UnlockTime`，忽略 `SteamAchievements` 索引和进度数字；必须先获取对应游戏的成就定义，避免串入其他游戏记录。
 - 当前自动读取器支持 GSE／Goldberg JSON 的 `earned`／`earned_time`，也接受兼容字段 `Achieved`／`UnlockTime`。对于 AppID `1123050` 的 GRIME，还会在没有运行环境记录文件时只读扫描 `%USERPROFILE%\AppData\LocalLow\Clover Bite\GRIME\Save Files` 中的 `.gd` 存档，通过已缓存的 Steam 成就定义验证解锁标识。存档只有解锁标识，没有可靠的解锁时间；历史解锁以首次导入时间记录。其他不产生记录文件的游戏仍需要专属规则或手动记录。
 - 数据库位于系统应用数据目录的 `dev.local.achievementlauncher/games.sqlite`。Steam Web API Key 也保存在该本机数据库中；请保护当前 Windows 用户账户与该文件。

@@ -2,12 +2,13 @@ use crate::model::Game;
 use serde::Serialize;
 use std::{
     collections::HashMap,
-    path::{Path, PathBuf},
+    path::Path,
     time::{Duration, Instant},
 };
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 mod clock;
 mod daily;
+mod launch;
 mod recovery;
 pub(crate) use recovery::Record as RecoveryRecord;
 
@@ -43,6 +44,7 @@ struct Session {
     id: String,
     game: Game,
     requested: Instant,
+    launch_pending: bool,
     started: Option<Instant>,
     pending_start: Option<String>,
     known: HashMap<Pid, u64>,
@@ -122,6 +124,7 @@ impl Tracker {
                 id: uuid::Uuid::new_v4().to_string(),
                 game: game.clone(),
                 requested: Instant::now(),
+                launch_pending: !already_running,
                 started: already_running.then(Instant::now),
                 pending_start: already_running.then(|| chrono::Utc::now().to_rfc3339()),
                 known,
@@ -147,6 +150,8 @@ impl Tracker {
                 .is_some_and(|session| session.game.source == "steam"),
         );
         if let Some(session) = self.sessions.get_mut(game_id) {
+            session.launch_pending = false;
+            session.requested = Instant::now();
             if let Some(pid) = pid {
                 let pid = Pid::from_u32(pid);
                 if let Some(process) = self.system.process(pid) {
@@ -239,8 +244,9 @@ impl Tracker {
             } else {
                 session.empty_ticks = session.empty_ticks.saturating_add(1);
             }
-            let failed =
-                session.started.is_none() && session.requested.elapsed() >= Duration::from_secs(90);
+            let failed = !session.launch_pending
+                && session.started.is_none()
+                && session.requested.elapsed() >= Duration::from_secs(90);
             let finished = session.started.is_some() && session.empty_ticks >= 2;
             let seconds = session.clock.seconds();
             session
@@ -316,19 +322,7 @@ fn steam_process(process: &sysinfo::Process, appid: &str) -> bool {
 
 pub fn spawn(game: &Game) -> Result<Option<u32>, String> {
     if game.source == "local" {
-        let exe = PathBuf::from(&game.exe_path);
-        if !exe.is_file() {
-            return Err("游戏启动文件不存在，请在编辑游戏中重新选择".into());
-        }
-        let mut child = std::process::Command::new(&exe)
-            .current_dir(exe.parent().ok_or("游戏目录不存在")?)
-            .spawn()
-            .map_err(|e| format!("无法启动游戏：{e}"))?;
-        let pid = child.id();
-        std::thread::spawn(move || {
-            let _ = child.wait();
-        });
-        Ok(Some(pid))
+        launch::local(Path::new(&game.exe_path)).map(Some)
     } else {
         #[cfg(target_os = "windows")]
         let child = std::process::Command::new("explorer.exe")
@@ -417,6 +411,23 @@ mod tests {
         assert_eq!(tracker.info(&game.id).state, "idle");
         assert!(tracker.is_empty());
         std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn launch_timeout_starts_after_authorization_returns() {
+        let game = game(Path::new("missing-game.exe"));
+        let mut tracker = Tracker::default();
+        assert!(tracker.reserve(&game).unwrap());
+        tracker.sessions.get_mut(&game.id).unwrap().requested =
+            Instant::now() - Duration::from_secs(91);
+        assert!(tracker.tick().is_empty());
+        assert_eq!(tracker.info(&game.id).state, "starting");
+
+        tracker.attach(&game.id, None);
+        assert!(tracker.tick().is_empty());
+        tracker.sessions.get_mut(&game.id).unwrap().requested =
+            Instant::now() - Duration::from_secs(91);
+        assert!(tracker.tick()[0].failed);
+        assert_eq!(tracker.info(&game.id).state, "unconfirmed");
     }
     #[test]
     fn failed_launch_does_not_stay_busy() {

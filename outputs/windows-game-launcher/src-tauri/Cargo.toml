@@ -1,6 +1,6 @@
 [package]
 name = "local_achievement_launcher"
-version = "0.2.1"
+version = "0.2.2"
 description = "Windows game launcher with local achievements"
 edition = "2021"
 
@@ -29,6 +29,6 @@ roxmltree = "0.20"
 scraper = "0.24"
 
 [target."cfg(windows)".dependencies]
-windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell", "Win32_Storage_FileSystem"] }
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Registry", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Storage_FileSystem"] }
 winreg = "0.56"
 windows-sys = { version = "0.61", features = ["Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
