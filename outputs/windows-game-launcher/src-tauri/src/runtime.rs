@@ -243,7 +243,9 @@ impl Tracker {
                 session.started.is_none() && session.requested.elapsed() >= Duration::from_secs(90);
             let finished = session.started.is_some() && session.empty_ticks >= 2;
             let seconds = session.clock.seconds();
-            session.daily.sample(seconds, chrono::Local::now().fixed_offset());
+            session
+                .daily
+                .sample(seconds, chrono::Local::now().fixed_offset());
             if session.pending_start.is_some()
                 || finished
                 || failed
@@ -411,17 +413,21 @@ mod tests {
         assert_eq!(finished.len(), 1);
         assert!(finished[0].finished);
         assert!(finished[0].seconds >= 2);
-        assert_eq!(finished[0].daily.values().sum::<u64>(),finished[0].seconds);
+        assert_eq!(finished[0].daily.values().sum::<u64>(), finished[0].seconds);
         assert_eq!(tracker.info(&game.id).state, "idle");
         assert!(tracker.is_empty());
         std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn failed_launch_does_not_stay_busy() {
-        let game = game(Path::new("missing-game.exe"));
+        let mut game = game(Path::new("missing-game.exe"));
+        game.launch_uri = "missing-shortcut.lnk".into();
         let mut tracker = Tracker::default();
         assert!(tracker.reserve(&game).unwrap());
-        assert!(spawn(&game).is_err());
+        assert_eq!(
+            spawn(&game).unwrap_err(),
+            "游戏启动文件不存在，请在编辑游戏中重新选择"
+        );
         tracker.fail(&game.id, "启动文件不存在");
         assert_eq!(tracker.info(&game.id).state, "error");
         assert!(tracker.reserve(&game).unwrap());

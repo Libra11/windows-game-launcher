@@ -14,6 +14,7 @@ mod grime;
 mod installation;
 mod library_commands;
 mod library_removal;
+mod local_import;
 mod model;
 mod record_paths;
 mod runtime;
@@ -141,6 +142,7 @@ pub fn run() {
             library_commands::save_settings,
             library_commands::toggle_manual,
             runtime_commands::launch_game,
+            local_import::prepare_local_import,
             runtime_commands::set_favorite,
             runtime_commands::set_launch_path,
             detection::check_detection,

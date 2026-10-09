@@ -3,7 +3,7 @@ import { field } from './form-fields.js';
 import { command } from '../lib/bridge.js';
 import { customSelect } from './custom-select.js';
 
-export function gamePlatformPicker(exeInput, initial, gameId) {
+export function gamePlatformPicker(exeInput, initial, gameId, fallbackPlatform = '') {
   const root = el('div', 'field');
   const select = customSelect([['','请选择成就平台'],['steam','Steam 成就'],['xbox','Xbox 成就'],['none','暂不关联成就']],'','成就平台');
   const hint = el('p', 'form-hint', '选择游戏启动文件后自动识别；封面和简介可以独立关联 Steam。'); hint.setAttribute('aria-live', 'polite');
@@ -29,6 +29,9 @@ export function gamePlatformPicker(exeInput, initial, gameId) {
       if (disposed || current !== generation) return;
       profile = result; source.input.value = result.publicSource || "";
       if (['steam', 'xbox'].includes(result.platform)) select.value = result.platform;
+      else select.value = fallbackPlatform;
+      // 拖入导入默认跳过 Steam 资料，避免识别出接口后强制要求填写 AppID。
+      if (result.platform === 'steam' && fallbackPlatform === 'none' && !selection?.appid) select.value = 'none';
       updateSource();
       hint.textContent = `${result.reason}${result.titleId ? ` · Xbox Title ID ${result.titleId}` : ''}${result.steamAppid ? ` · 本地配置编号 ${result.steamAppid}（不一定是游戏的官方编号）` : ''}${result.titleId ? result.automatic ? '。当前游戏有本地接口捕获支持，具体版本将在运行时验证。' : '。可获取 Xbox 定义，当前版本尚无自动解锁支持。' : ''}`;
       if (selection?.appid) review();

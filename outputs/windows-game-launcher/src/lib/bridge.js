@@ -2,6 +2,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import { createStatisticsPreview } from './statistics-preview.js';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 export const preview = import.meta.env.DEV && !isTauri();
 const demoGames = [
   ['1123050', 'GRIME', 'local', '探索超现实的异域世界，用活体武器吞噬敌人，在不断进化中寻找自己的起源。'],
@@ -83,3 +84,4 @@ const statisticsPreview = preview ? createStatisticsPreview(demoGames) : null;
 export const onUnlock = handler => isTauri() ? listen('achievement-unlocked', handler) : Promise.resolve(() => {});
 export const onLibraryChange = handler => isTauri() ? listen('library-changed', handler) : Promise.resolve(() => {});
 export const onLauncherError = handler => isTauri() ? listen('launcher-error', handler) : Promise.resolve(() => {});
+export const onFileDrop = handler => isTauri() ? getCurrentWebviewWindow().onDragDropEvent(handler) : Promise.resolve(() => {});

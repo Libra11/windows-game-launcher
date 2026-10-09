@@ -127,6 +127,12 @@ pub(crate) fn import_local(
     };
     let mut conn = lock_db(&state)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
+    if db::games(&tx)?.iter().any(|existing| {
+        existing.source == "local"
+            && crate::local_import::same_program(&existing.exe_path, &game.exe_path)
+    }) {
+        return Err("此游戏程序已在游戏库中，请编辑已有条目".into());
+    }
     crate::achievement_platform::save(
         &tx,
         &game,
@@ -179,6 +185,7 @@ pub(crate) fn update_local(
     if !PathBuf::from(&exe_path).is_file() {
         return Err("游戏启动文件不存在".into());
     }
+    game.launch_uri.clear();
     game.exe_path = exe_path;
     if changed {
         game.metadata_json = "{}".into();

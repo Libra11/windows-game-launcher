@@ -5,16 +5,18 @@ import { field, browse, submit } from './form-fields.js';
 import { gamePlatformPicker } from './game-platform-picker.js';
 import { steamGameSearch } from './steam-game-search.js';
 
-export function addDialog(actions) {
+export function addDialog(actions, candidate) {
   const form = el('form', 'form');
   const controls = el('fieldset', 'add-game-fields');
-  const search = steamGameSearch();
-  const exe = field('游戏启动文件', '', '选择游戏的 .exe 文件');
+  const search = steamGameSearch(candidate);
+  const exe = field('游戏启动文件', candidate?.exePath || '', '选择游戏的 .exe 文件');
   exe.input.required = true; browse(exe, ['exe']);
-  const platform = gamePlatformPicker(exe.input);
+  const platform = gamePlatformPicker(exe.input, undefined, undefined, candidate ? 'none' : '');
   search.element.addEventListener('change', () => platform.setGame(search.appid, search.title));
   const localLabel = el('label', 'setting-check steam-search-local');
   const localOnly = el('input'); localOnly.type = 'checkbox';
+  localOnly.checked = !!candidate;
+  if (candidate) search.setLocalOnly(true);
   localLabel.append(localOnly, el('span', '', '跳过 Steam 资料关联（不获取 Steam 成就）'));
   localOnly.addEventListener('change', () => search.setLocalOnly(localOnly.checked));
   controls.append(exe.wrapper, platform.element, search.element, localLabel,
@@ -41,4 +43,6 @@ export function addDialog(actions) {
       if (syncError) actions.toast(`游戏已添加，资料暂未同步：${syncError}；可稍后点击“更新资料”。`, true);
     } finally { controls.disabled = false; }
   });
+  if (candidate) exe.input.dispatchEvent(new Event('change', { bubbles:true }));
+  return dialog;
 }
