@@ -26,6 +26,26 @@ npm run tauri build
 
 安装包输出在 `src-tauri/target/release/bundle/`。当前代码可在 macOS 上编译与运行测试，但 Windows 安装包应在 Windows 环境构建。
 
+## GitHub 自动构建与 Release
+
+仓库根目录的 [Windows Release 工作流](../../.github/workflows/windows-build.yml) 仅在推送 `v*` 版本标签时，使用 GitHub 托管的 Windows 环境构建 x64 NSIS 安装包。日常推送、PR 和手动运行不会触发打包。
+
+- 构建成功后自动发布 Release，上传 `.exe` 安装包，并自动生成 GitHub 发布说明，无需手动确认。包含 `-` 的版本标签标记为预发布。
+- 上传前将安装包文件名统一为 `youji_版本_x64-setup.exe`，避免 GitHub 移除中文文件名中的应用名称；应用名称仍为“游迹”。
+- 同时上传 `youji-windows-x64` Actions 产物，保留 14 天，可从工作流运行页面下载。
+- 构建任务只需读取仓库；Release 任务使用 GitHub 自动提供的 `GITHUB_TOKEN` 写权限，无需额外配置个人 Token。
+
+发布前先统一 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml` 和 `src-tauri/tauri.conf.json` 的版本，并更新 `src-tauri/Cargo.lock`。例如应用版本为 `0.2.2` 时，提交并推送该版本代码后执行：
+
+```powershell
+git tag v0.2.2
+git push origin v0.2.2
+```
+
+标签与应用版本不一致时会在构建前失败。构建使用 `npm ci` 和 Cargo `--locked`，依赖锁文件必须已提交。`src-tauri/resources/XboxLocalProbe.exe` 等打包资源也需要在仓库中；工作流只上传生成的安装包。
+
+Release 说明由 GitHub 根据合并的 PR、贡献者和版本对比生成，不会自动把代码改动总结成中文功能说明。同一标签已有草稿时，会更新安装包、保留已编辑的说明并自动发布；已发布的 Release 不会被覆盖。
+
 ## 首次使用
 
 1. 在“设置”中填入 [Steam Web API Key](https://steamcommunity.com/dev/apikey) 与 SteamID64。账号游戏详情需可见，游戏库和官方解锁状态才能通过接口读取。

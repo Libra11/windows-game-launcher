@@ -1,0 +1,102 @@
+name: Windows Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: outputs/windows-game-launcher
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 校验发布版本
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ../../.github/scripts/check-release-version.ps1 -Tag $env:RELEASE_TAG
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: outputs/windows-game-launcher/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: outputs/windows-game-launcher/src-tauri -> target
+
+      - name: 安装前端依赖
+        run: npm ci
+
+      - name: 构建 Windows x64 安装包
+        run: npm run tauri build -- --target x86_64-pc-windows-msvc --bundles nsis --ci -- --locked
+
+      - name: 统一安装包文件名
+        run: |
+          $installers = @(Get-ChildItem -LiteralPath 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Filter '*.exe' -File)
+          if ($installers.Count -ne 1) {
+            throw '预期生成一个 NSIS 安装包。'
+          }
+          $version = (Get-Content -LiteralPath 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json).version
+          Rename-Item -LiteralPath $installers[0].FullName -NewName "youji_${version}_x64-setup.exe"
+
+      - name: 上传安装包
+        uses: actions/upload-artifact@v7
+        with:
+          name: youji-windows-x64
+          path: outputs/windows-game-launcher/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: youji-windows-x64
+          path: release
+
+      - name: 发布 Release 并生成说明
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          if draft=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft'); then
+            if [[ "$draft" != "true" ]]; then
+              echo "Release 已发布，停止覆盖安装包。" >&2
+              exit 1
+            fi
+            gh release upload "$RELEASE_TAG" release/*.exe --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+          else
+            flags=()
+            if [[ "$RELEASE_TAG" == *-* ]]; then
+              flags+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" release/*.exe \
+              --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "游迹 $RELEASE_TAG" --generate-notes "${flags[@]}"
+          fi
