@@ -18,8 +18,11 @@ if ($Before -ne ('0' * 40)) {
 $changed = $version -cne $previousVersion
 $tag = "v$version"
 if ($changed) {
-    $tagCommit = git -C $ProjectPath rev-parse --verify "refs/tags/$tag^{commit}" 2>$null
-    if ($LASTEXITCODE -eq 0) {
+    $existingTag = git -C $ProjectPath tag --list $tag
+    if ($LASTEXITCODE -ne 0) { throw '无法查询版本标签，停止自动发布。' }
+    if ($existingTag) {
+        $tagCommit = git -C $ProjectPath rev-parse --verify "refs/tags/$tag^{commit}"
+        if ($LASTEXITCODE -ne 0) { throw '无法读取版本标签指向的提交，停止自动发布。' }
         $headCommit = git -C $ProjectPath rev-parse HEAD
         if ($LASTEXITCODE -ne 0 -or $tagCommit -cne $headCommit) {
             throw '版本标签已指向其他提交，请升级版本号后发布。'

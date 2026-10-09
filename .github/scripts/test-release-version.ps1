@@ -38,6 +38,16 @@ try {
     $head = Git-Test @('rev-parse', 'HEAD')
 
     $output = Join-Path $testRoot 'outputs.txt'
+    # 模拟 Actions 的 PowerShell 包装器：最后一个原生命令的退出码会成为步骤退出码。
+    $runner = Join-Path $testRoot 'actions-runner.ps1'
+    @'
+param([string]$Detect, [string]$Before, [string]$ProjectPath)
+$ErrorActionPreference = 'Stop'
+& $Detect -Before $Before -ProjectPath $ProjectPath -OutputPath ''
+if (Test-Path variable:LASTEXITCODE) { exit $LASTEXITCODE }
+'@ | Set-Content -LiteralPath $runner
+    & (Get-Process -Id $PID).Path -NoProfile -File $runner -Detect $detect -Before $before -ProjectPath $project
+    if ($LASTEXITCODE -ne 0) { throw '新版本标签尚不存在时，Actions 步骤必须成功' }
     $bump = & $detect -Before $before -ProjectPath $project -OutputPath $output
     if (-not $bump.Changed -or $bump.Tag -ne 'v0.2.2' -or
         (Get-Content $output) -notcontains 'changed=true') { throw '版本变更或 GitHub 输出检测失败' }
