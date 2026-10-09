@@ -12,8 +12,8 @@ impl From<String> for Error {
     }
 }
 
-async fn get(client: &reqwest::Client, token: &str, url: reqwest::Url) -> Result<Value, Error> {
-    let response = client
+async fn get(token: &str, url: reqwest::Url) -> Result<Value, Error> {
+    let response = epic_auth::client()?
         .get(url)
         .bearer_auth(token)
         .send()
@@ -126,7 +126,7 @@ fn parse_game(item: &Value, metadata: &Value) -> Option<Game> {
     })
 }
 
-async fn game(client: reqwest::Client, token: String, item: Value) -> Result<Option<Game>, Error> {
+async fn game(token: String, item: Value) -> Result<Option<Game>, Error> {
     let namespace = text(&item, "namespace");
     let catalog = text(&item, "catalogItemId");
     let mut url = reqwest::Url::parse(
@@ -144,7 +144,7 @@ async fn game(client: reqwest::Client, token: String, item: Value) -> Result<Opt
         .append_pair("includeDLCDetails", "true")
         .append_pair("includeMainGameDetails", "true")
         .append_pair("locale", "zh-CN");
-    let data = get(&client, &token, url).await?;
+    let data = get(&token, url).await?;
     let metadata = data
         .get(catalog)
         .filter(|v| v.is_object())
@@ -153,7 +153,6 @@ async fn game(client: reqwest::Client, token: String, item: Value) -> Result<Opt
 }
 
 pub(crate) async fn owned_games(token: &str) -> Result<Vec<Game>, Error> {
-    let client = epic_auth::client()?;
     let mut cursor = None;
     let mut cursors = HashSet::new();
     let mut items = BTreeMap::new();
@@ -166,7 +165,7 @@ pub(crate) async fn owned_games(token: &str) -> Result<Vec<Game>, Error> {
         if let Some(cursor) = cursor.as_deref() {
             url.query_pairs_mut().append_pair("cursor", cursor);
         }
-        let (records, next) = page(&get(&client, token, url).await?)?;
+        let (records, next) = page(&get(token, url).await?)?;
         for item in records {
             if !text(&item, "appName").is_empty()
                 && !text(&item, "namespace").is_empty()
@@ -196,7 +195,7 @@ pub(crate) async fn owned_games(token: &str) -> Result<Vec<Game>, Error> {
             let Some(item) = pending.next() else {
                 break;
             };
-            tasks.spawn(game(client.clone(), token.to_owned(), item));
+            tasks.spawn(game(token.to_owned(), item));
         }
         let Some(result) = tasks.join_next().await else {
             break;

@@ -190,13 +190,7 @@ async fn fetch(
     namespace: &str,
 ) -> Result<Vec<AchievementDefinition>, String> {
     validate_url(source)?;
-    let response = reqwest::Client::builder()
-        .user_agent("GameCollection/0.2.1")
-        .redirect(reqwest::redirect::Policy::none())
-        .connect_timeout(std::time::Duration::from_secs(5))
-        .timeout(std::time::Duration::from_secs(12))
-        .build()
-        .map_err(|_| "网络初始化失败")?
+    let response = crate::network::client(crate::network::Service::Public)?
         .get(source)
         .send()
         .await

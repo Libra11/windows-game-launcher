@@ -1,4 +1,5 @@
 import { el, button, icon, metadata } from '../lib/dom.js';
+import { setImageSource } from '../lib/network-images.js';
 import { achievementEmptyMessage } from '../lib/achievement-state.js';
 import { achievementImageSources } from '../lib/achievement-images.js';
 
@@ -25,8 +26,8 @@ export function achievementList(game, achievements, filter, detected, actions) {
     const sources = achievementImageSources(image);
     if (sources.length) {
       const img = el('img'); img.alt = ''; img.loading = 'lazy';
-      img.onerror = () => { if (sources.length) img.src = sources.shift(); else img.remove(); };
-      img.src = sources.shift(); art.append(img);
+      img.onerror = () => { if (sources.length) setImageSource(img, sources.shift()); else img.remove(); };
+      setImageSource(img, sources.shift()); art.append(img);
     }
     const text = el('div', 'achievement-copy'); text.append(el('h3', '', name), el('p', '', description || (item.hidden ? '隐藏成就' : '完成游戏中的对应挑战')));
     const extra = [Number.isFinite(details.xp) ? `${details.xp} XP` : '', details.tier || '', Number.isFinite(details.rarity) ? `解锁率 ${details.rarity.toFixed(1)}%` : ''].filter(Boolean);

@@ -11,8 +11,8 @@
   },
   "app": {
     "macOSPrivateApi": true,
-    "windows": [{ "title": "游迹", "decorations": false, "shadow": true, "fullscreen": true, "width": 1280, "height": 800, "minWidth": 900, "minHeight": 600 }],
+    "windows": [{ "title": "游迹", "dragDropEnabled": true, "decorations": false, "shadow": true, "fullscreen": true, "width": 1280, "height": 800, "minWidth": 900, "minHeight": 600 }],
     "security": { "csp": "default-src 'self' tauri: asset:; img-src 'self' asset: http: https: data:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost http://127.0.0.1:1420" }
   },
-  "bundle": { "active": true, "targets": ["nsis", "msi"], "icon": ["icons/icon.png", "icons/icon.ico"], "resources": ["resources/XboxLocalProbe.exe"] }
+  "bundle": { "active": true, "targets": ["nsis", "msi"], "icon": ["icons/icon.png", "icons/icon.ico"], "resources": ["resources/XboxLocalProbe.exe"], "windows": { "wix": { "language": "zh-CN" } } }
 }

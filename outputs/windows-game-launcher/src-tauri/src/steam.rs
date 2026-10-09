@@ -6,12 +6,7 @@ use reqwest::Client;
 use serde_json::Value;
 
 fn client() -> Result<Client, String> {
-    Client::builder()
-        .user_agent("LocalAchievementLauncher/0.1")
-        .connect_timeout(std::time::Duration::from_secs(8))
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(|_| "无法初始化网络连接".to_string())
+    crate::network::client(crate::network::Service::Steam)
 }
 
 pub(crate) async fn json_get(url: &str, query: &[(&str, &str)]) -> Result<Value, String> {
@@ -28,9 +23,9 @@ pub(crate) async fn json_get(url: &str, query: &[(&str, &str)]) -> Result<Value,
             };
             // 不输出包含 API Key 的请求 URL。
             if error.is_timeout() {
-                format!("{service}连接超时，请检查网络；使用代理时请开启 Windows 系统代理，然后点击搜索重试")
+                format!("{service}连接超时，请检查网络和代理配置后重试")
             } else if error.is_connect() {
-                format!("无法连接{service}，请检查网络、系统代理及代理服务是否运行")
+                format!("无法连接{service}，请检查网络、代理配置及代理服务是否运行")
             } else {
                 format!("{service}网络请求失败，请检查网络后重试")
             }
@@ -135,23 +130,7 @@ pub async fn player_unlocks(
 }
 
 pub async fn metadata(appid: &str) -> Result<Value, String> {
-    let data = json_get(
-        "https://store.steampowered.com/api/appdetails",
-        &[("appids", appid), ("l", "schinese")],
-    )
-    .await?;
-    let app = data.get(appid).ok_or("Steam 商店未返回游戏资料")?;
-    if app.get("success") != Some(&Value::Bool(true)) {
-        return Err("Steam 商店没有这款游戏的资料".into());
-    }
-    let item = app.get("data").ok_or("Steam 商店资料缺失")?;
-    Ok(serde_json::json!({
-        "name": item.get("name").and_then(Value::as_str).unwrap_or(""),
-        "cover": item.get("header_image").and_then(Value::as_str).unwrap_or(""),
-        "description": item.get("short_description").and_then(Value::as_str).unwrap_or(""),
-        "releaseDate": item.pointer("/release_date/date").and_then(Value::as_str).unwrap_or(""),
-        "developers": item.get("developers").cloned().unwrap_or(Value::Array(vec![]))
-    }))
+    crate::steam_store::metadata(appid).await
 }
 
 #[cfg(test)]

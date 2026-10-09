@@ -102,6 +102,9 @@ pub(crate) fn set_launch_path(
     {
         return Err("请选择存在的游戏启动程序".into());
     }
+    if game.source == "local" {
+        game.launch_uri.clear();
+    }
     game.exe_path = exe_path;
     db::upsert_game(&conn, &game)
 }

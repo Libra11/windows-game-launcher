@@ -37,6 +37,7 @@
 .settings-page .theme-option.active { background:none; border-bottom-color:var(--accent-ink); color:var(--accent-ink); }
 .settings-page .settings-tools { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .settings-page .secondary { min-height:38px; padding:9px 13px; border-radius:6px; font-size:11px; }
+.settings-page .settings-network-actions > button { width:130px; min-width:130px; height:40px; min-height:40px; padding:10px 14px; border-radius:6px; font-size:12px; line-height:18px; display:inline-flex; align-items:center; justify-content:center; }
 .settings-link { display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:7px 0; border:0; background:none; color:var(--accent-ink); font-size:11px; }
 .settings-link>.icon { width:14px; height:14px; }
 .settings-page .form { gap:16px; }

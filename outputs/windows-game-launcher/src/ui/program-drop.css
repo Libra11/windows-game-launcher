@@ -1,0 +1,8 @@
+.program-drop-overlay:not([hidden]) {
+  position:fixed; inset:16px; z-index:3000; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:12px; pointer-events:none;
+  border:2px dashed var(--accent); border-radius:var(--radius);
+  background:color-mix(in srgb,var(--background) 94%,transparent); color:var(--text);
+}
+.program-drop-overlay strong { font-size:24px; }
+.program-drop-overlay span { color:var(--muted); }

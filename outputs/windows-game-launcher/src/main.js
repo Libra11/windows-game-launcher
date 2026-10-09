@@ -26,6 +26,8 @@ import { librarySnapshot, preserveArtwork } from './lib/library-refresh.js';
 import { createStatisticsController } from './lib/statistics.js';
 import { statisticsView } from './ui/statistics-view.js';
 import { closeModal } from './ui/modal.js';
+import { mountProgramDrop } from './ui/program-drop.js';
+import { watchNetworkImages } from './lib/network-images.js';
 
 const state = { page:'library', games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
 const animateView = createViewMotion();
@@ -101,6 +103,7 @@ async function refreshOnce(silent) {
     statistics.refresh();
 }
 const dialogActions = { run, refresh, toast, added: async game => { await refresh(); await select(game); toast('游戏已加入收藏'); actions.guide(actions.game(game.id) || game); } };
+mountProgramDrop(dialogActions).catch(error => toast(`拖入导入暂不可用：${String(error)}`, true));
 const statistics = createStatisticsController({
   command, render, visible:()=>state.page==='statistics' && !state.selectedId && !document.hidden && !document.querySelector('dialog[open]'),
 });
@@ -231,6 +234,7 @@ onUnlock(async event => {
 }).catch(() => {});
 onLibraryChange(()=>refresh(true).catch(()=>{})).catch(()=>{});
 onLauncherError(event=>toast(String(event.payload),true)).catch(()=>{});
+watchNetworkImages().catch(()=>{});
 setInterval(() => { if (!document.hidden && !document.querySelector('dialog[open]')) refresh(true).catch(() => {}); }, 5000);
 $('#content').append(el('div', 'loading-state', '正在打开你的收藏…'));
 refresh().catch(() => { $('#content').replaceChildren(el('div', 'empty-state', '暂时无法读取游戏库，请在桌面启动器中打开。')); });
