@@ -1,5 +1,12 @@
 # 项目交接状态
 
+## 2026-10-09 Steam 成就图标旧 CDN 兼容
+
+- 用户截图显示沉星之序 499170 的 32 项成就只有默认奖杯。安装版数据库中全部 icon 为 HTTPS；重新查询 Steam schema 图标没有改变。旧 steamcdn-a.akamaihd.net/steamcommunity/public/ 路径抽查返回 404，最初「只能等 Steam 提供图片」的结论不成立。
+- 用户 Steam 客户端截图后核对 steamcommunity.com/stats/499170/achievements 页面，实际采用 shared.akamai.steamstatic.com/community_assets/。同一图片哈希的新路径返回 200；页面全部 32 张 HEAD 验证成功。
+- 新 achievement-images.js 仅对指定旧 Steam 主机和社区成就图片路径转换，保持 appid/图片哈希，原 HTTPS 地址作为备用。其他 HTTPS 来源保持原样，不修改数据库；已有缓存也立即使用新路径。成就列表加载器逐个尝试候选地址，全部失败才保留奖杯占位。
+- 新图标映射 3 项测试、前端构建、Windows release/NSIS 打包通过。安装包 outputs/游迹_0.2.1_x64-setup-icon-fix.exe，含此前 Epic 修复；尚未替用户安装，安装后无需重新导入成就。未自动提交或推送。
+
 ## 2026-10-08 Epic 空资料响应误判身份冲突修复
 
 - 第二张截图对应 INSIDE。官方查询 sandbox 为 13bb5776b9e1424d84ce42d9ba61c0ca，返回 productAchievementsRecordBySandbox 对象但 sandboxId/totalAchievements/achievements 全为 null、无接口 errors。原解析先比较空标识导致误报游戏身份不一致。
