@@ -56,10 +56,18 @@ async function run(name, args) {
 }
 mountTitlebar(toast);
 let selectionVersion = 0;
+let libraryReturnPosition;
 async function select(game) {
   const version = ++selectionVersion;
   const items = await run('list_achievements', { gameId: game.id });
   if (version !== selectionVersion) return;
+  if (state.page === 'library' && !state.selectedId) {
+    libraryReturnPosition = {
+      bigScreen: state.bigScreen,
+      scroll: state.bigScreen ? $('#big-screen-host .big-screen-content')?.scrollTop || 0 : window.scrollY,
+      focus: document.activeElement?.dataset.focusKey || `game-${game.id}`,
+    };
+  }
   state.selectedId = game.id; state.achievements = items; state.achievementFilter = 'all'; render(); window.scrollTo(0, 0);
 }
 async function launch(game) {
@@ -136,9 +144,14 @@ const actions = {
   view: value => { state.view = value; render(); },
   back: () => {
     selectionVersion++; const returning=!!state.selectedId && state.page==='statistics';
+    const libraryPosition = state.selectedId && state.page === 'library' && libraryReturnPosition?.bigScreen === state.bigScreen ? libraryReturnPosition : null;
     if(!state.selectedId) state.page='library';
-    state.selectedId = ''; render(returning?statistics.state.returnFocus:undefined);
+    state.selectedId = ''; render(returning?statistics.state.returnFocus:libraryPosition?.focus);
     if(returning){if(state.bigScreen)$('#big-screen-host .big-screen-content').scrollTop=statistics.state.scroll;else window.scrollTo(0,statistics.state.scroll);statistics.refresh();}
+    if (libraryPosition) {
+      if (state.bigScreen) $('#big-screen-host .big-screen-content').scrollTop = libraryPosition.scroll;
+      else window.scrollTo(0, libraryPosition.scroll);
+    }
   },
   sync: async game => {
     try { toast(await run('sync_game', { gameId: game.id })); }
@@ -167,7 +180,10 @@ const bigMode = createBigScreenMode(state, render, toast, {
 });
 mountSidebar($('.sidebar'), {
   category: value => { selectionVersion++; state.page='library'; state.filter = value; state.selectedId = ''; render(); },
-  back:()=>{selectionVersion++;state.page='library';state.selectedId='';render();},
+  back:()=>{
+    if (state.page === 'library' && state.selectedId) return actions.back();
+    selectionVersion++;state.page='library';state.selectedId='';render();
+  },
   settings: actions.settings, preview,
   statistics:actions.statistics,
 });
