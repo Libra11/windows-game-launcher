@@ -106,7 +106,10 @@ export function steamGameSearch(initial = null) {
 
   if (initial) {
     if (initial.appid) select({ appid:initial.appid, name:initial.title, image:initial.image || '' });
-    else name.input.value = initial.title;
+    else {
+      name.input.value = initial.title;
+      name.input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   }
 
   return {

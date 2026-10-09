@@ -11,12 +11,10 @@ export function addDialog(actions, candidate) {
   const search = steamGameSearch(candidate);
   const exe = field('游戏启动文件', candidate?.exePath || '', '选择游戏的 .exe 文件');
   exe.input.required = true; browse(exe, ['exe']);
-  const platform = gamePlatformPicker(exe.input, undefined, undefined, candidate ? 'none' : '');
+  const platform = gamePlatformPicker(exe.input);
   search.element.addEventListener('change', () => platform.setGame(search.appid, search.title));
   const localLabel = el('label', 'setting-check steam-search-local');
   const localOnly = el('input'); localOnly.type = 'checkbox';
-  localOnly.checked = !!candidate;
-  if (candidate) search.setLocalOnly(true);
   localLabel.append(localOnly, el('span', '', '跳过 Steam 资料关联（不获取 Steam 成就）'));
   localOnly.addEventListener('change', () => search.setLocalOnly(localOnly.checked));
   controls.append(exe.wrapper, platform.element, search.element, localLabel,
