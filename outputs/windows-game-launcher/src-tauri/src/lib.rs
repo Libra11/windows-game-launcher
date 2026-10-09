@@ -11,7 +11,6 @@ mod epic_achievements;
 mod epic_auth;
 mod epic_library;
 mod grime;
-mod image_proxy;
 mod installation;
 mod library_commands;
 mod library_removal;
@@ -26,6 +25,7 @@ mod runtime_persistence;
 mod runtime_record;
 mod scanner;
 mod source;
+mod statistics;
 mod steam;
 mod steam_achievements;
 mod steam_identity;
@@ -33,8 +33,8 @@ mod steam_playtime;
 mod steam_search;
 mod steam_store;
 mod steam_sync;
-mod statistics;
 mod system_proxy;
+mod webview_proxy;
 mod xbox;
 mod xbox_local;
 
@@ -67,13 +67,11 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
-        .register_asynchronous_uri_scheme_protocol("youji-image", |_context, request, responder| {
-            image_proxy::handle(request, responder);
-        })
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             let mut conn = db::open(&dir.join("games.sqlite")).map_err(std::io::Error::other)?;
-            network::initialize(&conn, app.handle()).map_err(std::io::Error::other)?;
+            let proxy = network::initialize(&conn, app.handle()).map_err(std::io::Error::other)?;
+            app.manage(webview_proxy::WebviewProxy::from(&proxy));
             achievement_repair::remove_inferred_unlocks(&mut conn)
                 .map_err(std::io::Error::other)?;
             app.manage(AppState {
@@ -86,6 +84,12 @@ pub fn run() {
                 appdata: std::env::var_os("APPDATA").map(PathBuf::from),
                 public: std::env::var_os("PUBLIC").map(PathBuf::from),
             });
+            // 读取已保存代理后才创建 WebView，避免图片先使用旧的系统配置。
+            let main = tauri::WebviewWindowBuilder::from_config(
+                app.handle(),
+                &app.config().app.windows[0],
+            )?;
+            webview_proxy::configure(app.handle(), main).build()?;
             if let Err(error) = achievement_overlay::initialize(app.handle()) {
                 eprintln!("成就弹层初始化失败：{error}");
             }

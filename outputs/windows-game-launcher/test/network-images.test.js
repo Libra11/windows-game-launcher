@@ -1,17 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { imageSource, retryImages, failedArtwork } from '../src/lib/network-images.js';
+import { retryImages, setImageSource, watchNetworkImages, failedArtwork } from '../src/lib/network-images.js';
 import { artwork } from '../src/lib/dom.js';
 
-test('桌面图片走转发协议，完整保留原地址的查询和中文路径', () => {
-  const source = 'https://example.com/中文.png?size=large&token=a+b#image';
-  const url = new URL(imageSource(source, true, 7));
-  assert.equal(url.host, 'youji-image.localhost');
-  assert.equal(url.searchParams.get('url'), source);
-  assert.equal(url.searchParams.get('v'), '7');
-  assert.equal(imageSource(source, false), source);
-  assert.equal(imageSource('/app-icon.png', true), '/app-icon.png');
-  assert.equal(imageSource('data:image/png;base64,abc', true), 'data:image/png;base64,abc');
+test('图片直接使用原地址，保留查询、中文路径与片段，不包装代理或版本号', () => {
+  for (const source of ['https://example.com/中文.png?size=large&token=a+b#image', 'http://example.com/a.png', '/app-icon.png', 'data:image/png;base64,abc']) {
+    const image = {dataset:{},addEventListener(){}};
+    setImageSource(image, source);
+    assert.equal(image.src, source);
+    assert.equal(image.dataset.remoteSource, source);
+  }
 });
 
 test('失败封面重试保留交互节点，旧请求不能再次污染失败记录', () => {
@@ -49,12 +47,12 @@ test('失败封面重试保留交互节点，旧请求不能再次污染失败�
   } finally {globalThis.document = previousDocument; globalThis.isTauri = previousTauri; failedArtwork.clear();}
 });
 
-test('切换代理清除失败封面记录，重试封面及仍在页面中的图标', () => {
+test('恢复网络连接后清除失败封面记录，按原地址重试失败封面与图标', () => {
   const previousDocument = globalThis.document;
   const previousTauri = globalThis.isTauri;
   const events = [];
-  const host = { classList: {contains() {return false;}}, dispatchEvent(event) { events.push(event.type); } };
-  const image = { dataset: {remoteSource: 'https://example.com/icon.png'}, closest() { return null; } };
+  const host = { children: [], classList: {contains() {return false;}}, dispatchEvent(event) { events.push(event.type); } };
+  const image = { dataset: {remoteSource: 'https://example.com/icon.png'}, hidden:true, complete:true, naturalWidth:0, removeAttribute() { delete this.src; }, closest() { return null; } };
   const cover = { closest() { return host; } };
   globalThis.isTauri = true;
   globalThis.document = {querySelectorAll(selector) { return selector === '[data-artwork-key]' ? [host] : [image, cover]; }};
@@ -62,13 +60,55 @@ test('切换代理清除失败封面记录，重试封面及仍在页面中的�
     failedArtwork.add('https://example.com/cover.png');
     retryImages();
     assert.equal(failedArtwork.size, 0);
+    assert.equal(image.hidden, false);
     assert.deepEqual(events, ['network-image-retry']);
     const first = image.src;
     retryImages();
-    assert.notEqual(image.src, first);
+    assert.equal(image.src, first);
     assert.equal(cover.src, undefined);
   } finally {
     globalThis.document = previousDocument;
     globalThis.isTauri = previousTauri;
   }
+});
+
+test('恢复网络连接不重试成功或正在加载的图片，新节点继续使用原地址', () => {
+  const previousDocument = globalThis.document, previousTauri = globalThis.isTauri;
+  const source = 'https://example.com/success.png';
+  const changed = [];
+  const makeImage = (complete, width) => ({
+    dataset:{remoteSource:source}, complete, naturalWidth:width, closest:()=>null,
+    removeAttribute() { changed.push('removed'); },
+    set src(value) { changed.push(value); },
+  });
+  const successful = makeImage(true, 100), pending = makeImage(false, 0);
+  const hosts = [
+    {children:[{tagName:'IMG'}],classList:{contains:()=>true},dispatchEvent(){changed.push('loaded-cover');}},
+    {children:[{tagName:'IMG'}],classList:{contains:()=>false},dispatchEvent(){changed.push('pending-cover');}},
+  ];
+  globalThis.isTauri = true;
+  globalThis.document = {querySelectorAll: selector => selector === '[data-artwork-key]' ? hosts : [successful,pending]};
+  try {
+    retryImages(); retryImages();
+    assert.deepEqual(changed, []);
+    const recreated = {dataset:{},addEventListener(){}};
+    setImageSource(recreated, source);
+    assert.equal(recreated.src, source);
+  } finally {globalThis.document = previousDocument; globalThis.isTauri = previousTauri;}
+});
+
+test('失败图片重试监听 WebView 的联网事件，可以正常取消监听', async () => {
+  const previousWindow = globalThis.window, previousDocument = globalThis.document;
+  globalThis.window = new EventTarget();
+  globalThis.document = {querySelectorAll:()=>[]};
+  try {
+    const stop = await watchNetworkImages();
+    failedArtwork.add('https://example.com/failed.png');
+    window.dispatchEvent(new Event('online'));
+    assert.equal(failedArtwork.size, 0);
+    stop();
+    failedArtwork.add('https://example.com/failed.png');
+    window.dispatchEvent(new Event('online'));
+    assert.equal(failedArtwork.size, 1);
+  } finally {globalThis.window = previousWindow; globalThis.document = previousDocument; failedArtwork.clear();}
 });
