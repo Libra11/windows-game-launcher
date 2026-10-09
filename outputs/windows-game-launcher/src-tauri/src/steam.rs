@@ -6,12 +6,7 @@ use reqwest::Client;
 use serde_json::Value;
 
 fn client() -> Result<Client, String> {
-    Client::builder()
-        .user_agent("LocalAchievementLauncher/0.1")
-        .connect_timeout(std::time::Duration::from_secs(8))
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(|_| "无法初始化网络连接".to_string())
+    crate::network::client(crate::network::Service::Steam)
 }
 
 pub(crate) async fn json_get(url: &str, query: &[(&str, &str)]) -> Result<Value, String> {
@@ -28,9 +23,9 @@ pub(crate) async fn json_get(url: &str, query: &[(&str, &str)]) -> Result<Value,
             };
             // 不输出包含 API Key 的请求 URL。
             if error.is_timeout() {
-                format!("{service}连接超时，请检查网络；使用代理时请开启 Windows 系统代理，然后点击搜索重试")
+                format!("{service}连接超时，请检查网络和代理配置后重试")
             } else if error.is_connect() {
-                format!("无法连接{service}，请检查网络、系统代理及代理服务是否运行")
+                format!("无法连接{service}，请检查网络、代理配置及代理服务是否运行")
             } else {
                 format!("{service}网络请求失败，请检查网络后重试")
             }

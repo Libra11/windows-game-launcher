@@ -1,4 +1,5 @@
 import { artworkSources } from './artwork-sources.js';
+import { setImageSource, failedArtwork } from './network-images.js';
 
 export function el(tag, className = '', text = '') {
   const node = document.createElement(tag);
@@ -32,6 +33,7 @@ const paths = {
   play: '<path d="m8 4 12 8-12 8V4Z"/>',
   refresh: '<path d="M20 7a9 9 0 0 0-15-2L2 8m0-6v6h6m-4 9a9 9 0 0 0 15 2l3-3m0 6v-6h-6"/>',
   settings: '<path d="m10 3-1 3-3 1-3 3 2 2-1 4 3 2 3-1 3 3 3-1 1-3 3-2-1-3 1-3-3-2-3 1-2-3Z"/><circle cx="12" cy="12" r="3"/>',
+  network: '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/>',
   close: '<path d="m6 6 12 12M6 18 18 6"/>',
   folder: '<path d="M3 7V5h6l2 2h10v13H3V7Z"/>',
   check: '<path d="m5 12 4 4L19 6"/>',
@@ -68,8 +70,14 @@ export function button(text, className, onClick, glyph) {
 export function metadata(game) {
   try { return JSON.parse(game.metadataJson || '{}'); } catch { return {}; }
 }
-const failed = new Set();
+const failed = failedArtwork;
 export function artwork(host, game, wide = false) {
+  host.addEventListener('network-image-retry', () => {
+    const key = host.dataset.artworkKey;
+    host.classList.remove('art-loaded');
+    [...host.children].filter(node => node.tagName === 'IMG' || node.classList.contains('art-letter')).forEach(node => node.remove());
+    artwork(host, game, wide); host.dataset.artworkKey = key;
+  }, {once:true});
   host.append(el('span', 'art-letter', game.title.slice(0, 1).toUpperCase()));
   const info = metadata(game);
   const sources = artworkSources(info, wide);
@@ -81,8 +89,8 @@ export function artwork(host, game, wide = false) {
     const image = el('img');
     image.alt = ''; image.loading = wide ? 'eager' : 'lazy';
     image.onload = () => image.parentElement?.classList.add('art-loaded');
-    image.onerror = () => { const current = image.parentElement; failed.add(url); image.remove(); if (current) next(current); };
-    image.src = url; target.append(image);
+    image.onerror = () => { const current = image.parentElement; if (!current) return; failed.add(url); image.remove(); next(current); };
+    setImageSource(image, url); target.append(image);
   };
   next();
 }

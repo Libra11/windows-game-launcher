@@ -51,13 +51,7 @@ impl Session {
 }
 
 pub(crate) fn client() -> Result<reqwest::Client, String> {
-    reqwest::Client::builder()
-        .user_agent("EpicGamesLauncher/14.0.8-22004686+++Portal+Release-Live")
-        .redirect(reqwest::redirect::Policy::none())
-        .connect_timeout(std::time::Duration::from_secs(8))
-        .timeout(std::time::Duration::from_secs(20))
-        .build()
-        .map_err(|_| "无法初始化 Epic 网络连接".into())
+    crate::network::client(crate::network::Service::Epic)
 }
 
 pub(crate) fn network_error(error: reqwest::Error) -> String {
@@ -65,7 +59,7 @@ pub(crate) fn network_error(error: reqwest::Error) -> String {
     if error.is_timeout() {
         "Epic 连接超时，请检查网络后重试".into()
     } else {
-        "无法连接 Epic，请检查网络和系统代理后重试".into()
+        "无法连接 Epic，请检查网络和代理配置后重试".into()
     }
 }
 

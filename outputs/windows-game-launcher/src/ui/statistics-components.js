@@ -1,6 +1,7 @@
 import { el, button, icon, artwork, sourceName } from '../lib/dom.js';
 import { duration, percent, localDate } from '../lib/statistics.js';
 import { modal } from './modal.js';
+import { setImageSource } from '../lib/network-images.js';
 
 export function segment(options, value, change, key) {
   const group=el('div','stats-segment');group.dataset.kind=key;group.setAttribute('role','group');group.setAttribute('aria-label',key==='period'?'统计周期':key==='source'?'统计平台':'显示方式');
@@ -42,7 +43,7 @@ export function unlockList(events, actions) {
     row.dataset.focusKey='stats-unlock-'+item.gameId+'-'+item.apiName;
     row.setAttribute('aria-label',item.name+'，'+item.gameTitle);
     const image=el('span','stats-unlock-icon');image.append(icon('trophy'));
-    if(item.icon){const img=el('img');img.src=item.icon;img.alt='';img.loading='lazy';img.onerror=()=>img.remove();image.append(img);}
+    if(item.icon){const img=el('img');setImageSource(img,item.icon);img.alt='';img.loading='lazy';img.onerror=()=>{img.hidden=true;};image.append(img);}
     const text=el('span');text.append(el('strong','',item.name),el('small','',item.gameTitle));
     row.append(image,text,el('time','',localDate(item.recordedAt)));list.append(row);
   }

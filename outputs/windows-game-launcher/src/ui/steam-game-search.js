@@ -1,5 +1,6 @@
 import { el, button, icon } from '../lib/dom.js';
 import { command, preview } from '../lib/bridge.js';
+import { setImageSource } from '../lib/network-images.js';
 import { field } from './form-fields.js';
 import './steam-game-search.css';
 
@@ -44,7 +45,7 @@ export function steamGameSearch(initial = null) {
     const art = el('div', 'steam-search-art'); art.append(icon('game'));
     if (game.image) {
       const image = el('img'); image.alt = ''; image.loading = 'lazy';
-      image.onerror = () => image.remove(); image.src = game.image; art.append(image);
+      image.onerror = () => { image.hidden = true; }; setImageSource(image, game.image); art.append(image);
     }
     const copy = el('div', 'steam-search-copy');
     copy.append(el('strong', '', game.name), el('span', '', `Steam 官方资料 · AppID ${game.appid}`));

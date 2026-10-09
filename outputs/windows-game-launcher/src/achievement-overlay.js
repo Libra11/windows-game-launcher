@@ -1,6 +1,7 @@
 import { listen } from '@tauri-apps/api/event';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { icon } from './lib/dom.js';
+import { setImageSource, watchNetworkImages } from './lib/network-images.js';
 import './ui/achievement-overlay.css';
 
 const card = document.querySelector('#card');
@@ -22,9 +23,9 @@ function showNotice(payload) {
       image.hidden = false;
       artHost.classList.add('has-art');
     };
-    image.onerror = () => image.remove();
+    image.onerror = () => { image.hidden = true; artHost.classList.remove('has-art'); };
     artHost.append(image);
-    image.src = payload.icon;
+    setImageSource(image, payload.icon);
   }
   // 后台 WebView 可能暂停动画帧；通知可见性不能依赖帧回调。
   card.classList.add('visible');
@@ -37,6 +38,7 @@ function hideNotice() {
 }
 
 if (isTauri()) {
+  await watchNetworkImages();
   await listen('achievement-overlay', ({payload}) => showNotice(payload));
   await listen('achievement-overlay-hidden', hideNotice);
   await invoke('achievement_overlay_ready');
