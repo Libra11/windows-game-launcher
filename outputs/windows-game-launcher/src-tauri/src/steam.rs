@@ -135,23 +135,7 @@ pub async fn player_unlocks(
 }
 
 pub async fn metadata(appid: &str) -> Result<Value, String> {
-    let data = json_get(
-        "https://store.steampowered.com/api/appdetails",
-        &[("appids", appid), ("l", "schinese")],
-    )
-    .await?;
-    let app = data.get(appid).ok_or("Steam 商店未返回游戏资料")?;
-    if app.get("success") != Some(&Value::Bool(true)) {
-        return Err("Steam 商店没有这款游戏的资料".into());
-    }
-    let item = app.get("data").ok_or("Steam 商店资料缺失")?;
-    Ok(serde_json::json!({
-        "name": item.get("name").and_then(Value::as_str).unwrap_or(""),
-        "cover": item.get("header_image").and_then(Value::as_str).unwrap_or(""),
-        "description": item.get("short_description").and_then(Value::as_str).unwrap_or(""),
-        "releaseDate": item.pointer("/release_date/date").and_then(Value::as_str).unwrap_or(""),
-        "developers": item.get("developers").cloned().unwrap_or(Value::Array(vec![]))
-    }))
+    crate::steam_store::metadata(appid).await
 }
 
 #[cfg(test)]

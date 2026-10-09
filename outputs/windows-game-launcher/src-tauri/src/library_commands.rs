@@ -239,17 +239,48 @@ pub(crate) async fn import_steam(app: tauri::AppHandle) -> Result<usize, String>
 }
 
 pub(crate) fn needs_store_metadata(game: &Game) -> bool {
-    game.source == "steam"
+    matches!(game.source.as_str(), "steam" | "local")
         && !game.appid.is_empty()
         && serde_json::from_str::<serde_json::Value>(&game.metadata_json)
             .ok()
-            .and_then(|value| {
+            .is_none_or(|value| {
                 value
                     .get("name")
                     .and_then(serde_json::Value::as_str)
-                    .map(str::to_owned)
+                    .is_none_or(|name| name.is_empty())
+                    || value
+                        .get("steamStoreVersion")
+                        .and_then(serde_json::Value::as_u64)
+                        != Some(crate::steam_store::METADATA_VERSION)
             })
-            .is_none_or(|name| name.is_empty())
+}
+
+#[cfg(test)]
+mod metadata_tests {
+    use super::*;
+
+    #[test]
+    fn refreshes_existing_steam_and_associated_local_artwork_once() {
+        for source in ["steam", "local"] {
+            let mut game = Game {
+                source: source.into(),
+                appid: "4162040".into(),
+                metadata_json: r#"{"name":"绝区零","cover":"old-header.jpg"}"#.into(),
+                ..Default::default()
+            };
+            assert!(needs_store_metadata(&game));
+            game.metadata_json = serde_json::json!({"name": "绝区零", "steamStoreVersion": crate::steam_store::METADATA_VERSION}).to_string();
+            assert!(!needs_store_metadata(&game));
+            game.appid.clear();
+            assert!(!needs_store_metadata(&game));
+        }
+        let epic = Game {
+            source: "epic".into(),
+            appid: "480".into(),
+            ..Default::default()
+        };
+        assert!(!needs_store_metadata(&epic));
+    }
 }
 
 pub(crate) fn start_metadata_refresh(app: tauri::AppHandle) {
@@ -282,7 +313,13 @@ pub(crate) fn start_metadata_refresh(app: tauri::AppHandle) {
             if let Ok(metadata) = steam::metadata(&game.appid).await {
                 let state = app.state::<AppState>();
                 if let Ok(conn) = lock_db(&state) {
-                    let _ = db::save_metadata(&conn, &game.id, &metadata);
+                    if db::game(&conn, &game.id)
+                        .ok()
+                        .flatten()
+                        .is_some_and(|current| current.appid == game.appid)
+                    {
+                        let _ = db::save_metadata(&conn, &game.id, &metadata);
+                    }
                 };
             }
             tokio::time::sleep(Duration::from_millis(1200)).await;

@@ -1,5 +1,6 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { createStatisticsPreview } from './statistics-preview.js';
+import { demoArtwork } from './preview-artwork.js';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -13,7 +14,7 @@ const demoGames = [
   ['2379780', '小丑牌', 'steam', '创造不可思议的组合，迎接每一场盲注。'],
   ['413150', '星露谷物语', 'steam', '从一片旧农场开始，找到属于自己的生活节奏。'],
   ['588650', '死亡细胞', 'local', '挑战变化莫测的城堡，战斗、失败，再试一次。'],
-].map(([appid, title, source, description], index) => ({ id: `${source}-${appid}`, appid, title, source, metadataJson: JSON.stringify({ description }), schemaSource: 'Steam Web API', scanStatus: source === 'local' ? '已读取本地记录' : 'Steam 成就已同步', sourceFile: source === 'local' ? 'C:\\Users\\Player\\AppData\\LocalLow\\Clover Bite\\GRIME\\Save Files\\save.gd' : 'Steam Web API', lastScan: new Date().toISOString(), customUnlockPath: '', exePath:'C:\\Games\\Game\\game.exe', favorite:index === 0, lastPlayed:index < 3 ? new Date(Date.now() - index * 86400000).toISOString() : '', playedSeconds:index < 3 ? 3600 * (index + 1) : 0, runtime:{state:'idle',message:'',elapsedSeconds:0} }));
+].map(([appid, title, source, description], index) => ({ id: `${source}-${appid}`, appid, title, source, metadataJson: JSON.stringify({ description, ...demoArtwork[appid] }), schemaSource: 'Steam Web API', scanStatus: source === 'local' ? '已读取本地记录' : 'Steam 成就已同步', sourceFile: source === 'local' ? 'C:\\Users\\Player\\AppData\\LocalLow\\Clover Bite\\GRIME\\Save Files\\save.gd' : 'Steam Web API', lastScan: new Date().toISOString(), customUnlockPath: '', exePath:'C:\\Games\\Game\\game.exe', favorite:index === 0, lastPlayed:index < 3 ? new Date(Date.now() - index * 86400000).toISOString() : '', playedSeconds:index < 3 ? 3600 * (index + 1) : 0, runtime:{state:'idle',message:'',elapsedSeconds:0} }));
 const demoInstallations = {
   '1245620':['installed','示例：已确认本机安装'],
   '367520':['installed','示例：已确认本机安装'],
@@ -61,7 +62,7 @@ export async function command(name, args = {}) {
     const query = normalize(args.query.trim());
     if (!query) return [];
     return demoGames.filter(game => normalize(`${game.title} ${aliases[game.appid]}`).includes(query))
-      .map(game => ({ appid:game.appid, name:game.title, image:`https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${game.appid}/header.jpg` }));
+      .map(game => ({ appid:game.appid, name:game.title, image:JSON.parse(game.metadataJson).cover || '' }));
   }
   if (name === 'set_favorite') {
     const game = demoGames.find(item => item.id === args.gameId); if (!game) throw new Error('游戏不存在');

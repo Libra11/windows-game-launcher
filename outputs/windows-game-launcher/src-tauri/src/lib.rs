@@ -29,6 +29,7 @@ mod steam_achievements;
 mod steam_identity;
 mod steam_playtime;
 mod steam_search;
+mod steam_store;
 mod steam_sync;
 mod statistics;
 mod xbox;

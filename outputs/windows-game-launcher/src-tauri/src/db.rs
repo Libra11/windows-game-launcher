@@ -104,11 +104,21 @@ pub fn save_metadata(
         )
         .map_err(|e| e.to_string())?;
     let mut metadata = metadata.clone();
-    if let Some(icon) = serde_json::from_str::<serde_json::Value>(&existing)
-        .ok()
-        .and_then(|value| value.get("icon").cloned())
-    {
-        metadata["icon"] = icon;
+    if let Ok(previous) = serde_json::from_str::<serde_json::Value>(&existing) {
+        if let Some(icon) = previous.get("icon") {
+            metadata["icon"] = icon.clone();
+        }
+        for field in ["cover", "libraryCovers", "libraryHeroes"] {
+            let empty = metadata.get(field).is_none_or(|value| {
+                value.is_null() || value.as_str().is_some_and(|url| url.is_empty())
+                    || value.as_array().is_some_and(|urls| urls.is_empty())
+            });
+            if empty {
+                if let Some(value) = previous.get(field) {
+                    metadata[field] = value.clone();
+                }
+            }
+        }
     }
     let name = metadata
         .get("name")
@@ -371,6 +381,25 @@ mod tests {
         assert_eq!(saved["icon"], "icon.jpg");
         assert_eq!(saved["cover"], "cover.jpg");
     }
+    #[test]
+    fn metadata_refresh_preserves_missing_artwork_and_replaces_updated_assets() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE games(id TEXT PRIMARY KEY, source TEXT, title TEXT, metadata_json TEXT);").unwrap();
+        let previous = serde_json::json!({"cover": "old-header.jpg", "libraryCovers": ["old-portrait.jpg"], "libraryHeroes": ["old-hero.jpg"]});
+        conn.execute("INSERT INTO games VALUES('local','local','自定义名称',?1)", [previous.to_string()]).unwrap();
+        save_metadata(&conn, "local", &serde_json::json!({"name": "官方名称", "cover": "", "libraryCovers": [], "libraryHeroes": []})).unwrap();
+        let read = || {
+            let data: String = conn.query_row("SELECT metadata_json FROM games WHERE id='local'", [], |row| row.get(0)).unwrap();
+            serde_json::from_str::<serde_json::Value>(&data).unwrap()
+        };
+        let retained = read();
+        assert_eq!(retained["cover"], previous["cover"]);
+        assert_eq!(retained["libraryCovers"], previous["libraryCovers"]);
+        assert_eq!(retained["libraryHeroes"], previous["libraryHeroes"]);
+        save_metadata(&conn, "local", &serde_json::json!({"libraryCovers": ["new-portrait.jpg"]})).unwrap();
+        assert_eq!(read()["libraryCovers"], serde_json::json!(["new-portrait.jpg"]));
+    }
+
     #[test]
     fn keeps_steam_and_local_unlocks_separate() {
         let mut conn = Connection::open_in_memory().unwrap();

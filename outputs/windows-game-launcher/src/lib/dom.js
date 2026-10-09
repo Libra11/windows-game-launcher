@@ -1,3 +1,5 @@
+import { artworkSources } from './artwork-sources.js';
+
 export function el(tag, className = '', text = '') {
   const node = document.createElement(tag);
   node.className = className;
@@ -70,8 +72,7 @@ const failed = new Set();
 export function artwork(host, game, wide = false) {
   host.append(el('span', 'art-letter', game.title.slice(0, 1).toUpperCase()));
   const info = metadata(game);
-  const base = /^\d+$/.test(game.appid) ? `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${game.appid}` : '';
-  const sources = [...new Set([base && `${base}/${wide ? 'library_hero' : 'library_600x900'}.jpg`, info.cover, base && `${base}/header.jpg`, info.icon].filter(Boolean))];
+  const sources = artworkSources(info, wide);
   host.dataset.artworkKey = JSON.stringify([game.id, wide, game.title, sources]);
   const next = (target = host) => {
     const url = sources.shift();
