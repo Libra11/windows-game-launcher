@@ -1,6 +1,7 @@
 import { el, button, icon, metadata } from '../lib/dom.js';
 import { setImageSource } from '../lib/network-images.js';
 import { achievementEmptyMessage } from '../lib/achievement-state.js';
+import { achievementImageSources } from '../lib/achievement-images.js';
 
 export function achievementList(game, achievements, filter, detected, actions) {
   const root = el('section', 'detail-achievements');
@@ -22,7 +23,12 @@ export function achievementList(game, achievements, filter, detected, actions) {
     const image = item.unlockedAt && details.unlockedIcon || item.icon;
     const row = el('article', `achievement-card ${item.unlockedAt ? 'unlocked' : ''}`);
     const art = el('div', 'achievement-icon'); art.append(icon('trophy'));
-    if (image?.startsWith('https://')) { const img = el('img'); setImageSource(img, image); img.alt = ''; img.loading = 'lazy'; img.onerror = () => { img.hidden = true; }; art.append(img); }
+    const sources = achievementImageSources(image);
+    if (sources.length) {
+      const img = el('img'); img.alt = ''; img.loading = 'lazy';
+      img.onerror = () => { if (sources.length) setImageSource(img, sources.shift()); else img.remove(); };
+      setImageSource(img, sources.shift()); art.append(img);
+    }
     const text = el('div', 'achievement-copy'); text.append(el('h3', '', name), el('p', '', description || (item.hidden ? '隐藏成就' : '完成游戏中的对应挑战')));
     const extra = [Number.isFinite(details.xp) ? `${details.xp} XP` : '', details.tier || '', Number.isFinite(details.rarity) ? `解锁率 ${details.rarity.toFixed(1)}%` : ''].filter(Boolean);
     if (extra.length) text.append(el('small', '', extra.join(' · ')));
