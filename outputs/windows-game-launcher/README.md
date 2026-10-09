@@ -28,23 +28,18 @@ npm run tauri build
 
 ## GitHub 自动构建与 Release
 
-仓库根目录的 [Windows Release 工作流](../../.github/workflows/windows-build.yml) 仅在推送 `v*` 版本标签时，使用 GitHub 托管的 Windows 环境构建 x64 NSIS 安装包。日常推送、PR 和手动运行不会触发打包。
+仓库根目录的 [Windows Release 工作流](../../.github/workflows/windows-build.yml) 在版本配置变更推送或合并到 `main` 时，比较此次推送前后的应用版本。版本号变化并通过一致性校验后，才使用 GitHub 托管的 Windows 环境构建 x64 NSIS 安装包。版本号不变时跳过构建；PR、功能分支和单独推送标签不会触发发布。
 
-- 构建成功后自动发布 Release，上传 `.exe` 安装包，并自动生成 GitHub 发布说明，无需手动确认。包含 `-` 的版本标签标记为预发布。
+- 构建成功后自动创建 `v版本号` 标签并公开发布 Release，上传 `.exe` 安装包，自动生成 GitHub 发布说明。无需手动推送标签或确认草稿；包含 `-` 的版本标签标记为预发布。
 - 上传前将安装包文件名统一为 `youji_版本_x64-setup.exe`，避免 GitHub 移除中文文件名中的应用名称；应用名称仍为“游迹”。
 - 同时上传 `youji-windows-x64` Actions 产物，保留 14 天，可从工作流运行页面下载。
 - 构建任务只需读取仓库；Release 任务使用 GitHub 自动提供的 `GITHUB_TOKEN` 写权限，无需额外配置个人 Token。
 
-发布前先统一 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml` 和 `src-tauri/tauri.conf.json` 的版本，并更新 `src-tauri/Cargo.lock`。例如应用版本为 `0.2.2` 时，提交并推送该版本代码后执行：
+发布前统一 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` 和 `src-tauri/tauri.conf.json` 的版本，再提交并合入 `main`。例如将版本从 `0.2.2` 升到 `0.2.3`，合入后会自动构建并创建 `v0.2.3` Release。
 
-```powershell
-git tag v0.2.2
-git push origin v0.2.2
-```
+任一版本配置不一致时会在构建前失败。如果同名版本标签已指向其他提交，必须使用新版本号，工作流不会移动已有标签。构建使用 `npm ci` 和 Cargo `--locked`，依赖锁文件必须已提交。`src-tauri/resources/XboxLocalProbe.exe` 等打包资源也需要在仓库中；工作流只上传生成的安装包。
 
-标签与应用版本不一致时会在构建前失败。构建使用 `npm ci` 和 Cargo `--locked`，依赖锁文件必须已提交。`src-tauri/resources/XboxLocalProbe.exe` 等打包资源也需要在仓库中；工作流只上传生成的安装包。
-
-Release 说明由 GitHub 根据合并的 PR、贡献者和版本对比生成，不会自动把代码改动总结成中文功能说明。同一标签已有草稿时，会更新安装包、保留已编辑的说明并自动发布；已发布的 Release 不会被覆盖。
+Release 说明由 GitHub 根据合并的 PR、贡献者和版本对比生成，不会自动把代码改动总结成中文功能说明。同一标签已有草稿时，会更新安装包、保留已编辑的说明并自动发布；已发布的 Release 会跳过，不会覆盖。构建失败或取消后，可在原 Actions 运行页面重新运行；版本判断仍使用原推送前后的提交。标签创建、构建与发布由同一个工作流完成，不依赖自动创建标签再次触发 Actions，也不需要额外配置个人 Token。
 
 ## 首次使用
 
