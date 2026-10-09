@@ -26,6 +26,21 @@ npm run tauri build
 
 安装包输出在 `src-tauri/target/release/bundle/`。当前代码可在 macOS 上编译与运行测试，但 Windows 安装包应在 Windows 环境构建。
 
+## GitHub 自动构建与 Release
+
+仓库根目录的 [Windows Release 工作流](../../.github/workflows/windows-build.yml) 在版本配置变更推送或合并到 `main` 时，比较此次推送前后的应用版本。版本号变化并通过一致性校验后，才使用 GitHub 托管的 Windows 环境构建 x64 NSIS 安装包。版本号不变时跳过构建；PR、功能分支和单独推送标签不会触发发布。
+
+- 构建成功后自动创建 `v版本号` 标签并公开发布 Release，上传 `.exe` 安装包，自动生成 GitHub 发布说明。无需手动推送标签或确认草稿；包含 `-` 的版本标签标记为预发布。
+- 上传前将安装包文件名统一为 `youji_版本_x64-setup.exe`，避免 GitHub 移除中文文件名中的应用名称；应用名称仍为“游迹”。
+- 同时上传 `youji-windows-x64` Actions 产物，保留 14 天，可从工作流运行页面下载。
+- 构建任务只需读取仓库；Release 任务使用 GitHub 自动提供的 `GITHUB_TOKEN` 写权限，无需额外配置个人 Token。
+
+发布前统一 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` 和 `src-tauri/tauri.conf.json` 的版本，再提交并合入 `main`。例如将版本从 `0.2.2` 升到 `0.2.3`，合入后会自动构建并创建 `v0.2.3` Release。
+
+任一版本配置不一致时会在构建前失败。如果同名版本标签已指向其他提交，必须使用新版本号，工作流不会移动已有标签。构建使用 `npm ci` 和 Cargo `--locked`，依赖锁文件必须已提交。`src-tauri/resources/XboxLocalProbe.exe` 等打包资源也需要在仓库中；工作流只上传生成的安装包。
+
+Release 说明由 GitHub 根据合并的 PR、贡献者和版本对比生成，不会自动把代码改动总结成中文功能说明。同一标签已有草稿时，会更新安装包、保留已编辑的说明并自动发布；已发布的 Release 会跳过，不会覆盖。构建失败或取消后，可在原 Actions 运行页面重新运行；版本判断仍使用原推送前后的提交。标签创建、构建与发布由同一个工作流完成，不依赖自动创建标签再次触发 Actions，也不需要额外配置个人 Token。
+
 ## 首次使用
 
 1. 在“设置”中填入 [Steam Web API Key](https://steamcommunity.com/dev/apikey) 与 SteamID64。账号游戏详情需可见，游戏库和官方解锁状态才能通过接口读取。
@@ -42,6 +57,7 @@ npm run tauri build
 
 - 只读取 Steam 官方接口、游戏程序和本地成就记录；不会修改游戏文件或运行环境。
 - 本地游戏自动解锁需要运行环境写出受支持的记录。没有记录时，详情页会显示“未找到解锁记录文件”，并允许手动记录成就。
+- 本地游戏要求管理员权限时，启动器会在 Windows 返回“需要提升权限”后弹出系统 UAC 确认，授权后启动并继续跟踪进程。取消授权会提示游戏未启动，可以重新尝试；启动器本身无需以管理员身份运行。
 - RUNE／CODEX INI 仅以对应成就分区的 `Achieved=1` 判定解锁，读取 `UnlockTime`，忽略 `SteamAchievements` 索引和进度数字；必须先获取对应游戏的成就定义，避免串入其他游戏记录。
 - 当前自动读取器支持 GSE／Goldberg JSON 的 `earned`／`earned_time`，也接受兼容字段 `Achieved`／`UnlockTime`。对于 AppID `1123050` 的 GRIME，还会在没有运行环境记录文件时只读扫描 `%USERPROFILE%\AppData\LocalLow\Clover Bite\GRIME\Save Files` 中的 `.gd` 存档，通过已缓存的 Steam 成就定义验证解锁标识。存档只有解锁标识，没有可靠的解锁时间；历史解锁以首次导入时间记录。其他不产生记录文件的游戏仍需要专属规则或手动记录。
 - 数据库位于系统应用数据目录的 `dev.local.achievementlauncher/games.sqlite`。Steam Web API Key 也保存在该本机数据库中；请保护当前 Windows 用户账户与该文件。

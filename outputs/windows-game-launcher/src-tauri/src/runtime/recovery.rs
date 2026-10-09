@@ -83,6 +83,7 @@ impl Tracker {
                 id: record.session_id.clone(),
                 game,
                 requested: Instant::now(),
+                launch_pending: false,
                 started: Some(Instant::now()),
                 pending_start: None,
                 known,

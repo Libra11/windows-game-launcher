@@ -1,0 +1,144 @@
+name: Windows Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - outputs/windows-game-launcher/package.json
+      - outputs/windows-game-launcher/package-lock.json
+      - outputs/windows-game-launcher/src-tauri/Cargo.toml
+      - outputs/windows-game-launcher/src-tauri/Cargo.lock
+      - outputs/windows-game-launcher/src-tauri/tauri.conf.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-main
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 检测 main 的版本号变更
+        id: version
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        shell: pwsh
+        run: ./.github/scripts/detect-release-version.ps1 -Before $env:BEFORE_SHA
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: outputs/windows-game-launcher
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: 校验发布版本
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: ../../.github/scripts/check-release-version.ps1 -Tag $env:RELEASE_TAG
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: outputs/windows-game-launcher/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: outputs/windows-game-launcher/src-tauri -> target
+
+      - name: 安装前端依赖
+        run: npm ci
+
+      - name: 构建 Windows x64 安装包
+        run: npm run tauri build -- --target x86_64-pc-windows-msvc --bundles nsis --ci -- --locked
+
+      - name: 统一安装包文件名
+        run: |
+          $installers = @(Get-ChildItem -LiteralPath 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Filter '*.exe' -File)
+          if ($installers.Count -ne 1) {
+            throw '预期生成一个 NSIS 安装包。'
+          }
+          $version = (Get-Content -LiteralPath 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json).version
+          Rename-Item -LiteralPath $installers[0].FullName -NewName "youji_${version}_x64-setup.exe"
+
+      - name: 上传安装包
+        uses: actions/upload-artifact@v7
+        with:
+          name: youji-windows-x64
+          path: outputs/windows-game-launcher/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: youji-windows-x64
+          path: release
+
+      - name: 发布 Release 并生成说明
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          if tag_sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}" 2>/dev/null); then
+            if [[ "$tag_sha" != "$RELEASE_SHA" ]]; then
+              echo "版本标签已指向其他提交，请升级版本号后发布。" >&2
+              exit 1
+            fi
+          fi
+          if draft=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft'); then
+            if [[ "$draft" != "true" ]]; then
+              echo "Release 已发布，跳过重复发布。"
+              exit 0
+            fi
+            gh release upload "$RELEASE_TAG" release/*.exe --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+          else
+            flags=()
+            if [[ "$RELEASE_TAG" == *-* ]]; then
+              flags+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" release/*.exe \
+              --repo "$GITHUB_REPOSITORY" --target "$RELEASE_SHA" \
+              --title "游迹 $RELEASE_TAG" --generate-notes "${flags[@]}"
+          fi
