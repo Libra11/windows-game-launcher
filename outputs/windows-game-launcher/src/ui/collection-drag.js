@@ -1,5 +1,5 @@
-import { el, icon } from '../lib/dom.js';
 import { collectionDragPayload, collectionDrop, createDragClickGuard } from '../lib/collection-drag.js';
+import { createCollectionDragPreview } from './collection-drag-preview.js';
 import './collection-drag.css';
 
 const CARD = '[data-organization-drag-game]';
@@ -12,8 +12,8 @@ const EXPAND_DELAY = 550;
 export function mountCollectionDrag(state, actions, sidebar) {
   const listeners = new AbortController();
   const clickGuard = createDragClickGuard();
-  let gesture, ghost, hint, target, hovered, holdTimer, hoverTimer, frame;
-  let busy = false, ghostWidth = 0, ghostHeight = 0;
+  let gesture, preview, target, hovered, holdTimer, hoverTimer, frame;
+  let busy = false;
 
   function available() {
     return !busy && !state.bigScreen && state.page === 'library' && !state.selectedId
@@ -29,7 +29,7 @@ export function mountCollectionDrag(state, actions, sidebar) {
     clearTimeout(holdTimer); clearHover(); cancelAnimationFrame(frame);
     const previous = gesture; gesture = undefined;
     target?.classList.remove('organization-drop-target'); target = undefined;
-    ghost?.remove(); ghost = undefined;
+    preview?.dispose(); preview = undefined;
     document.body.classList.remove('collection-drag-active');
     previous?.card.classList.remove('collection-drag-source');
     if (previous?.active) {
@@ -50,20 +50,23 @@ export function mountCollectionDrag(state, actions, sidebar) {
     if (!gesture?.active) return;
     if (state.bigScreen || state.page !== 'library' || state.selectedId) { reset(); return; }
     const { x, y } = gesture;
-    ghost.style.transform = `translate(${Math.max(8, Math.min(x + 16, innerWidth - ghostWidth - 8))}px,${Math.max(8, Math.min(y + 16, innerHeight - ghostHeight - 8))}px)`;
+    preview.position(x, y);
     const under = document.elementFromPoint(x, y);
     const next = under?.closest(TARGET);
     if (next !== target) {
       target?.classList.remove('organization-drop-target'); target = next;
       target?.classList.add('organization-drop-target');
-      const collection = state.organization.collections.find(item => item.id === target?.dataset.organizationCollection);
-      hint.textContent = collection ? `松开加入「${collection.name}」` : '拖到左侧收藏夹 · Esc 取消';
+      preview.node.classList.toggle('collection-drag-over-target', Boolean(target));
     }
     const reveal = under?.closest('.organization-nav-more[aria-expanded="false"], .organization-nav-heading .nav-group-label[aria-expanded="false"]');
     if (reveal !== hovered) {
       clearHover(); hovered = reveal;
       if (reveal) hoverTimer = setTimeout(() => { sidebar.reveal(reveal); clearHover(); }, EXPAND_DELAY);
     }
+    const collection = state.organization.collections.find(item => item.id === target?.dataset.organizationCollection);
+    const message = collection ? `松开加入「${collection.name}」`
+      : reveal ? '停留片刻，展开收藏夹' : '拖入左侧收藏夹 · Esc 取消';
+    if (preview.hint.textContent !== message) preview.hint.textContent = message;
     // 复用侧栏整体滚动，使展开后屏幕外的收藏夹也可以接收拖放。
     const scroll = sidebar.scrollElement;
     const rect = scroll.getBoundingClientRect();
@@ -81,12 +84,7 @@ export function mountCollectionDrag(state, actions, sidebar) {
     document.body.classList.add('collection-drag-active');
     gesture.card.classList.add('collection-drag-source');
     window.getSelection()?.removeAllRanges();
-    ghost = el('div', 'collection-drag-ghost');
-    ghost.setAttribute('role', 'status'); ghost.setAttribute('aria-live', 'polite');
-    hint = el('span', 'collection-drag-hint', '拖到左侧收藏夹 · Esc 取消');
-    const copy = el('div'); copy.append(el('strong', '', gesture.payload.title), hint);
-    ghost.append(icon('folder'), copy); document.body.append(ghost);
-    ghostWidth = ghost.offsetWidth; ghostHeight = ghost.offsetHeight;
+    preview = createCollectionDragPreview(gesture.card, gesture.payload, gesture.kind);
     if (gesture.kind === 'pointer') document.documentElement.setPointerCapture(gesture.id);
     paint();
   }

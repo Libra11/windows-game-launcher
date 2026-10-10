@@ -38,7 +38,10 @@ function node() {
   const classes = new Set();
   return {
     style:{}, dataset:{}, disabled:false, offsetWidth:300, offsetHeight:60,
-    classList:{ add:name=>classes.add(name), remove:name=>classes.delete(name), contains:name=>classes.has(name) },
+    classList:{
+      add:name=>classes.add(name), remove:name=>classes.delete(name), contains:name=>classes.has(name),
+      toggle:(name,force)=>{if(force)classes.add(name);else classes.delete(name);},
+    },
     append() {}, remove() {}, setAttribute() {}, closest() { return null; },
   };
 }
@@ -64,6 +67,7 @@ for (const batch of [false,true]) {
     const mount=runInNewContext(`${source}\nmountCollectionDrag`, {
       document, window, AbortController, innerWidth:1280, innerHeight:720,
       el:node, icon:node, collectionDragPayload, collectionDrop, createDragClickGuard,
+      createCollectionDragPreview:()=>({node:node(),hint:node(),position() {},dispose() {}}),
       performance:{ now:()=>now }, setTimeout:()=>1, clearTimeout() {},
       requestAnimationFrame:()=>1, cancelAnimationFrame() {},
     });

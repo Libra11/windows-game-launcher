@@ -1,17 +1,85 @@
 .game-card[data-organization-drag-game] { -webkit-touch-callout:none; }
 .collection-drag-active,.collection-drag-active * { cursor:grabbing !important; user-select:none !important; }
-.collection-drag-source { opacity:.55; }
-.sidebar .nav-item.organization-drop-target {
-  background:var(--accent-soft); color:var(--accent-ink);
-  outline:2px solid var(--accent-ink); outline-offset:-2px;
+.collection-drag-source { opacity:.4; }
+.collection-drag-active .game-card .game-art,
+.collection-drag-active .game-card .game-art>img { transform:none; }
+.collection-drag-active .game-card .card-open,
+.collection-drag-active .game-card .artwork-glint { visibility:hidden; animation:none; }
+
+/* 拖动时显露全部可见落点；只给当前目标更强的填色和加入标记。 */
+.collection-drag-active .sidebar [data-organization-collection],
+.collection-drag-active .sidebar .organization-nav-more[aria-expanded=false],
+.collection-drag-active .sidebar .organization-nav-heading .nav-group-label[aria-expanded=false] {
+  outline:1px dashed var(--accent-line); outline-offset:-1px;
+  background:color-mix(in srgb,var(--accent-soft) 45%,transparent);
+  transition:background-color 150ms ease,color 150ms ease;
+  animation:collection-drop-reveal 180ms ease-out;
 }
+.collection-drag-active .sidebar .nav-item.organization-drop-target {
+  background:var(--accent-soft); color:var(--accent-ink);
+  outline:1px solid var(--accent-ink); outline-offset:-1px;
+  box-shadow:inset 0 0 0 1px var(--accent-soft);
+}
+.collection-drag-active .sidebar .nav-item.organization-drop-target::before { opacity:0; }
+.sidebar .nav-item.organization-drop-target .nav-count { visibility:hidden; }
+.sidebar .nav-item.organization-drop-target::after {
+  content:'+'; position:absolute; right:13px; top:50%; transform:translateY(-50%);
+  display:grid; place-items:center; width:24px; height:24px; border-radius:50%;
+  background:var(--accent-ink); color:var(--panel); font-size:18px; font-weight:500;
+}
+
 .collection-drag-ghost {
   position:fixed; top:0; left:0; z-index:10000; pointer-events:none;
-  display:flex; align-items:center; gap:10px; width:min(300px,calc(100vw - 16px));
-  padding:12px 15px; border:1px solid var(--line); border-radius:10px;
-  background:var(--panel); color:var(--text); box-shadow:0 8px 24px #0003;
+  display:grid; justify-items:start; gap:10px; width:176px; max-width:calc(100vw - 16px);
+  color:var(--text); will-change:transform;
 }
-.collection-drag-ghost>.icon { flex-shrink:0; width:20px; height:20px; color:var(--accent-ink); }
-.collection-drag-ghost>div { min-width:0; display:grid; gap:5px; }
-.collection-drag-ghost strong { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.collection-drag-hint { font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.collection-drag-stack { position:relative; width:76px; height:114px; isolation:isolate; }
+.collection-drag-stack-multiple::before,.collection-drag-stack-multiple::after {
+  content:''; position:absolute; inset:0; border:1px solid var(--accent-line); border-radius:5px;
+  background:var(--panel); box-shadow:0 3px 8px var(--shadow); z-index:-1;
+}
+.collection-drag-stack-multiple::before { transform:translate(8px,-4px) rotate(7deg); }
+.collection-drag-stack-multiple::after { transform:translate(4px,-2px) rotate(3deg); }
+.collection-drag-cover {
+  position:relative; width:100%; height:100%; overflow:hidden; border:1px solid var(--line);
+  border-radius:5px; transform-origin:0 0; background:var(--placeholder-end);
+  box-shadow:0 8px 20px var(--shadow),0 2px 5px var(--shadow);
+}
+.collection-drag-cover>img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.collection-drag-fallback {
+  position:absolute; inset:0; display:grid; place-items:center; color:var(--accent-ink);
+  background:linear-gradient(145deg,var(--placeholder-start),var(--placeholder-end));
+}
+.collection-drag-fallback .icon { width:28px; height:28px; }
+.collection-drag-count {
+  position:absolute; right:-7px; top:-7px; z-index:1; min-width:23px; height:23px; padding:0 6px;
+  display:grid; place-items:center; border:2px solid var(--panel); border-radius:12px;
+  background:var(--accent-ink); color:var(--panel); font-size:11px; font-weight:650;
+}
+.collection-drag-caption {
+  display:grid; gap:4px; min-width:0; max-width:100%; padding:7px 9px; border:1px solid var(--line);
+  border-radius:7px; background:var(--panel); box-shadow:0 4px 12px var(--shadow);
+  animation:collection-caption-enter 240ms var(--ease-out) both;
+}
+.collection-drag-caption strong,.collection-drag-hint {
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.5;
+}
+.collection-drag-caption strong { font-size:11px; font-weight:550; }
+.collection-drag-hint { font-size:10px; color:var(--muted); }
+.collection-drag-over-target .collection-drag-cover { border-color:var(--accent-ink); }
+.collection-drag-over-target .collection-drag-caption { border-color:var(--accent-line); }
+.collection-drag-over-target .collection-drag-hint { color:var(--accent-ink); }
+@keyframes collection-caption-enter {
+  from { opacity:0; transform:translateY(4px); }
+  to { opacity:1; transform:translateY(0); }
+}
+@keyframes collection-drop-reveal {
+  from { outline-color:transparent; }
+  to { outline-color:var(--accent-line); }
+}
+@media(prefers-reduced-motion:reduce) {
+  .collection-drag-active .sidebar [data-organization-collection],
+  .collection-drag-active .sidebar .organization-nav-more,
+  .collection-drag-active .sidebar .organization-nav-heading .nav-group-label,
+  .collection-drag-caption { animation:none; transition:none; }
+}
