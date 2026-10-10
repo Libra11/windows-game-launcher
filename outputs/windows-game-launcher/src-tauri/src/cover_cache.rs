@@ -92,7 +92,19 @@ pub(crate) async fn resolve(app: &tauri::AppHandle, game_id: &str, wide: bool, r
         return Ok(previous.map(|path| path.to_string_lossy().into_owned()));
     }
     let _permit = cache.downloads.acquire().await.map_err(|_| "封面下载已停止")?;
-    for url in sources(&game, wide) {
+    let mut urls = sources(&game, wide).into_iter();
+    let mut tried_cdn = false;
+    loop {
+        let url = match urls.next() {
+            Some(url) => url,
+            None if !tried_cdn && matches!(game.source.as_str(), "steam" | "local") && !game.appid.is_empty() => {
+                // 现有候选用尽后只兜底一次；双区均拒绝访问才会返回 CDN 地址。
+                tried_cdn = true;
+                urls = crate::steam_store::cdn_sources(&game.appid, wide).await.unwrap_or_default().into_iter();
+                continue;
+            }
+            None => break,
+        };
         let Ok((bytes, extension)) = crate::cover_download::fetch(&url, refresh).await else { continue };
         // 内容相同保持原文件名，避免刷新资料时重播图片过渡。
         if let Some(path) = &previous {

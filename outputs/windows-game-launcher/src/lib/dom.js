@@ -153,7 +153,7 @@ export function artwork(host, game, wide = false, {defer=false}={}) {
   if(!host.classList.contains('art-loaded'))host.append(artworkPlaceholder(game));
   if(restored)return;
   if(localPath)appendArtworkImage(host,[localCoverUrl(localPath),...sources]);
-  else if(usesLocalCovers()&&sources.length)appendCachedArtwork(host,game,wide,sources);
+  else if(usesLocalCovers())appendCachedArtwork(host,game,wide,sources);
   else appendArtworkImage(host,sources);
 }
 export const sourceName = game => isFamilyGame(game)
