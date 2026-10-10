@@ -1,4 +1,5 @@
 // 在样式加载前恢复外观，避免主题或字体在启动时闪动。
+if(window.__youjiApplyRestoredAppearance&&!window.__youjiRestoredPreferencesId){try{window.__youjiApplyRestoredAppearance();}catch{/* 留待下次启动重试。 */}}
 function restoreTheme() {
   try {
     document.documentElement.dataset.theme=localStorage.getItem('launcher-theme')==='light'?'light':'dark';

@@ -30,6 +30,7 @@ pub(super) fn directory(app: &tauri::AppHandle, game: &Game) -> Result<PathBuf, 
 }
 
 pub(super) fn ensure(app: &tauri::AppHandle, game: &Game) -> Result<(PathBuf, String), String> {
+    if app.state::<crate::AppState>().maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("数据恢复期间不能启动捕获".into()); }
     let directory = directory(app, game)?;
     let mut probes = PROBES
         .get_or_init(Mutex::default)
@@ -101,6 +102,12 @@ pub(crate) fn stop_all() {
             }
         }
     }
+}
+
+pub(crate) fn has_active_capture() -> bool {
+    PROBES.get().is_some_and(|probes| {
+        probes.lock().map(|mut probes| probes.values_mut().any(|probe| probe.child.try_wait().map_or(true, |status| status.is_none()))).unwrap_or(true)
+    })
 }
 
 pub(super) fn retain(ids: &[String]) {

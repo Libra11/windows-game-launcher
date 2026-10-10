@@ -4,6 +4,7 @@ import { settingsConnections } from './settings-connections.js';
 import { settingsNotifications } from './settings-notifications.js';
 import { settingsGeneral } from './settings-general.js';
 import { settingsNetwork } from './settings-network.js';
+import { settingsData } from './settings-data.js';
 import './settings.css';
 
 const categories=[
@@ -12,6 +13,7 @@ const categories=[
   ['notifications','成就提示','trophy','位置、声音与通知'],
   ['general','后台与运行','settings','启动与退出行为'],
   ['network','网络与代理','network','连接方式与代理设置'],
+  ['data','数据与迁移','folder','备份、恢复与路径重定位'],
 ];
 let sequence=0;
 
@@ -52,7 +54,7 @@ export function createSettingsPage(actions) {
       const networkPart=settingsNetwork(network,actions,saved);
       const notifications=await settingsNotifications(settings,actions,save,options,saved);
       const general=settingsGeneral(settings,actions,save);
-      const built=[appearance,connections,notifications,general,networkPart];
+      const built=[appearance,connections,notifications,general,networkPart,settingsData(actions)];
       if(disposed){built.forEach(part=>part.dispose());return;}
       parts=built;
       parts.forEach((part,index)=>{

@@ -2,7 +2,7 @@ use crate::network::{self, Service};
 
 const MAX_BYTES: usize = 20 * 1024 * 1024;
 
-fn extension(bytes: &[u8]) -> Option<&'static str> {
+pub(crate) fn extension(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         Some("png")
     } else if bytes.starts_with(b"\xff\xd8\xff") {

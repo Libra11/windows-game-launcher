@@ -11,6 +11,7 @@ fn ini_history_new_unlock_duplicate_write_and_wrong_game() {
     fs::write(&file, include_str!("../fixtures/runtime-rune.ini")).unwrap();
     fs::write(root.join("steam_emu.ini"), "[Settings]\nAppId=2456740\n").unwrap();
     let state = AppState {
+        maintenance: Default::default(),
         db: Mutex::new(db::open(&root.join("games.sqlite")).unwrap()),
         initialized: Mutex::new(HashSet::new()),
         metadata_refreshing: Mutex::new(false),

@@ -1,4 +1,8 @@
 mod events;
+pub(crate) fn has_active_capture() -> bool {
+    #[cfg(windows)] { service::has_active_capture() }
+    #[cfg(not(windows))] { false }
+}
 #[cfg(windows)]
 mod service;
 use crate::{

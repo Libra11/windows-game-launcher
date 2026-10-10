@@ -297,6 +297,16 @@ fn same_path(left: &Path, right: &Path) -> bool {
         .replace('\\', "/")
         .eq_ignore_ascii_case(&right.to_string_lossy().replace('\\', "/"))
 }
+pub(crate) fn any_running(games: &[Game]) -> bool {
+    let mut system = System::new();
+    let kind = ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_environ(UpdateKind::OnlyIfNotSet);
+    system.refresh_processes_specifics(ProcessesToUpdate::All, true, kind);
+    system.processes().values().any(|process| !helper_process(process) && games.iter().any(|game| {
+        (!game.exe_path.is_empty() && process.exe().is_some_and(|path| same_path(path, Path::new(&game.exe_path))))
+            || (game.source == "steam" && steam_process(process, &game.appid))
+    }))
+}
+
 fn helper_process(process: &sysinfo::Process) -> bool {
     let name = process.name().to_string_lossy().to_ascii_lowercase();
     [

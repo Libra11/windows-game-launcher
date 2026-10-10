@@ -96,7 +96,7 @@ pub(crate) fn info(game: &Game, local_seconds: u64, snapshot: &Snapshot, connect
     let seconds = entry.and_then(|entry| entry.seconds);
     if seconds.is_none() {
         if let Some(family) = snapshot.family.games.get(&game.appid) {
-            let cached = !snapshot.family.error.is_empty() || family.checked_at != snapshot.family.checked_at;
+            let cached = !snapshot.family.connected || !snapshot.family.error.is_empty() || family.checked_at != snapshot.family.checked_at;
             return Info {
                 source: "steam-family".into(), seconds: Some(family.seconds),
                 last_played: family.last_played.clone(), checked_at: family.checked_at.clone(),

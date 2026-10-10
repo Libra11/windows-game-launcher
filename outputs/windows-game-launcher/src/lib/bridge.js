@@ -2,7 +2,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import { createStatisticsPreview } from './statistics-preview.js';
 import { demoArtwork } from './preview-artwork.js';
 import { listen } from '@tauri-apps/api/event';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 export const preview = import.meta.env.DEV && !isTauri();
 const demoGames = [
@@ -51,6 +51,7 @@ export async function command(name, args = {}) {
   if (name === 'list_games') return demoGames;
   if (name === 'epic_connection_status') return { connected:false, displayName:'' };
   if (name === 'steam_family_connection_status') return {connected:false,expired:false,steamId:'',familyName:'',hasFamily:false,accountMismatch:false};
+  if (name === 'get_backup_restore_status') return null;
   if (name === 'remove_local_game') {
     const index = demoGames.findIndex(game => game.id === args.gameId);
     if (index < 0) throw new Error('游戏不存在或已被移除');
@@ -89,6 +90,7 @@ export async function command(name, args = {}) {
   throw new Error('当前为设计预览，请在桌面应用中执行此操作。');
 }
 export const chooseFile = options => preview ? Promise.resolve(null) : open(options);
+export const chooseSaveFile = options => preview ? Promise.resolve(null) : save(options);
 const statisticsPreview = preview ? createStatisticsPreview(demoGames) : null;
 export const onUnlock = handler => isTauri() ? listen('achievement-unlocked', handler) : Promise.resolve(() => {});
 export const onLibraryChange = handler => isTauri() ? listen('library-changed', handler) : Promise.resolve(() => {});

@@ -11,6 +11,8 @@ pub(crate) struct Snapshot {
     pub checked_at: String,
     pub error: String,
     pub games: HashMap<String, Entry>,
+    #[serde(skip)]
+    pub connected: bool,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -34,7 +36,11 @@ fn key(steam_id: &str) -> String { format!("steam_family_playtime:{steam_id}") }
 pub(crate) fn read(conn: &Connection, steam_id: &str) -> Result<Snapshot, String> {
     let raw = db::setting(conn, &key(steam_id))?;
     if raw.is_empty() { return Ok(Snapshot::default()); }
-    serde_json::from_str(&raw).map_err(|_| "Steam 本人时长缓存无法读取".into())
+    let mut snapshot: Snapshot = serde_json::from_str(&raw).map_err(|_| "Steam 本人时长缓存无法读取")?;
+    let session: serde_json::Value = serde_json::from_str(&db::setting(conn, "steam_family_session")?).unwrap_or_default();
+    snapshot.connected = session["steam_id"].as_str() == Some(steam_id)
+        && session["expires_at"].as_i64().is_some_and(|time| time > chrono::Utc::now().timestamp() + 30);
+    Ok(snapshot)
 }
 
 pub(crate) fn save(conn: &Connection, steam_id: &str, data: &catalog::Catalog) -> Result<ResultInfo, String> {

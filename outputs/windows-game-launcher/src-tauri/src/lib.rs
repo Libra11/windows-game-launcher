@@ -3,6 +3,7 @@ mod achievement_overlay;
 mod achievement_platform;
 mod achievement_repair;
 mod activity;
+mod backup;
 mod cover_cache;
 mod cover_download;
 mod db;
@@ -50,6 +51,7 @@ use steam_sync::sync_game_internal;
 use tauri::Manager;
 
 struct AppState {
+    maintenance: std::sync::atomic::AtomicBool,
     db: Mutex<Connection>,
     initialized: Mutex<HashSet<String>>,
     metadata_refreshing: Mutex<bool>,
@@ -61,7 +63,10 @@ struct AppState {
 }
 
 fn lock_db(state: &AppState) -> Result<std::sync::MutexGuard<'_, Connection>, String> {
-    state.db.lock().map_err(|_| "数据库暂时不可用".to_string())
+    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("游迹正在准备恢复，请等待重启".into()); }
+    let conn = state.db.lock().map_err(|_| "数据库暂时不可用".to_string())?;
+    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("游迹正在准备恢复，请等待重启".into()); }
+    Ok(conn)
 }
 
 pub fn run() {
@@ -74,12 +79,17 @@ pub fn run() {
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             let mut conn = db::open(&dir.join("games.sqlite")).map_err(std::io::Error::other)?;
+            let covers = app.path().app_cache_dir()?.join("covers");
+            backup::startup(&mut conn, &dir, &covers);
+            let restored_appearance = backup::appearance_script(&conn).map_err(std::io::Error::other)?;
             let proxy = network::initialize(&conn, app.handle()).map_err(std::io::Error::other)?;
             app.manage(webview_proxy::WebviewProxy::from(&proxy));
             app.manage(cover_cache::CoverCache::default());
+            app.manage(backup::Manager::default());
             achievement_repair::remove_inferred_unlocks(&mut conn)
                 .map_err(std::io::Error::other)?;
             app.manage(AppState {
+                maintenance: Default::default(),
                 db: Mutex::new(conn),
                 initialized: Mutex::new(HashSet::new()),
                 metadata_refreshing: Mutex::new(false),
@@ -94,6 +104,7 @@ pub fn run() {
                 app.handle(),
                 &app.config().app.windows[0],
             )?;
+            let main = if let Some(script) = restored_appearance { main.initialization_script(script) } else { main };
             webview_proxy::configure(app.handle(), main).build()?;
             if let Err(error) = achievement_overlay::initialize(app.handle()) {
                 eprintln!("成就弹层初始化失败：{error}");
@@ -143,6 +154,13 @@ pub fn run() {
         .on_window_event(desktop_lifecycle::closing)
         .invoke_handler(tauri::generate_handler![
             library_commands::list_games,
+            backup::export_backup,
+            backup::inspect_backup,
+            backup::preview_backup_paths,
+            backup::schedule_backup_restore,
+            backup::get_backup_restore_status,
+            backup::ack_backup_restore,
+            backup::cancel_backup_operation,
             cover_cache::get_cached_cover,
             statistics::get_statistics,
             statistics::list_statistics_sessions,
@@ -193,6 +211,7 @@ pub fn run() {
                 xbox_local::stop_all();
             }
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                if app.state::<AppState>().maintenance.load(std::sync::atomic::Ordering::Acquire) { return; }
                 if let Err(error) = runtime_persistence::checkpoint(app, true) {
                     api.prevent_exit();
                     desktop_lifecycle::show(app);
@@ -216,6 +235,7 @@ mod tests {
         fs::create_dir_all(original.parent().unwrap()).unwrap();
         fs::write(&original, include_str!("../fixtures/runtime-initial.json")).unwrap();
         let state = AppState {
+            maintenance: Default::default(),
             db: Mutex::new(db::open(&root.join("games.sqlite")).unwrap()),
             initialized: Mutex::new(HashSet::new()),
             metadata_refreshing: Mutex::new(false),
