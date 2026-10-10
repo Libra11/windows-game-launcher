@@ -3,6 +3,8 @@ import { setImageSource, failedArtwork } from './network-images.js';
 import { restoreArtwork } from './artwork-retainer.js';
 import { localCoverPath, localCoverUrl, requestLocalCover, usesLocalCovers } from './cover-cache.js';
 import { deferArtwork } from './artwork-loader.js';
+import { gameMetadata } from './game-metadata.js';
+import { isFamilyGame, isFamilyUnavailable } from './family-library.js';
 
 export function el(tag, className = '', text = '') {
   const node = document.createElement(tag);
@@ -17,6 +19,7 @@ export function appIcon(className = '') {
   return image;
 }
 const paths = {
+  family:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2m2-16a3 3 0 0 1 0 6m4 10v-2a6 6 0 0 0-3-5"/>',
   chart: '<path d="M4 3v17h17M8 15v-4m5 4V7m5 8V4"/>',
   trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
   star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
@@ -71,7 +74,7 @@ export function button(text, className, onClick, glyph) {
   return node;
 }
 export function metadata(game) {
-  try { return JSON.parse(game.metadataJson || '{}'); } catch { return {}; }
+  return gameMetadata(game);
 }
 const failed = failedArtwork;
 function artworkPlaceholder(game) {
@@ -151,5 +154,7 @@ export function artwork(host, game, wide = false, {defer=false}={}) {
   else if(usesLocalCovers()&&sources.length)appendCachedArtwork(host,game,wide,sources);
   else appendArtworkImage(host,sources);
 }
-export const sourceName = game => ({ steam:'Steam', epic:'Epic' }[game.source] || '本地游戏');
+export const sourceName = game => isFamilyGame(game)
+  ? isFamilyUnavailable(game)?'Steam · 共享已失效':'Steam · 家庭共享'
+  : ({ steam:'Steam', epic:'Epic' }[game.source] || '本地游戏');
 export const sourceIcon = game => ({ steam:'steam', epic:'epic' }[game.source] || 'folder');

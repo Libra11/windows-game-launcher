@@ -22,6 +22,11 @@ export function libraryView(state, actions) {
   }
   controls.append(libraryControls(state, actions), views); toolbar.append(title, controls); root.append(toolbar);
   if (!shown.length) {
+    if(state.filter==='steam-family'&&!state.search&&!state.installedOnly){
+      const empty=el('div','empty-state');
+      empty.append(icon('family'),el('h2','','还没有家庭共享游戏'),el('p','','连接 Steam 家庭库，导入你可以借用的游戏，包括尚未安装的游戏。'),button('连接家庭游戏库','primary',()=>actions.settings('connections'),'steam'));
+      root.append(empty);return root;
+    }
     if (state.installedOnly) {
       const empty = el('div', 'empty-state');
       empty.append(icon('folder'), el('h2', '', '没有符合条件的已安装游戏'), el('p', '', '安装检测完成后，已安装的游戏会自动显示在这里。'), button('显示全部安装状态', 'secondary', () => actions.installed(false), 'library'));

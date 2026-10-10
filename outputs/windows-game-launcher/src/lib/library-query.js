@@ -1,15 +1,19 @@
+import { isFamilyGame } from './family-library.js';
+
 export const platformCategories = [
   ['steam', 'Steam 游戏', 'steam'], ['epic', 'Epic 游戏', 'epic'], ['local', '本地游戏', 'folder'],
 ];
 export const bigScreenCategories = [['all', '全部游戏', 'library'], ...platformCategories];
 export const categories = [
   ['all', '全部游戏', 'library'], ['recent', '最近游玩', 'clock'], ['favorites', '我的收藏', 'star'],
+  ['steam-family','家庭共享','family'],
   ...platformCategories,
 ];
 const titleCollator=new Intl.Collator('zh-CN');
 const playedDateFormat=new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
 
 export function inCategory(game, category) {
+  if(category==='steam-family')return isFamilyGame(game);
   if (category === 'recent') return !!game.lastPlayed;
   if (category === 'favorites') return !!game.favorite;
   return category === 'all' || game.source === category;

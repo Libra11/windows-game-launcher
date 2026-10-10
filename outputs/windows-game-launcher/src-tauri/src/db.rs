@@ -105,6 +105,10 @@ pub fn save_metadata(
         .map_err(|e| e.to_string())?;
     let mut metadata = metadata.clone();
     if let Ok(previous) = serde_json::from_str::<serde_json::Value>(&existing) {
+        // 家庭共享资格由家庭库同步维护，商店资料刷新不能清空本机授权标记。
+        if metadata.get("steamFamily").is_none() {
+            if let Some(family) = previous.get("steamFamily") { metadata["steamFamily"] = family.clone(); }
+        }
         if let Some(icon) = previous.get("icon") {
             metadata["icon"] = icon.clone();
         }

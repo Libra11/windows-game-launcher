@@ -10,6 +10,8 @@ export function customSelect(options, initialValue, label, className='') {
   const trigger=el('button','custom-select-trigger');trigger.type='button';
   const caption=el('span');trigger.append(caption,icon('chevron'));
   const menu=el('div','custom-select-menu');menu.popover='auto';menu.id='select-menu-'+sequence++;
+  // 声明触发按钮与弹层的关联，重复点击不会先被原生外部点击逻辑关闭。
+  trigger.setAttribute('popovertarget',menu.id);trigger.setAttribute('popovertargetaction','toggle');
   menu.setAttribute('role','listbox');menu.setAttribute('aria-label',label);
   trigger.setAttribute('role','combobox');trigger.setAttribute('aria-label',label);
   trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-controls',menu.id);trigger.setAttribute('aria-expanded','false');
@@ -45,14 +47,17 @@ export function customSelect(options, initialValue, label, className='') {
     const width=Math.min(Math.max(rect.width,190),innerWidth-24);
     menu.style.width=width+'px';menu.style.maxHeight=Math.max(80,Math.min(320,(upward?above:below)-16))+'px';
     menu.style.left=Math.max(12,Math.min(rect.left,innerWidth-width-12))+'px';
-    menu.showPopover();menu.style.top=(upward?rect.top-menu.getBoundingClientRect().height-6:rect.bottom+6)+'px';
+    menu.showPopover({source:trigger});menu.style.top=(upward?rect.top-menu.getBoundingClientRect().height-6:rect.bottom+6)+'px';
     trigger.setAttribute('aria-expanded','true');paint();items[highlight]?.scrollIntoView({block:'nearest'});
   }
   function choose(index) {
     const next=values[index][0],changed=next!==value;value=next;close(true);paint();
     if(changed)root.dispatchEvent(new Event('change',{bubbles:true}));
   }
-  trigger.onclick=()=>menu.matches(':popover-open')?close():open();
+  trigger.onclick=event=>{
+    // 保留组件的定位与键盘状态管理，取消按钮自身的默认切换，避免执行两次。
+    event.preventDefault();menu.matches(':popover-open')?close():open();
+  };
   trigger.onkeydown=event=>{
     const opened=menu.matches(':popover-open');
     if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)){

@@ -52,7 +52,7 @@ export function bigScreenView(state, actions, statistics) {
     content.append(hero);
     const heading = el('div', 'big-screen-collection-title');
     const collection = el('div','big-collection-controls'); collection.setAttribute('aria-label','游戏库视图');
-    for (const [value,label] of [['all','全部'],['favorites','我的收藏'],['recent','最近游玩']]) {
+    for (const [value,label] of [['all','全部'],['favorites','我的收藏'],['recent','最近游玩'],['steam-family','家庭共享']]) {
       const tab = control(label,state.bigCollection === value ? 'active' : '',()=>actions.bigCollection(value),null,`collection-${value}`);
       tab.setAttribute('aria-pressed',String(state.bigCollection === value)); collection.append(tab);
     }
@@ -79,8 +79,9 @@ export function bigScreenView(state, actions, statistics) {
     });
     if (!games.length) {
       hero.remove();
-      const empty = el('div', 'empty-state', state.installedOnly ? '没有符合条件的已安装游戏。' : state.bigCollection === 'favorites' ? '还没有收藏。打开游戏详情，点击收藏置顶。' : state.bigCollection === 'recent' ? '还没有游玩记录。从启动器打开游戏后会自动记录。' : '这个分类还没有游戏，请退出大屏模式后添加或导入。');
+      const empty = el('div', 'empty-state', state.installedOnly ? '没有符合条件的已安装游戏。' : state.bigCollection==='steam-family'?'还没有符合此分类的家庭共享游戏，可以在设置中连接并导入 Steam 家庭库。':state.bigCollection === 'favorites' ? '还没有收藏。打开游戏详情，点击收藏置顶。' : state.bigCollection === 'recent' ? '还没有游玩记录。从启动器打开游戏后会自动记录。' : '这个分类还没有游戏，请退出大屏模式后添加或导入。');
       if (state.installedOnly) empty.append(button('显示全部安装状态', 'secondary', () => actions.installed(false), 'library'));
+      else if(state.bigCollection==='steam-family')empty.append(button('连接家庭游戏库','primary',()=>actions.settings('connections'),'steam'));
       grid.append(empty);
     }
     content.append(grid);

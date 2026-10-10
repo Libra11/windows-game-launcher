@@ -124,10 +124,11 @@ const statistics = createStatisticsController({
 const actions = {
   select, launch, exitBigScreen: () => bigMode.exit(),
   get backLabel(){return state.page==='statistics'?'返回统计':state.page==='settings'?'返回设置':'返回游戏库';},
-  settings:async()=>{
+  settings:async(category)=>{
     if(state.bigScreen)await bigMode.exit();
     selectionVersion++;state.page='settings';state.selectedId='';
     settingsPage ||= createSettingsPage({...dialogActions,add:actions.add,importSteam:actions.importSteam});
+    if(category)settingsPage.openCategory(category);
     render();window.scrollTo(0,0);
   },
   statistics:()=>{selectionVersion++; state.page='statistics'; state.selectedId=''; render(); statistics.refresh(true);},

@@ -5,7 +5,7 @@ export function playtimeText(game) {
   const time = game.playtime;
   const steam = game.source === 'steam';
   const seconds = steam ? time?.seconds : time?.seconds ?? game.playedSeconds ?? 0;
-  const label = steam ? 'Steam 总时长' : '本地累计';
+  const label = steam ? time?.source==='steam-family'?'Steam 本人时长':'Steam 总时长' : '本地累计';
   if (seconds == null) return `${label} · ${time?.state === 'pending' ? '待同步' : '未获取'}`;
   return `${label} · ${seconds === 0 ? '0 分钟' : playTime(seconds)}${time?.state === 'cached' ? '（缓存）' : ''}`;
 }

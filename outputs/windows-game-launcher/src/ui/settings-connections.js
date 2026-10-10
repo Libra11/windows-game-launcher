@@ -4,6 +4,7 @@ import { field, submit } from './form-fields.js';
 import { epicConnection } from './epic-connection.js';
 import { xboxConnection } from './xbox-connection.js';
 import { settingsSection } from './settings-components.js';
+import { steamFamilyConnection } from './steam-family-connection.js';
 
 export function settingsConnections(settings, actions, save) {
   const element=settingsSection('游戏库与账号','连接游戏账号、导入收藏，或添加本地游戏。');
@@ -16,10 +17,20 @@ export function settingsConnections(settings, actions, save) {
   submit(steam,'保存 Steam 连接',saveCredentials);
   const tools=el('div','settings-tools');const importSteam=button('导入 Steam 游戏','secondary',async()=>{if(!steam.reportValidity())return;await saveCredentials();await actions.importSteam();},'steam');
   importSteam.disabled=preview;tools.append(importSteam);steam.append(tools);
+  const family=steamFamilyConnection(actions,{
+    beforeLogin:async()=>{if(!steam.reportValidity())return false;await saveCredentials();return true;},
+    onConnected:async connection=>{
+      if(!id.input.value.trim()){
+        id.input.value=connection.steamId;
+        await save({steamId:connection.steamId});
+      }
+    },
+  });
+  family.element.classList.add('settings-service');
   const epic=epicConnection(actions);epic.element.classList.add('settings-service');
   const local=el('section','settings-service');
   local.append(el('h3','','本地游戏'),el('p','settings-description','选择本机游戏程序，添加到统一游戏库中。'),button('添加本地游戏','secondary',actions.add,'plus'));
   const xbox=xboxConnection(actions);xbox.element.classList.add('settings-service');
-  element.append(steam,epic.element,local,xbox.element);
-  return {element,dispose(){epic.dispose();xbox.dispose();key.input.value='';}};
+  element.append(steam,family.element,epic.element,local,xbox.element);
+  return {element,dispose(){family.dispose();epic.dispose();xbox.dispose();key.input.value='';}};
 }

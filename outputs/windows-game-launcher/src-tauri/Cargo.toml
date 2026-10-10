@@ -1,6 +1,6 @@
 [package]
 name = "local_achievement_launcher"
-version = "0.2.4"
+version = "0.2.5"
 description = "Windows game launcher with local achievements"
 edition = "2021"
 
@@ -18,6 +18,7 @@ tauri-plugin-notification = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+base64 = "0.22"
 rusqlite = { version = "0.40", features = ["bundled"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "system-proxy", "socks"], default-features = false }
 tokio = { version = "1", features = ["time", "sync", "macros"] }

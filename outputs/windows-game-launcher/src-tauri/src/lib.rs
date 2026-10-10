@@ -30,6 +30,7 @@ mod scanner;
 mod source;
 mod statistics;
 mod steam;
+mod steam_family;
 mod steam_achievements;
 mod steam_identity;
 mod steam_playtime;
@@ -103,6 +104,10 @@ pub fn run() {
             }
             start_metadata_refresh(app.handle().clone());
             steam_playtime::watch(app.handle().clone());
+            let family_time = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = steam_family::playtime::refresh(&family_time).await;
+            });
             runtime_commands::watch(app.handle().clone());
             installation::watch(app.handle().clone());
             let watcher = app.handle().clone();
@@ -149,6 +154,11 @@ pub fn run() {
             steam_search::search_steam_games,
             library_commands::update_local,
             library_commands::import_steam,
+            steam_family::steam_family_begin_login,
+            steam_family::steam_family_connection_status,
+            steam_family::steam_family_disconnect,
+            steam_family::import_steam_family,
+            steam_family::refresh_steam_family_playtime,
             epic::import_epic,
             epic_auth::epic_begin_login,
             epic_auth::epic_open_account_login,

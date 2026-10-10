@@ -51,6 +51,7 @@ export function statisticsOverview(summary, platforms) {
   const library=summaryModule('游戏收藏','library','stats-library-summary');
   const total=el('div','stats-number');total.append(el('strong','',summary.gameCount.toLocaleString('zh-CN')),el('span','','款游戏'));
   library.append(total,platformChart(platforms,summary.gameCount),el('small','stats-summary-footnote','按游戏导入来源统计'));
+  if(summary.steamFamilyGames)library.append(el('small','stats-summary-footnote',`Steam 自有 ${summary.steamOwnedGames} 款 · 家庭共享 ${summary.steamFamilyGames} 款，共享不计入自有数量`));
   overview.append(time,achievements,library);return overview;
 }
 

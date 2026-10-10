@@ -13,6 +13,7 @@ pub(crate) async fn launch_game(
 fn launch(app: &tauri::AppHandle, game_id: &str) -> Result<runtime::RuntimeInfo, String> {
     let state = app.state::<AppState>();
     let game = db::game(&*lock_db(&state)?, game_id)?.ok_or("游戏不存在")?;
+    crate::steam_family::require_available(&game)?;
     if matches!(
         state
             .runtime

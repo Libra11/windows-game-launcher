@@ -23,6 +23,8 @@ pub(crate) struct Summary {
     pub steam_seconds: Option<u64>,
     pub steam_known: usize,
     pub steam_games: usize,
+    pub steam_owned_games: usize,
+    pub steam_family_games: usize,
     pub steam_cached: bool,
     pub steam_checked_at: String,
     pub local_seconds: u64,

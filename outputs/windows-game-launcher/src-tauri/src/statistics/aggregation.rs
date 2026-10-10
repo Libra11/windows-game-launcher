@@ -242,6 +242,8 @@ pub(super) fn snapshot(conn: &Connection, query: &Query) -> Result<Snapshot, Str
         summary.manual_unlocked += manual;
         if game.source == "steam" {
             summary.steam_games += 1;
+            if crate::steam_family::is_shared(game) { summary.steam_family_games += 1; }
+            else { summary.steam_owned_games += 1; }
             if let Some(seconds) = time.seconds {
                 summary.steam_known += 1;
                 *summary.steam_seconds.get_or_insert(0) += seconds;

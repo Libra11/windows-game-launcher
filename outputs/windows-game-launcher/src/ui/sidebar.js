@@ -11,7 +11,7 @@ export function mountSidebar(host, actions) {
 
   const caption = el('div', 'nav-caption', '游戏库');
   const navigation = el('nav'); navigation.id = 'navigation'; navigation.setAttribute('aria-label', '主导航');
-  for (const [label, values] of [['收藏', ['all', 'recent', 'favorites']], ['平台', platformCategories.map(([value]) => value)]]) {
+  for (const [label, values] of [['收藏', ['all', 'recent', 'favorites', 'steam-family']], ['平台', platformCategories.map(([value]) => value)]]) {
     const group = el('div', 'nav-group'); group.setAttribute('role', 'group'); group.setAttribute('aria-label', label);
     if (label === '平台') group.append(el('div', 'nav-group-label', label));
     for (const [value, title, glyph] of categories.filter(([value]) => values.includes(value))) {

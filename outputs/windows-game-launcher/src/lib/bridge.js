@@ -50,6 +50,7 @@ export async function command(name, args = {}) {
   if (name === 'save_achievement_overlay_options') return;
   if (name === 'list_games') return demoGames;
   if (name === 'epic_connection_status') return { connected:false, displayName:'' };
+  if (name === 'steam_family_connection_status') return {connected:false,expired:false,steamId:'',familyName:'',hasFamily:false,accountMismatch:false};
   if (name === 'remove_local_game') {
     const index = demoGames.findIndex(game => game.id === args.gameId);
     if (index < 0) throw new Error('游戏不存在或已被移除');

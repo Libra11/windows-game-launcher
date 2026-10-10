@@ -65,7 +65,7 @@ export function createSettingsPage(actions) {
     }
   }
   show(active);load();
-  return {element,dispose(){
+  return {element,openCategory(key){if(categories.some(category=>category[0]===key))show(key);},dispose(){
     disposed=true;parts.forEach(part=>part.dispose());
     element.querySelectorAll('.custom-select-menu:popover-open').forEach(menu=>menu.hidePopover());
   }};
