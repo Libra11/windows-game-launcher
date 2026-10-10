@@ -18,22 +18,22 @@ function timeValue(seconds) {
 
 export function statisticsHeader(data) {
   const header=el('header','stats-page-header');const copy=el('div');
-  copy.append(el('div','stats-kicker','个人游戏档案'),el('h1','','游戏统计'),el('p','','那些投入的时光，都在这里留下了足迹。'));
+  copy.append(el('div','stats-kicker','你的游戏生活'),el('h1','','游戏统计'));
   const date=el('div','stats-date-range');date.append(icon('clock'),el('span','',data?data.from.replaceAll('-','.')+' — '+data.to.replaceAll('-','.'):'正在读取你的游戏档案'));
   header.append(copy,date);return header;
 }
 
 export function statisticsOverview(summary, platforms) {
   const overview=el('div','stats-overview');
-  const time=summaryModule('游戏时光','clock','stats-time-summary');
+  const time=summaryModule('累计时长','clock','stats-time-summary');
   const official=el('div','stats-time-main');
   official.append(el('span','stats-summary-caption','Steam 官方累计'),timeValue(summary.steamSeconds));
   const steamHint=summary.steamGames?'已获取 '+summary.steamKnown+' / '+summary.steamGames+' 款'+(summary.steamCached?' · 缓存':''):'当前分类没有 Steam 游戏';
   official.append(el('small','stats-summary-hint',steamHint));time.append(official);
   const local=el('div','stats-summary-footer');local.append(el('span','','本机累计'),el('strong','',duration(summary.localSeconds)));
-  time.append(local,el('small','stats-summary-footnote','含历史记录 · 与 Steam 官方时长分别统计'));
+  time.append(local);
 
-  const achievements=summaryModule('成就足迹','trophy','stats-achievement-summary');
+  const achievements=summaryModule('成就概览','trophy','stats-achievement-summary');
   const progress=el('div','stats-achievement-total');
   const count=el('div'),unlocked=el('div','stats-number');
   unlocked.append(el('strong','',summary.unlocked.toLocaleString('zh-CN')),el('span','','项'));
@@ -46,21 +46,28 @@ export function statisticsOverview(summary, platforms) {
   for(const [value,label] of [[summary.completedGames+' 款','全成就游戏'],[summary.manualUnlocked+' 项','手动记录']]){
     const item=el('div');item.append(el('strong','',value),el('span','',label));achievementFooter.append(item);
   }
-  achievements.append(progress,achievementFooter,el('small','stats-summary-footnote','仅完整、非空的成就定义参与完成度'));
+  achievements.append(progress,achievementFooter);
 
-  const library=summaryModule('游戏收藏','library','stats-library-summary');
+  const library=summaryModule('游戏库','library','stats-library-summary');
   const total=el('div','stats-number');total.append(el('strong','',summary.gameCount.toLocaleString('zh-CN')),el('span','','款游戏'));
-  library.append(total,platformChart(platforms,summary.gameCount),el('small','stats-summary-footnote','按游戏导入来源统计'));
-  if(summary.steamFamilyGames)library.append(el('small','stats-summary-footnote',`Steam 自有 ${summary.steamOwnedGames} 款 · 家庭共享 ${summary.steamFamilyGames} 款，共享不计入自有数量`));
+  library.append(total,platformChart(platforms,summary.gameCount));
+  if(summary.steamFamilyGames)library.append(el('small','stats-summary-footnote',`Steam 自有 ${summary.steamOwnedGames} · 家庭共享 ${summary.steamFamilyGames}`));
   overview.append(time,achievements,library);return overview;
 }
 
 export function periodOverview(period) {
   const strip=el('section','stats-period-strip');strip.setAttribute('aria-label','所选周期的本机活动');
-  for(const [value,label,glyph] of [[duration(period.seconds),'本期本机游玩','play'],[period.activeDays+' 天','活跃天数'],[period.sessions+' 次','游玩会话'],[duration(period.averageSeconds),'平均单次'],[period.newUnlocks+' 项','新增解锁']]){
+  for(const [value,captionText,glyph] of [[duration(period.seconds),'游玩时长','play'],[period.activeDays+' 天','活跃天数'],[period.sessions+' 次','游玩次数'],[duration(period.averageSeconds),'平均单次'],[period.newUnlocks+' 项','新增成就']]){
     const item=el('div',glyph?'stats-period-primary':'');
-    const caption=el('span','stats-period-label',label);if(glyph)caption.prepend(icon(glyph));
-    item.append(caption,el('strong','',value));strip.append(item);
+    const caption=el('span','stats-period-label',captionText);if(glyph)caption.prepend(icon(glyph));
+    const number=el('strong','',value);
+    if(glyph&&period.seconds>=60){
+      const minutes=Math.floor(period.seconds/60),hours=Math.floor(minutes/60);
+      number.textContent='';number.setAttribute('aria-label',value);
+      if(hours)number.append(el('span','',hours),el('span','stats-duration-unit','小时'));
+      if(minutes%60||!hours)number.append(el('span','',minutes%60),el('span','stats-duration-unit',hours?'分':'分钟'));
+    }
+    item.append(caption,number);strip.append(item);
   }
   return strip;
 }

@@ -3,7 +3,7 @@ import { panel, gameCover, unlockList, emptyState } from './statistics-component
 
 export function statisticsCollection(data, actions) {
   const root=el('div','stats-two-columns stats-collection-grid');
-  const completed=panel('全成就收藏','一段旅程的圆满，值得珍藏。','star');
+  const completed=panel('全成就收藏','已完成的游戏','star');
   const shelf=el('div','stats-completed-shelf'),finished=data.games.filter(game=>game.completionRate===100);
   finished.forEach(game=>{
     const card=button('','stats-completed-game',()=>actions.selectStatistic(game.gameId));
