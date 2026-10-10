@@ -1,5 +1,12 @@
 # 项目交接状态
 
+## 2026-10-10 更新版本至 0.2.7
+
+- 用户要求更新版本号；统一 package.json、package-lock.json（含根包）、Cargo.toml、Cargo.lock 中应用包与 tauri.conf.json 至 0.2.7，不升级依赖。
+- 新增 release-notes/0.2.7.md，记录游戏右键菜单、收藏夹键盘搜索与拖拽、平台安装入口及 Steam 本人时长同步。
+- 遵循此前约定，未运行测试、构建或界面验收；未提交、推送、打包或部署。
+- 用户随后要求将当前 5 个本地提交移至新分支，连同版本更新提交、推送并提 PR。使用 codex/game-library-0.2.7；本地 main 恢复远端 main 位置，推送到 origin（wudidada/windows-game-launcher），PR 目标为上游 Libra11/windows-game-launcher 的 main。构建交付目录不纳入 Git。
+
 ## 2026-10-10 修复右键收藏夹搜索的键盘可达性（待用户验收）
 
 - 用户指出键盘展开收藏夹子菜单后只能遍历菜单项，Tab 又关闭菜单，搜索框不可达。已将首次及重复展开的聚焦入口统一为优先搜索框，管理子菜单继续聚焦首项。
