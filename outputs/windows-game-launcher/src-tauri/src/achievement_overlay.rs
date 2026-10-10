@@ -87,7 +87,9 @@ pub(crate) fn initialize(app: &tauri::AppHandle) -> Result<(), String> {
     .focusable(false)
     .visible(false)
     .transparent(true);
-    let window = builder.build().map_err(|e| e.to_string())?;
+    let window = crate::webview_proxy::configure(app, builder)
+        .build()
+        .map_err(|e| e.to_string())?;
     window
         .set_ignore_cursor_events(true)
         .map_err(|e| e.to_string())?;

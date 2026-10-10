@@ -1,5 +1,5 @@
 use crate::system_proxy::Snapshot;
-use crate::{db, lock_db, AppState};
+use crate::{db, lock_db, webview_proxy, AppState};
 use reqwest::{Client, ClientBuilder, Proxy, Url};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -196,18 +196,37 @@ fn read(conn: &rusqlite::Connection) -> Result<ProxySettings, String> {
 pub(crate) fn initialize(
     conn: &rusqlite::Connection,
     app: &tauri::AppHandle,
-) -> Result<(), String> {
-    let mut next = ClientCache::new(&read(conn)?)?;
+) -> Result<ProxySettings, String> {
+    let settings = read(conn)?;
+    let mut next = ClientCache::new(&settings)?;
     next.app = Some(app.clone());
     *clients().lock().map_err(|_| "网络暂时不可用")? = Some(next);
-    Ok(())
+    Ok(settings)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct NetworkSettings {
+    #[serde(flatten)]
+    settings: ProxySettings,
+    webview_restart_required: bool,
+}
+
+impl NetworkSettings {
+    fn new(app: &tauri::AppHandle, settings: ProxySettings) -> Self {
+        Self {
+            webview_restart_required: webview_proxy::restart_required(app, &settings),
+            settings,
+        }
+    }
 }
 
 #[tauri::command]
 pub(crate) fn get_network_settings(
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
-) -> Result<ProxySettings, String> {
-    read(&*lock_db(&state)?)
+) -> Result<NetworkSettings, String> {
+    Ok(NetworkSettings::new(&app, read(&*lock_db(&state)?)?))
 }
 
 #[tauri::command]
@@ -215,26 +234,26 @@ pub(crate) fn save_network_settings(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     settings: ProxySettings,
-) -> Result<(), String> {
+) -> Result<NetworkSettings, String> {
     let mut slot = clients().lock().map_err(|_| "网络暂时不可用")?;
-    store_and_replace(&*lock_db(&state)?, &mut slot, settings)?;
+    let settings = store_and_replace(&*lock_db(&state)?, &mut slot, settings)?;
     drop(slot);
     let _ = app.emit("network-changed", ());
-    Ok(())
+    Ok(NetworkSettings::new(&app, settings))
 }
 
 fn store_and_replace(
     conn: &rusqlite::Connection,
     slot: &mut Option<ClientCache>,
     settings: ProxySettings,
-) -> Result<(), String> {
+) -> Result<ProxySettings, String> {
     let settings = settings.validated()?;
     let mut next = ClientCache::new(&settings)?;
     next.app = slot.as_ref().and_then(|cache| cache.app.clone());
     let value = serde_json::to_string(&settings).map_err(|_| "代理配置无法保存")?;
     db::set_setting(conn, "network_proxy", &value)?;
     *slot = Some(next);
-    Ok(())
+    Ok(settings)
 }
 
 #[derive(Serialize)]
@@ -318,12 +337,30 @@ pub(crate) async fn test_network_connection(
         Ok(())
     };
     let image = async {
-        crate::image_proxy::fetch(
-            &image_client,
-            "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/header.jpg",
-        )
-        .await
-        .map(|_| ())
+        // 仅测试资料代理到图片域名的连通性，页面图片由 WebView 直接请求。
+        let mut response = image_client
+            .get("https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/367520/header.jpg")
+            .send().await.map_err(|_| "连接失败".to_string())?;
+        if !response.status().is_success() {
+            return Err(format!("HTTP {}", response.status().as_u16()));
+        }
+        if !response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|value| value.starts_with("image/"))
+        {
+            return Err("响应不是图片".into());
+        }
+        if !response
+            .chunk()
+            .await
+            .map_err(|_| "读取失败".to_string())?
+            .is_some_and(|chunk| !chunk.is_empty())
+        {
+            return Err("图片内容为空".into());
+        }
+        Ok(())
     };
     let (api, image) = tokio::join!(api, image);
     Ok(ConnectionTest {

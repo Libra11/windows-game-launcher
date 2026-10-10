@@ -26,7 +26,7 @@ export function achievementList(game, achievements, filter, detected, actions) {
     const sources = achievementImageSources(image);
     if (sources.length) {
       const img = el('img'); img.alt = ''; img.loading = 'lazy';
-      img.onerror = () => { if (sources.length) setImageSource(img, sources.shift()); else img.remove(); };
+      img.onerror = () => { if (sources.length) setImageSource(img, sources.shift()); else img.hidden = true; };
       setImageSource(img, sources.shift()); art.append(img);
     }
     const text = el('div', 'achievement-copy'); text.append(el('h3', '', name), el('p', '', description || (item.hidden ? '隐藏成就' : '完成游戏中的对应挑战')));
