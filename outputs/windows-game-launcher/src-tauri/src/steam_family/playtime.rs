@@ -69,7 +69,15 @@ fn write(conn: &Connection, steam_id: &str, snapshot: &Snapshot) -> Result<(), S
     db::set_setting(conn, &key(steam_id), &serde_json::to_string(snapshot).map_err(|_| "无法保存 Steam 本人时长")?)
 }
 
-pub(crate) async fn refresh(app: &tauri::AppHandle) -> Result<ResultInfo, String> {
+pub(crate) async fn refresh_if_connected(app: &tauri::AppHandle) -> Result<Option<ResultInfo>, String> {
+    let status = auth::status(app)?;
+    if !status.connected || !status.has_family {
+        return Ok(None);
+    }
+    refresh(app).await.map(Some)
+}
+
+async fn refresh(app: &tauri::AppHandle) -> Result<ResultInfo, String> {
     let _guard = auth::AUTH_LOCK.lock().await;
     let session = auth::session(app)?;
     let generation = auth::LOGIN_GENERATION.load(Ordering::Acquire);

@@ -125,10 +125,6 @@ pub fn run() {
             app_update::start(app.handle().clone());
             start_metadata_refresh(app.handle().clone());
             steam_playtime::watch(app.handle().clone());
-            let family_time = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                let _ = steam_family::playtime::refresh(&family_time).await;
-            });
             runtime_commands::watch(app.handle().clone());
             installation::watch(app.handle().clone());
             let watcher = app.handle().clone();
