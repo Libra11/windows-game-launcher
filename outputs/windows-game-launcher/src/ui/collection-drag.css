@@ -1,0 +1,17 @@
+.game-card[data-organization-drag-game] { -webkit-touch-callout:none; }
+.collection-drag-active,.collection-drag-active * { cursor:grabbing !important; user-select:none !important; }
+.collection-drag-source { opacity:.55; }
+.sidebar .nav-item.organization-drop-target {
+  background:var(--accent-soft); color:var(--accent-ink);
+  outline:2px solid var(--accent-ink); outline-offset:-2px;
+}
+.collection-drag-ghost {
+  position:fixed; top:0; left:0; z-index:10000; pointer-events:none;
+  display:flex; align-items:center; gap:10px; width:min(300px,calc(100vw - 16px));
+  padding:12px 15px; border:1px solid var(--line); border-radius:10px;
+  background:var(--panel); color:var(--text); box-shadow:0 8px 24px #0003;
+}
+.collection-drag-ghost>.icon { flex-shrink:0; width:20px; height:20px; color:var(--accent-ink); }
+.collection-drag-ghost>div { min-width:0; display:grid; gap:5px; }
+.collection-drag-ghost strong { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.collection-drag-hint { font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

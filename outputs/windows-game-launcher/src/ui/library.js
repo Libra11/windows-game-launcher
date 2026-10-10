@@ -51,6 +51,7 @@ export function libraryView(state, actions) {
     const tile = el('div','game-tile');
     tile.classList.toggle('organization-selected',state.organizationBatchMode&&state.organizationSelection.has(game.id));
     const card = button('', 'game-card', () => state.organizationBatchMode?actions.organizationToggleGame(game.id):actions.select(game));
+    card.dataset.organizationDragGame = game.id;
     card.setAttribute('aria-label',`${game.title} ${sourceName(game)}`); card.dataset.focusKey = `game-${game.id}`;
     const art = el('div', 'game-art'); artwork(art, game, false, {defer:true});
     const hover = el('span', 'card-open'); hover.append(icon('arrow')); art.append(hover);

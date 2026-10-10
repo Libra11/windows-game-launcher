@@ -36,6 +36,7 @@ import { createStatisticsController } from './lib/statistics.js';
 import { statisticsView } from './ui/statistics-view.js';
 import { closeModal } from './ui/modal.js';
 import { mountProgramDrop } from './ui/program-drop.js';
+import { mountCollectionDrag } from './ui/collection-drag.js';
 import { watchNetworkImages } from './lib/network-images.js';
 
 const state = { page:'library', games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
@@ -202,7 +203,8 @@ mountSidebar($('.sidebar'), {
   settings: actions.settings, preview,
   statistics:actions.statistics,
 });
-const updateOrganizationSidebar=mountOrganizationSidebar($('#navigation'),state,actions);
+const organizationSidebar=mountOrganizationSidebar($('#navigation'),state,actions);
+const collectionDrag=mountCollectionDrag(state,actions,organizationSidebar);
 $('#add-action').append(button('添加游戏', 'primary add-button', actions.add, 'plus'));
 const displayMode=button('','header-icon-button',bigMode.enter,'screen');
 displayMode.id='big-screen-entry';displayMode.title='大屏模式';displayMode.setAttribute('aria-label','大屏模式');
@@ -214,6 +216,7 @@ $('#search').oninput = event => {
   searchFrame=requestAnimationFrame(()=>render());
 };
 function render(preferredFocus) {
+  collectionDrag.reconcile();
   // 后台刷新只更新内容，不能重新获取焦点、打断前台游戏。
   const restoreFocus = document.hasFocus();
   if(state.page!=='settings'&&settingsPage){settingsPage.dispose();settingsPage=null;}
@@ -253,7 +256,7 @@ function render(preferredFocus) {
     node.classList.toggle('active',active);node.setAttribute('aria-current',active?'page':'false');
     if(category) node.querySelector('.nav-count').textContent = state.games.filter(game => inCategory(game,category)).length;
   });
-  updateOrganizationSidebar();
+  organizationSidebar.update();
   const game = state.games.find(item => item.id === state.selectedId);
   if (!game) state.selectedId = '';
   app.classList.toggle('statistics-active',state.page==='statistics'&&!game);
