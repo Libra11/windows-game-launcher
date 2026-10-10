@@ -57,6 +57,7 @@ export function statisticsOverview(summary, platforms) {
 
 export function periodOverview(period) {
   const strip=el('section','stats-period-strip');strip.setAttribute('aria-label','所选周期的本机活动');
+  const metrics=el('div','stats-period-metrics');
   for(const [value,captionText,glyph] of [[duration(period.seconds),'游玩时长','play'],[period.activeDays+' 天','活跃天数'],[period.sessions+' 次','游玩次数'],[duration(period.averageSeconds),'平均单次'],[period.newUnlocks+' 项','新增成就']]){
     const item=el('div',glyph?'stats-period-primary':'');
     const caption=el('span','stats-period-label',captionText);if(glyph)caption.prepend(icon(glyph));
@@ -67,7 +68,7 @@ export function periodOverview(period) {
       if(hours)number.append(el('span','',hours),el('span','stats-duration-unit','小时'));
       if(minutes%60||!hours)number.append(el('span','',minutes%60),el('span','stats-duration-unit',hours?'分':'分钟'));
     }
-    item.append(caption,number);strip.append(item);
+    item.append(caption,number);(glyph?strip:metrics).append(item);
   }
-  return strip;
+  strip.append(metrics);return strip;
 }

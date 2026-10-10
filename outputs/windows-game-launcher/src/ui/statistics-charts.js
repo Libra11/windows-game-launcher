@@ -24,7 +24,7 @@ export function trendChart(days, metric, onDay, state) {
   // 同页可能保留普通视图与大屏视图，渐变标识不能互相引用。
   const fillId='stats-trend-fill-'+chartSequence++,defs=create('defs',{});
   const gradient=create('linearGradient',{id:fillId,x1:0,x2:0,y1:0,y2:1},defs);
-  create('stop',{offset:'0%','stop-color':'var(--stats-accent)','stop-opacity':.2},gradient);
+  create('stop',{offset:'0%','stop-color':'var(--stats-accent)','stop-opacity':.3},gradient);
   create('stop',{offset:'100%','stop-color':'var(--stats-accent)','stop-opacity':0},gradient);
   for(let i=0;i<4;i++){
     const y=20+i*46;

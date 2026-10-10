@@ -24,10 +24,10 @@
 .stats-date-range { display:flex; align-items:center; gap:7px; color:var(--text-secondary); font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .stats-date-range .icon { width:14px; height:14px; }
 .stats-filter-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding:0 0 4px; }
-.stats-segment { display:flex; flex-wrap:wrap; align-items:center; gap:4px; width:fit-content; }
-.stats-segment button { min-height:36px; padding:7px 12px; border:0; border-radius:7px; font-size:13px; color:var(--text-secondary); background:none; white-space:nowrap; }
+.stats-segment { display:flex; flex-wrap:wrap; align-items:center; gap:2px; width:fit-content; padding:3px; background:color-mix(in srgb,var(--panel) 60%,transparent); border:1px solid color-mix(in srgb,var(--line) 65%,transparent); border-radius:9px; }
+.stats-segment button { min-height:32px; padding:5px 12px; border:0; border-radius:6px; font-size:13px; color:var(--text-secondary); background:none; white-space:nowrap; }
 .stats-segment button:hover { color:var(--text); }
-.stats-segment .active { background:var(--accent-soft); color:var(--accent-ink); font-weight:600; }
+.stats-segment .active { background:var(--accent-soft); color:var(--accent-ink); font-weight:600; box-shadow:0 1px 4px color-mix(in srgb,var(--accent-ink) 10%,transparent); }
 .stats-panel { position:relative; min-width:0; padding:28px; background:color-mix(in srgb,var(--panel) 70%,var(--background)); border:1px solid color-mix(in srgb,var(--line) 70%,transparent); border-radius:16px; }
 .stats-panel-heading { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
 .stats-panel-heading>div { flex:1; min-width:0; }
