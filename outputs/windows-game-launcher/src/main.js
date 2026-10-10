@@ -22,6 +22,7 @@ import { command, onAppUpdateProgress, onUnlock, onLibraryChange, onLauncherErro
 import { inCategory, queryGames, bigScreenCategories } from './lib/library-query.js';
 import { patchRuntime } from './ui/game-controls.js';
 import { launchState } from './lib/launch-state.js';
+import { createGameInstallController } from './lib/game-install-controller.js';
 import { detectionGuide } from './ui/detection-guide.js';
 import { libraryView } from './ui/library.js';
 import { detailView } from './ui/detail.js';
@@ -85,7 +86,9 @@ async function select(game) {
 }
 async function launch(game) {
   const current = actions.game(game.id) || game;
-  if (launchState(current).disabled) return;
+  const action = launchState(current);
+  if (action.disabled) return;
+  if (action.action === 'install') return gameInstalls.install(current);
   current.runtime = {state:'starting',message:'正在发送启动请求',elapsedSeconds:0};
   patchRuntime(app,state.games);
   try {
@@ -97,6 +100,10 @@ async function launch(game) {
     await refresh(true).catch(()=>{}); throw error;
   } finally { patchRuntime(app,state.games); }
 }
+const gameInstalls = createGameInstallController({
+  game:id=>state.games.find(game=>game.id===id), command:run, refresh:()=>refresh(true),
+  changed:()=>patchRuntime(app,state.games), notify:toast,
+});
 let refreshTask, refreshAgain = false, forceRefresh = false;
 let settingsPage;
 function refresh(silent = false) {
@@ -117,7 +124,7 @@ async function refreshOnce(silent) {
     }
     const timeOrderChanged = state.sort === 'time' && queryGames(games,{sort:'time'}).map(game=>game.id).join('|') !== queryGames(state.games,{sort:'time'}).map(game=>game.id).join('|');
     const changed = timeOrderChanged || librarySnapshot(games) !== librarySnapshot(state.games) || (selectedId === state.selectedId && JSON.stringify(items) !== JSON.stringify(state.achievements));
-    state.games = games;
+    state.games = games.map(gameInstalls.decorate);
     reconcileOrganization(state);
     if (selectedId === state.selectedId) state.achievements = items;
     if (!silent || changed) render();
@@ -130,7 +137,7 @@ const statistics = createStatisticsController({
   command, render, visible:()=>state.page==='statistics' && !state.selectedId && !document.hidden && !document.querySelector('dialog[open]'),
 });
 const actions = { run, toast,
-  select, launch, exitBigScreen: () => bigMode.exit(),
+  select, launch, install:gameInstalls.install, exitBigScreen: () => bigMode.exit(),
   get backLabel(){return state.page==='statistics'?'返回统计':state.page==='settings'?'返回设置':'返回游戏库';},
   settings:async(category)=>{
     if(state.bigScreen)await bigMode.exit();

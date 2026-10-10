@@ -38,6 +38,7 @@ const paths = {
   arrow: '<path d="M5 12h14m-6-6 6 6-6 6"/>',
   back: '<path d="M19 12H5m6-6-6 6 6 6"/>',
   play: '<path d="m8 4 12 8-12 8V4Z"/>',
+  download: '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
   refresh: '<path d="M20 7a9 9 0 0 0-15-2L2 8m0-6v6h6m-4 9a9 9 0 0 0 15 2l3-3m0 6v-6h-6"/>',
   settings: '<path d="m10 3-1 3-3 1-3 3 2 2-1 4 3 2 3-1 3 3 3-1 1-3 3-2-1-3 1-3-3-2-3 1-2-3Z"/><circle cx="12" cy="12" r="3"/>',
   network: '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/>',

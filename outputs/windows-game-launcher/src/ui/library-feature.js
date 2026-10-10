@@ -1,6 +1,6 @@
 import { el, button, icon, artwork, sourceName, sourceIcon, metadata } from '../lib/dom.js';
 import { playedDate } from '../lib/library-query.js';
-import { launchButton, runtimeBadge, installationBadge, playtimeBadge } from './game-controls.js';
+import { launchButton, installButton, runtimeBadge, installationBadge, playtimeBadge } from './game-controls.js';
 import './library-feature.css';
 
 export function libraryFeature(game, actions) {
@@ -50,6 +50,7 @@ export function libraryFeature(game, actions) {
   copy.append(information);
   const buttons = el('div', 'library-feature-actions');
   buttons.append(button('详情与成就', 'library-feature-details', () => actions.select(game), 'arrow'), launchButton(game, actions));
+  if (game.source === 'epic') buttons.append(installButton(game,actions,'library-feature-install'));
   hero.append(exhibit, buttons);
   return hero;
 }

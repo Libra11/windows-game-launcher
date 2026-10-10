@@ -15,6 +15,7 @@ mod epic_artwork;
 mod epic_achievements;
 mod epic_auth;
 mod epic_library;
+mod game_install;
 mod grime;
 mod installation;
 mod library_commands;
@@ -212,6 +213,7 @@ pub fn run() {
             network::test_network_connection,
             library_commands::toggle_manual,
             runtime_commands::launch_game,
+            game_install::install_game,
             local_import::prepare_local_import,
             runtime_commands::set_favorite,
             runtime_commands::set_launch_path,

@@ -57,7 +57,7 @@ fn page(data: &Value) -> Result<(Vec<Value>, Option<String>), Error> {
 fn text<'a>(data: &'a Value, key: &str) -> &'a str {
     data.get(key).and_then(Value::as_str).unwrap_or("").trim()
 }
-fn identifier(value: &str) -> String {
+pub(crate) fn identifier(value: &str) -> String {
     value
         .bytes()
         .map(|b| {

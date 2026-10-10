@@ -1,5 +1,5 @@
 export function librarySnapshot(games) {
-  return JSON.stringify(games.map(({ lastScan, runtime, playedSeconds, playtime, installation, ...game }) => {
+  return JSON.stringify(games.map(({ lastScan, runtime, installRequestPending, playedSeconds, playtime, installation, ...game }) => {
     const { seconds, checkedAt, ...time } = playtime || {};
     return { ...game, playtime:playtime && time, installation:installation && { state:installation.state, reason:installation.reason } };
   }));

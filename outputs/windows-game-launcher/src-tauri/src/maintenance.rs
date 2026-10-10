@@ -12,7 +12,7 @@ impl<'a> Guard<'a>{
 impl Drop for Guard<'_>{fn drop(&mut self){if !self.keep{self.flag.store(false,Ordering::Release);}}}
 pub(crate) fn lock_operation<'a>(gate:&'a Mutex<()>,flag:&AtomicBool)->Result<MutexGuard<'a,()>,String>{
     let guard=gate.lock().map_err(|_|"启动操作状态不可用")?;
-    if flag.load(Ordering::Acquire){return Err("更新或恢复期间不能启动游戏或捕获".into());}
+    if flag.load(Ordering::Acquire){return Err("更新或恢复期间不能启动、安装游戏或捕获".into());}
     Ok(guard)
 }
 #[cfg(test)]mod tests{

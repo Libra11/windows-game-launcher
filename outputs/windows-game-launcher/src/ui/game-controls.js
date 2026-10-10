@@ -1,6 +1,6 @@
 import { el, button, icon } from '../lib/dom.js';
 import { playTime, playedDate } from '../lib/library-query.js';
-import { launchState, installationHint } from '../lib/launch-state.js';
+import { launchState, installState, installationHint } from '../lib/launch-state.js';
 import { playtimeText, playtimeHint } from '../lib/playtime.js';
 
 function setValue(node,key,value) {
@@ -25,12 +25,34 @@ export function launchButton(game, actions, className = 'primary', focusKey) {
   return node;
 }
 function updateLaunch(node, game) {
-  const {label,disabled,reason} = launchState(game);
+  const {label,disabled,reason,action} = launchState(game);
   setValue(node,'disabled',disabled);
-  setState(node,'launchState',['starting','running'].includes(game.runtime?.state) ? game.runtime.state : game.installation?.state || 'local');
+  setState(node,'launchState',game.installRequestPending ? 'opening_install' : ['starting','running'].includes(game.runtime?.state) ? game.runtime.state : game.installation?.state || 'local');
+  const glyph = action === 'install' || game.installRequestPending ? 'download' : 'play';
+  if (node.dataset.glyph !== glyph) { node.querySelector('svg').replaceWith(icon(glyph)); node.dataset.glyph = glyph; }
   setValue(node.querySelector('span'),'textContent',label);
   if(node.getAttribute('aria-label')!==label)node.setAttribute('aria-label',label);
   setValue(node,'title',reason||label);
+}
+export function installButton(game, actions, className = 'secondary', focusKey) {
+  const node = el('button',className); node.type = 'button';
+  node.dataset.installId = game.id; node.dataset.focusKey = focusKey || `install-${game.id}`;
+  node.append(icon('download'),el('span'));
+  updateInstall(node,game);
+  node.onclick = async () => {
+    if (node.disabled || installState(actions.game(game.id) || game).disabled) return;
+    node.disabled = true;
+    try { await actions.install(game); } catch { /* 安装错误由统一提示显示。 */ }
+    finally { updateInstall(node,actions.game(game.id) || game); }
+  };
+  return node;
+}
+function updateInstall(node,game) {
+  const {label,disabled,reason} = installState(game);
+  setValue(node,'disabled',disabled); setValue(node.querySelector('span'),'textContent',label);
+  setState(node,'launchState',game.installRequestPending ? 'opening_install' : 'install');
+  if (node.getAttribute('aria-label') !== label) node.setAttribute('aria-label',label);
+  setValue(node,'title',reason);
 }
 export function installationBadge(game, compact = false) {
   const node = el('span','installation-hint'); node.dataset.installationId = game.id;
@@ -40,7 +62,7 @@ export function installationBadge(game, compact = false) {
 function updateInstallation(node,game) {
   const hint = installationHint(game);
   setValue(node,'hidden',!hint);
-  setValue(node,'textContent',hint && node.dataset.installationCompact === 'true' ? launchState(game).label : hint);
+  setValue(node,'textContent',hint && node.dataset.installationCompact === 'true' ? game.installation?.state === 'not_installed' ? '未安装' : launchState(game).label : hint);
   setValue(node,'title',hint);
   setState(node,'state',game.installation?.state||'checking');
 }
@@ -82,11 +104,12 @@ function updatePlaytime(node, game) {
 }
 export function patchRuntime(root, games) {
   const byId = new Map(games.map(game => [game.id,game]));
-  root.querySelectorAll('[data-launch-id],[data-runtime-id],[data-installation-id],[data-playtime-id]').forEach(node=>{
-    const game=byId.get(node.dataset.launchId||node.dataset.runtimeId||node.dataset.installationId||node.dataset.playtimeId);
+  root.querySelectorAll('[data-launch-id],[data-install-id],[data-runtime-id],[data-installation-id],[data-playtime-id]').forEach(node=>{
+    const game=byId.get(node.dataset.launchId||node.dataset.installId||node.dataset.runtimeId||node.dataset.installationId||node.dataset.playtimeId);
     if(!game)return;
     if(node.dataset.launchId)updateLaunch(node,game);
     else if(node.dataset.runtimeId)updateBadge(node,game);
+    else if(node.dataset.installId)updateInstall(node,game);
     else if(node.dataset.installationId)updateInstallation(node,game);
     else updatePlaytime(node,game);
   });

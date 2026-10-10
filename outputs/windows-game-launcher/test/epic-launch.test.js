@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { launchState, installationHint } from '../src/lib/launch-state.js';
+import { launchState, installState, installationHint } from '../src/lib/launch-state.js';
 import { achievementEmptyMessage } from '../src/lib/achievement-state.js';
 import { detectionState } from '../src/lib/detection-state.js';
 
@@ -9,11 +9,15 @@ test('账号导入的 Epic 游戏无需本机安装状态即可交给客户端�
   assert.equal(launchState(game).disabled, false);
   assert.equal(launchState(game).label, '在 Epic 中打开');
   assert.equal(installationHint(game), '安装状态由 Epic 客户端管理');
+  assert.equal(installState(game).label,'安装游戏');
+  assert.equal(installState(game).disabled,false);
   assert.match(achievementEmptyMessage(game, []), /更新资料/);
   game.runtime = { state:'starting' };
   assert.equal(launchState(game).disabled, true);
+  assert.equal(installState(game).disabled,true);
   game.runtime = { state:'running' };
   assert.equal(launchState(game).disabled, true);
+  assert.equal(installState(game).disabled,true);
 });
 
 test('Epic 暂无成就与同步失败分开展示，缓存筛选保留原有提示', () => {
