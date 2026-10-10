@@ -151,18 +151,51 @@ pub(crate) async fn metadata(appid: &str) -> Result<Value, String> {
         .ok()
         .filter(|id| *id != 0)
         .ok_or("Steam AppID 无效")?;
-    metadata_regions(id, |region| async move {
-        service("IStoreBrowseService/GetItems", json!({
-            "ids": [{"appid": id}],
-            "data_request": {"include_assets": true, "include_basic_info": true, "include_release": true}
-        }), region).await
-    }).await
+    metadata_regions(id, |region| store_item(id, region)).await
+}
+
+async fn store_item(appid: u32, region: &str) -> Result<Value, String> {
+    service("IStoreBrowseService/GetItems", json!({
+        "ids": [{"appid": appid}],
+        "data_request": {"include_assets": true, "include_basic_info": true, "include_release": true}
+    }), region).await
 }
 
 fn metadata_item(data: &Value, appid: u32) -> Result<Option<&Value>, String> {
     Ok(items(data)?.iter().find(|item| {
         item.get("appid").and_then(Value::as_u64) == Some(appid as u64) && available(item)
     }))
+}
+
+fn metadata_access_denied(data: &Value, appid: u32) -> Result<bool, String> {
+    Ok(items(data)?.iter().any(|item| {
+        // 拒绝访问时 appid 为 0，使用请求条目的 id 核对，不能接受其他游戏的错误。
+        item.get("id").and_then(Value::as_u64) == Some(appid as u64)
+            && item.get("item_type").and_then(Value::as_u64) == Some(0)
+            && item.get("success").and_then(Value::as_u64) == Some(15)
+            && item.get("appid").and_then(Value::as_u64)
+                .is_some_and(|id| id == 0 || id == appid as u64)
+    }))
+}
+
+pub(crate) async fn cdn_sources(appid: &str, wide: bool) -> Result<Vec<String>, String> {
+    let id = appid.parse::<u32>().ok().filter(|id| *id != 0).ok_or("Steam AppID 无效")?;
+    cdn_sources_regions(id, wide, |region| store_item(id, region)).await
+}
+
+async fn cdn_sources_regions<F, Fut>(appid: u32, wide: bool, mut fetch: F) -> Result<Vec<String>, String>
+where
+    F: FnMut(&'static str) -> Fut,
+    Fut: Future<Output = Result<Value, String>>,
+{
+    if !metadata_access_denied(&fetch("CN").await?, appid)?
+        || !metadata_access_denied(&fetch("US").await?, appid)?
+    {
+        return Ok(Vec::new());
+    }
+    let base = format!("{ASSET_BASE}steam/apps/{appid}");
+    let image = if wide { "library_hero" } else { "library_600x900" };
+    Ok(vec![format!("{base}/{image}_2x.jpg"), format!("{base}/{image}.jpg"), format!("{base}/header.jpg")])
 }
 
 async fn metadata_regions<F, Fut>(appid: u32, fetch: F) -> Result<Value, String>
@@ -238,6 +271,76 @@ mod tests {
 
     fn response(games: Vec<Value>) -> Value {
         json!({"response": {"store_items": games}})
+    }
+
+    fn denied(appid: u32) -> Value {
+        json!({"item_type": 0, "id": appid, "appid": 0, "success": 15, "visible": false, "name": ""})
+    }
+
+    #[test]
+    fn cdn_sources_require_both_regions_to_deny_the_requested_app() {
+        tauri::async_runtime::block_on(async {
+            for wide in [false, true] {
+                let mut requests = Vec::new();
+                let urls = cdn_sources_regions(760620, wide, |region| {
+                    requests.push(region);
+                    std::future::ready(Ok(response(vec![denied(760620)])))
+                }).await.unwrap();
+                assert_eq!(requests, ["CN", "US"]);
+                let base = format!("{ASSET_BASE}steam/apps/760620");
+                let image = if wide { "library_hero" } else { "library_600x900" };
+                assert_eq!(urls, [format!("{base}/{image}_2x.jpg"), format!("{base}/{image}.jpg"), format!("{base}/header.jpg")]);
+            }
+            // 兜底只提供图片候选，资料接口仍报告没有商店资料。
+            assert!(metadata_regions(760620, |_| std::future::ready(Ok(response(vec![denied(760620)])))).await.is_err());
+        });
+    }
+
+    #[test]
+    fn cdn_sources_reject_other_errors_empty_available_or_mismatched_items() {
+        tauri::async_runtime::block_on(async {
+            let mut other_error = denied(760620);
+            other_error["success"] = json!(20);
+            let mut wrong_type = denied(760620);
+            wrong_type["item_type"] = json!(1);
+            let mut conflicting_app = denied(760620);
+            conflicting_app["appid"] = json!(480);
+            let mut invalid_code = denied(760620);
+            invalid_code["success"] = json!("15");
+            let mut available_game = game();
+            available_game["id"] = json!(760620);
+            available_game["appid"] = json!(760620);
+            let errors = [
+                Err("连接超时".to_owned()),
+                Ok(json!({"response": {}})),
+                Ok(response(vec![])),
+                Ok(response(vec![other_error])),
+                Ok(response(vec![denied(480)])),
+                Ok(response(vec![wrong_type])),
+                Ok(response(vec![conflicting_app])),
+                Ok(response(vec![invalid_code])),
+                Ok(response(vec![available_game])),
+            ];
+            for error in errors {
+                for bad_region in ["CN", "US"] {
+                    let mut requests = Vec::new();
+                    let result = cdn_sources_regions(760620, false, |region| {
+                        requests.push(region);
+                        std::future::ready(if region == bad_region {
+                            error.clone()
+                        } else {
+                            Ok(response(vec![denied(760620)]))
+                        })
+                    }).await;
+                    assert!(result.is_err() || result.unwrap().is_empty(), "意外对 {bad_region} 的 {error:?} 启用 CDN");
+                    if bad_region == "US" {
+                        assert_eq!(requests, ["CN", "US"]);
+                    } else {
+                        assert_eq!(requests, ["CN"]);
+                    }
+                }
+            }
+        });
     }
 
     #[test]
