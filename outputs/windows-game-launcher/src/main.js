@@ -22,6 +22,7 @@ import { command, onAppUpdateProgress, onUnlock, onLibraryChange, onLauncherErro
 import { inCategory, queryGames, bigScreenCategories } from './lib/library-query.js';
 import { patchRuntime } from './ui/game-controls.js';
 import { launchState } from './lib/launch-state.js';
+import { createGameInstallController } from './lib/game-install-controller.js';
 import { detectionGuide } from './ui/detection-guide.js';
 import { libraryView } from './ui/library.js';
 import { detailView } from './ui/detail.js';
@@ -36,6 +37,8 @@ import { createStatisticsController } from './lib/statistics.js';
 import { statisticsView } from './ui/statistics-view.js';
 import { closeModal } from './ui/modal.js';
 import { mountProgramDrop } from './ui/program-drop.js';
+import { mountCollectionDrag } from './ui/collection-drag.js';
+import { mountGameContextMenu } from './ui/game-context-menu.js';
 import { watchNetworkImages } from './lib/network-images.js';
 
 const state = { page:'library', games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
@@ -84,7 +87,9 @@ async function select(game) {
 }
 async function launch(game) {
   const current = actions.game(game.id) || game;
-  if (launchState(current).disabled) return;
+  const action = launchState(current);
+  if (action.disabled) return;
+  if (action.action === 'install') return gameInstalls.install(current);
   current.runtime = {state:'starting',message:'正在发送启动请求',elapsedSeconds:0};
   patchRuntime(app,state.games);
   try {
@@ -96,6 +101,10 @@ async function launch(game) {
     await refresh(true).catch(()=>{}); throw error;
   } finally { patchRuntime(app,state.games); }
 }
+const gameInstalls = createGameInstallController({
+  game:id=>state.games.find(game=>game.id===id), command:run, refresh:()=>refresh(true),
+  changed:()=>patchRuntime(app,state.games), notify:toast,
+});
 let refreshTask, refreshAgain = false, forceRefresh = false;
 let settingsPage;
 function refresh(silent = false) {
@@ -116,11 +125,12 @@ async function refreshOnce(silent) {
     }
     const timeOrderChanged = state.sort === 'time' && queryGames(games,{sort:'time'}).map(game=>game.id).join('|') !== queryGames(state.games,{sort:'time'}).map(game=>game.id).join('|');
     const changed = timeOrderChanged || librarySnapshot(games) !== librarySnapshot(state.games) || (selectedId === state.selectedId && JSON.stringify(items) !== JSON.stringify(state.achievements));
-    state.games = games;
+    state.games = games.map(gameInstalls.decorate);
     reconcileOrganization(state);
     if (selectedId === state.selectedId) state.achievements = items;
     if (!silent || changed) render();
     else patchRuntime(app,state.games);
+    gameContextMenu.reconcile();
     statistics.refresh();
 }
 const dialogActions = { run, refresh, toast, added: async game => { await refresh(); await select(game); toast('游戏已加入收藏'); actions.guide(actions.game(game.id) || game); } };
@@ -129,7 +139,7 @@ const statistics = createStatisticsController({
   command, render, visible:()=>state.page==='statistics' && !state.selectedId && !document.hidden && !document.querySelector('dialog[open]'),
 });
 const actions = { run, toast,
-  select, launch, exitBigScreen: () => bigMode.exit(),
+  select, launch, install:gameInstalls.install, exitBigScreen: () => bigMode.exit(),
   get backLabel(){return state.page==='statistics'?'返回统计':state.page==='settings'?'返回设置':'返回游戏库';},
   settings:async(category)=>{
     if(state.bigScreen)await bigMode.exit();
@@ -202,7 +212,9 @@ mountSidebar($('.sidebar'), {
   settings: actions.settings, preview,
   statistics:actions.statistics,
 });
-const updateOrganizationSidebar=mountOrganizationSidebar($('#navigation'),state,actions);
+const organizationSidebar=mountOrganizationSidebar($('#navigation'),state,actions);
+const collectionDrag=mountCollectionDrag(state,actions,organizationSidebar);
+const gameContextMenu=mountGameContextMenu(state,actions);
 $('#add-action').append(button('添加游戏', 'primary add-button', actions.add, 'plus'));
 const displayMode=button('','header-icon-button',bigMode.enter,'screen');
 displayMode.id='big-screen-entry';displayMode.title='大屏模式';displayMode.setAttribute('aria-label','大屏模式');
@@ -214,6 +226,8 @@ $('#search').oninput = event => {
   searchFrame=requestAnimationFrame(()=>render());
 };
 function render(preferredFocus) {
+  collectionDrag.reconcile();
+  gameContextMenu.reconcile();
   // 后台刷新只更新内容，不能重新获取焦点、打断前台游戏。
   const restoreFocus = document.hasFocus();
   if(state.page!=='settings'&&settingsPage){settingsPage.dispose();settingsPage=null;}
@@ -253,7 +267,7 @@ function render(preferredFocus) {
     node.classList.toggle('active',active);node.setAttribute('aria-current',active?'page':'false');
     if(category) node.querySelector('.nav-count').textContent = state.games.filter(game => inCategory(game,category)).length;
   });
-  updateOrganizationSidebar();
+  organizationSidebar.update();
   const game = state.games.find(item => item.id === state.selectedId);
   if (!game) state.selectedId = '';
   app.classList.toggle('statistics-active',state.page==='statistics'&&!game);

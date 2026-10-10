@@ -15,6 +15,7 @@ mod epic_artwork;
 mod epic_achievements;
 mod epic_auth;
 mod epic_library;
+mod game_install;
 mod grime;
 mod installation;
 mod library_commands;
@@ -125,10 +126,6 @@ pub fn run() {
             app_update::start(app.handle().clone());
             start_metadata_refresh(app.handle().clone());
             steam_playtime::watch(app.handle().clone());
-            let family_time = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                let _ = steam_family::playtime::refresh(&family_time).await;
-            });
             runtime_commands::watch(app.handle().clone());
             installation::watch(app.handle().clone());
             let watcher = app.handle().clone();
@@ -216,6 +213,7 @@ pub fn run() {
             network::test_network_connection,
             library_commands::toggle_manual,
             runtime_commands::launch_game,
+            game_install::install_game,
             local_import::prepare_local_import,
             runtime_commands::set_favorite,
             runtime_commands::set_launch_path,

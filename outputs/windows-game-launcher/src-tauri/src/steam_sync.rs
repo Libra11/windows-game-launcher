@@ -152,12 +152,6 @@ pub(crate) async fn sync_game(app: tauri::AppHandle, game_id: String) -> Result<
     };
     if is_steam {
         let _ = crate::steam_playtime::refresh(&app).await;
-        let shared = {
-            let state = app.state::<AppState>();
-            let conn = lock_db(&state)?;
-            db::game(&conn, &game_id)?.is_some_and(|game| crate::steam_family::is_shared(&game))
-        };
-        if shared { let _ = crate::steam_family::playtime::refresh(&app).await; }
     }
     let result = match sync_game_internal(&app, &game_id, true).await {
         Ok(message) => {

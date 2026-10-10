@@ -67,7 +67,7 @@ export function mountOrganizationSidebar(host,state,actions) {
   toggle.onclick=()=>{list.hidden=!list.hidden;toggle.setAttribute('aria-expanded',String(!list.hidden));};
   const add=button('','icon-button',()=>actions.organizationNewCollection(),'plus');add.title='新建收藏夹';add.setAttribute('aria-label','新建收藏夹');
   const manage=button('','icon-button',()=>actions.organizationManage('collection'),'settings');manage.title='管理收藏夹';manage.setAttribute('aria-label','管理收藏夹');
-  header.append(toggle,add,manage);group.append(header,list);host.insertBefore(group,host.children[1]);let key,expanded=false;
+  header.append(toggle,add,manage);group.append(header,list);host.insertBefore(group,host.children[1]);let key,expanded=false,dragSnapshot;
   const update=()=>{
     const next=JSON.stringify([state.organization.collections,state.organization.gameCollections,state.collectionId,expanded]);
     if(next!==key){key=next;list.replaceChildren();
@@ -83,7 +83,22 @@ export function mountOrganizationSidebar(host,state,actions) {
     }
     for(const node of list.querySelectorAll('[data-organization-collection]')){const active=state.page==='library'&&state.collectionId===node.dataset.organizationCollection;node.classList.toggle('active',active);node.setAttribute('aria-current',active?'page':'false');}
   };
-  return update;
+  const scrollElement=group.closest('.sidebar');
+  return {
+    update,scrollElement,
+    isAvailable:()=>state.organization.collections.length>0&&group.getBoundingClientRect().width>0,
+    beginDrag:()=>{dragSnapshot={expanded,hidden:list.hidden,scrollTop:scrollElement.scrollTop};},
+    reveal:node=>{
+      if(node===toggle){list.hidden=false;toggle.setAttribute('aria-expanded','true');}
+      else if(node.classList.contains('organization-nav-more')){expanded=true;update();}
+    },
+    endDrag:()=>{
+      if(!dragSnapshot)return;
+      expanded=dragSnapshot.expanded;list.hidden=dragSnapshot.hidden;
+      toggle.setAttribute('aria-expanded',String(!list.hidden));update();
+      scrollElement.scrollTop=dragSnapshot.scrollTop;dragSnapshot=undefined;
+    },
+  };
 }
 
 // 勾选只更新选中标识和操作条，不重建整页卡片或封面。

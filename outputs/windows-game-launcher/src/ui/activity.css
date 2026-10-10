@@ -29,6 +29,7 @@
 .runtime-badge[data-state="error"],.runtime-badge[data-state="unconfirmed"] { color:var(--error-text); }
 button[data-launch-id]:disabled { cursor:not-allowed; }
 button[data-launch-state="checking"]:disabled,button[data-launch-state="starting"]:disabled { cursor:wait; }
+button[data-launch-state="opening_install"]:disabled { cursor:wait; }
 .installation-hint { display:block; margin-top:7px; font-size:11px; line-height:1.6; color:var(--muted); overflow-wrap:anywhere; }
 .installation-hint[data-state="unknown"] { color:var(--error-text); }
 .play-summary .installation-hint { flex-basis:100%; margin-top:0; }

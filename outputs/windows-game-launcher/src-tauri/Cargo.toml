@@ -1,6 +1,6 @@
 [package]
 name = "local_achievement_launcher"
-version = "0.2.6"
+version = "0.2.7"
 description = "Windows game launcher with local achievements"
 edition = "2021"
 

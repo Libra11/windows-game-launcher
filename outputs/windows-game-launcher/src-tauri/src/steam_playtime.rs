@@ -151,11 +151,40 @@ impl Drop for RefreshGuard {
     }
 }
 
-pub(crate) async fn refresh(app: &tauri::AppHandle) -> Result<(), String> {
+struct RefreshResults {
+    owned: Result<(), String>,
+    family: Result<Option<crate::steam_family::playtime::ResultInfo>, String>,
+}
+
+async fn refresh_all(app: &tauri::AppHandle) -> Result<RefreshResults, String> {
     if REFRESHING.swap(true, Ordering::AcqRel) {
-        return Ok(());
+        return Err("Steam 时长正在同步，请稍后重试".into());
     }
     let _guard = RefreshGuard;
+    // 两类凭证与缓存独立；任一接口失败仍等待另一接口完成写入。
+    let (owned, family) = tokio::join!(
+        refresh_owned(app),
+        crate::steam_family::playtime::refresh_if_connected(app),
+    );
+    Ok(RefreshResults { owned, family })
+}
+
+pub(crate) async fn refresh(app: &tauri::AppHandle) -> Result<(), String> {
+    let results = refresh_all(app).await?;
+    results.owned.and(results.family.map(|_| ()))
+}
+
+pub(crate) async fn refresh_family(
+    app: &tauri::AppHandle,
+) -> Result<crate::steam_family::playtime::ResultInfo, String> {
+    // 手动同步也走同一入口，但提示结果只针对用户选择的家庭库本人时长。
+    refresh_all(app)
+        .await?
+        .family?
+        .ok_or_else(|| "请先在设置中连接有效的 Steam 家庭库".into())
+}
+
+async fn refresh_owned(app: &tauri::AppHandle) -> Result<(), String> {
     let (key, steamid) = {
         let state = app.state::<AppState>();
         let conn = lock_db(&state)?;

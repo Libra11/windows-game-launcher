@@ -27,7 +27,7 @@ pub(crate) async fn steam_family_disconnect(app: tauri::AppHandle) -> Result<(),
 
 #[tauri::command]
 pub(crate) async fn refresh_steam_family_playtime(app: tauri::AppHandle) -> Result<playtime::ResultInfo, String> {
-    playtime::refresh(&app).await
+    crate::steam_playtime::refresh_family(&app).await
 }
 
 #[tauri::command]

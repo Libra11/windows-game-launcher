@@ -1,6 +1,6 @@
 import { el, button, icon, artwork, metadata, sourceName, sourceIcon } from '../lib/dom.js';
 import { achievementList } from './detail-achievements.js';
-import { launchButton, favoriteButton, activitySummary } from './game-controls.js';
+import { launchButton, installButton, favoriteButton, activitySummary } from './game-controls.js';
 import { collectionOverview } from './detail-overview.js';
 import { removeGameDialog } from './remove-game-dialog.js';
 import { epicUnlockError } from '../lib/achievement-state.js';
@@ -16,7 +16,9 @@ export function detailView(game, achievements, filter, actions) {
   const intro = el('section', 'game-intro');
   const description = el('p', 'game-description', metadata(game).description || (game.source === 'epic' ? '这段冒险，等待你来开启。重新导入 Epic 游戏库可更新游戏资料。' : '这段冒险，等待你来开启。更新资料可获取游戏简介。'));
   const buttons = el('div', 'game-actions');
-  buttons.append(launchButton(game,actions), favoriteButton(game,actions));
+  buttons.append(launchButton(game,actions));
+  if (game.source === 'epic') buttons.append(installButton(game,actions));
+  buttons.append(favoriteButton(game,actions));
   buttons.append(button('整理', 'secondary', () => actions.organize(game), 'folder'));
   buttons.append(button('更新资料', 'secondary', () => actions.sync(game), 'refresh'));
   buttons.append(button(game.source === 'local' ? '编辑游戏' : '启动检测设置', 'secondary', () => actions.edit(game), 'settings'));

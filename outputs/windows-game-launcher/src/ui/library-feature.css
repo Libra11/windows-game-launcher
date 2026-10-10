@@ -41,6 +41,7 @@
 .library-feature-status .installation-hint[data-state="unknown"] { color:var(--error-text); }
 .library-feature-actions { position:absolute; z-index:2; right:26px; bottom:-22px; display:flex; align-items:center; gap:20px; padding:6px 6px 6px 20px; background:var(--panel); border:1px solid var(--line); border-radius:999px; box-shadow:0 8px 20px var(--shadow); }
 .library-feature-actions .primary { min-height:44px; padding:12px 24px; border-radius:999px; }
+.library-feature-install { display:inline-flex; align-items:center; gap:7px; min-height:44px; padding:10px 12px; border-radius:999px; background:var(--accent-soft); color:var(--accent-ink); font-size:12px; }
 .library-feature-details { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 2px; background:none; color:var(--text-secondary); font-size:12px; font-weight:550; }
 .library-feature-details .icon { order:1; width:16px; height:16px; transition:transform 240ms var(--ease-out); }
 .library-feature-details:hover { color:var(--accent-ink); }
@@ -78,5 +79,8 @@
   .library-feature-information { margin-top:14px; gap:8px; }
   .library-feature-context { gap:4px 8px; }
   .library-feature-actions { right:12px; gap:12px; padding-left:14px; }
+  .library-feature-actions:has(.library-feature-install) { position:relative; right:auto; bottom:auto; width:fit-content; max-width:100%; margin:12px 0 0 auto; flex-wrap:wrap; justify-content:flex-end; gap:6px; padding-left:10px; border-radius:20px; }
+  .library-feature-actions:has(.library-feature-install) .primary { padding-left:12px; padding-right:12px; }
+  .library-feature-install { padding:10px 8px; font-size:11px; }
   .library-feature-details { font-size:11px; }
 }
