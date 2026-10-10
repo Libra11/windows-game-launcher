@@ -26,6 +26,12 @@ fn count(conn: &rusqlite::Connection, table: &str) -> Result<usize, String> {
     usize::try_from(value).map_err(|_| "当前数据数量超出有效范围".into())
 }
 pub(crate) fn require_idle(app: &tauri::AppHandle) -> Result<(), String> {
+    require_games_idle(app)?;
+    if crate::xbox_local::has_active_capture() { return Err("成就捕获尚未停止，请退出游戏并等待捕获结束后重试".into()); }
+    Ok(())
+}
+
+pub(crate) fn require_games_idle(app: &tauri::AppHandle) -> Result<(), String> {
     let state = app.state::<AppState>();
     let tracker = state.runtime.lock().map_err(|_| "运行状态不可用")?;
     let conn = state.db.lock().map_err(|_| "数据库暂时不可用")?;
@@ -35,7 +41,6 @@ pub(crate) fn require_idle(app: &tauri::AppHandle) -> Result<(), String> {
     }
     drop(conn); drop(tracker);
     if crate::runtime::any_running(&games) { return Err("检测到游戏进程仍在运行，请退出游戏后重试".into()); }
-    if crate::xbox_local::has_active_capture() { return Err("成就捕获尚未停止，请退出游戏并等待捕获结束后重试".into()); }
     Ok(())
 }
 

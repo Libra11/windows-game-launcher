@@ -140,3 +140,8 @@ pub(crate) fn stop_all() {
     #[cfg(windows)]
     service::stop_all();
 }
+
+#[cfg(windows)]
+pub(crate) fn stop_for_update() -> Result<(), String> {
+    service::stop_for_update()
+}

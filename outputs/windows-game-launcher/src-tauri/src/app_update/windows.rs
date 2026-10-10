@@ -95,10 +95,14 @@ pub(super) fn install(app:&tauri::AppHandle,manager:&ManagerState,id:&str)->Resu
     let _gate=state.operation_gate.lock().map_err(|_|"启动操作状态不可用")?;
     if app.path().app_data_dir().map_err(|e|e.to_string())?.join("pending-backup-restore.json").exists(){return Err("有待完成的恢复任务，请先完成恢复".into());}
     if state.maintenance.load(Ordering::Acquire){return Err("游迹正在维护，请稍后安装".into());}
-    crate::backup::require_idle(app)?;
+    crate::backup::require_games_idle(app)?;
     crate::runtime_persistence::checkpoint(app,true)?;
     let _maintenance=crate::maintenance::Guard::enter(&state.maintenance)?;
     let result=(||{
+        // 后台会在无游戏时保留等待组件。先冻结新捕获，再正常停止组件，
+        // 不能将等待进程直接当作游戏仍在运行，也不能绕过解除附加。
+        crate::backup::require_games_idle(app)?;
+        crate::xbox_local::stop_for_update()?;
         crate::backup::require_idle(app)?;
         // 等待此前持有数据库锁的写入完成；Windows 插件成功启动安装器后直接退出进程。
         {let _conn=state.db.lock().map_err(|_|"数据库写入尚未完成")?;}

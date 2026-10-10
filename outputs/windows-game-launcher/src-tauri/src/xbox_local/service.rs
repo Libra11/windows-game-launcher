@@ -112,6 +112,40 @@ pub(crate) fn has_active_capture() -> bool {
     })
 }
 
+// 调用方持有 operation_gate 并已进入维护状态，停止期间不能创建新捕获。
+// 使用组件自己的退出协议，让已附加组件恢复寄存器并解除附加，不强杀进程。
+pub(crate) fn stop_for_update() -> Result<(), String> {
+    let Some(probes) = PROBES.get() else { return Ok(()); };
+    stop_probes(probes, std::time::Duration::from_secs(10))
+}
+
+fn stop_probes(probes: &Mutex<HashMap<String, Probe>>, timeout: std::time::Duration) -> Result<(), String> {
+    {
+        let mut probes = probes.lock().map_err(|_| "Xbox 捕获状态不可用")?;
+        for probe in probes.values_mut() {
+            if probe.child.try_wait().map_err(|e| format!("无法检查 Xbox 捕获状态：{e}"))?.is_none() {
+                std::fs::write(probe.directory.join("control.txt"), "stop")
+                    .map_err(|e| format!("无法请求 Xbox 捕获停止：{e}"))?;
+            }
+        }
+    }
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        let mut active = false;
+        {
+            let mut probes = probes.lock().map_err(|_| "Xbox 捕获状态不可用")?;
+            for probe in probes.values_mut() {
+                active |= probe.child.try_wait().map_err(|e| format!("无法检查 Xbox 捕获状态：{e}"))?.is_none();
+            }
+        }
+        if !active { return Ok(()); }
+        if std::time::Instant::now() >= deadline {
+            return Err("成就捕获停止超时，本次更新未安装，请稍后重试".into());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+}
+
 pub(super) fn retain(ids: &[String]) {
     if let Some(probes) = PROBES.get() {
         if let Ok(mut probes) = probes.lock() {
@@ -124,5 +158,56 @@ pub(super) fn retain(ids: &[String]) {
                 }
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn waiting_probe(directory: &std::path::Path, obey_stop: bool) -> Probe {
+        use std::os::windows::process::CommandExt;
+        let script = if obey_stop {
+            "while ((Get-Content -LiteralPath $env:YOUJI_TEST_CONTROL -Raw).Trim() -eq 'running') { Start-Sleep -Milliseconds 20 }"
+        } else {
+            "Start-Sleep -Seconds 30"
+        };
+        let child = Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command", script])
+            .env("YOUJI_TEST_CONTROL", directory.join("control.txt"))
+            .creation_flags(0x08000000)
+            .spawn().unwrap();
+        Probe { child, directory: directory.to_owned() }
+    }
+
+    #[test]
+    fn waiting_component_receives_stop_and_exits_before_installation() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(directory.path().join("control.txt"), "running").unwrap();
+        let probes = Mutex::new(HashMap::from([("test".into(), waiting_probe(directory.path(), true))]));
+        let result = stop_probes(&probes, Duration::from_secs(10));
+        // 即使用例失败也回收测试组件，不触碰真实捕获或游戏。
+        let mut probes = probes.lock().unwrap();
+        let child = &mut probes.get_mut("test").unwrap().child;
+        let exited = child.try_wait().unwrap().is_some();
+        if !exited { let _ = child.kill(); let _ = child.wait(); }
+        assert!(result.is_ok(), "{result:?}");
+        assert!(exited);
+        assert_eq!(std::fs::read_to_string(directory.path().join("control.txt")).unwrap(), "stop");
+    }
+
+    #[test]
+    fn stop_timeout_rejects_installation_without_killing_component() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(directory.path().join("control.txt"), "running").unwrap();
+        let probes = Mutex::new(HashMap::from([("test".into(), waiting_probe(directory.path(), false))]));
+        let result = stop_probes(&probes, Duration::ZERO);
+        let mut probes = probes.lock().unwrap();
+        let child = &mut probes.get_mut("test").unwrap().child;
+        let alive = child.try_wait().unwrap().is_none();
+        let _ = child.kill(); let _ = child.wait();
+        assert!(result.unwrap_err().contains("停止超时"));
+        assert!(alive);
     }
 }
