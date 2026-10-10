@@ -49,6 +49,7 @@ export async function command(name, args = {}) {
   if (name === 'get_achievement_overlay_options') return {position:'bottom-right',duration:5,sound:'chime'};
   if (name === 'save_achievement_overlay_options') return;
   if (name === 'list_games') return demoGames;
+  if (name === 'get_library_organization') return {tags:[],collections:[],gameTags:[],gameCollections:[]};
   if (name === 'epic_connection_status') return { connected:false, displayName:'' };
   if (name === 'steam_family_connection_status') return {connected:false,expired:false,steamId:'',familyName:'',hasFamily:false,accountMismatch:false};
   if (name === 'get_backup_restore_status') return null;
@@ -96,3 +97,5 @@ export const onUnlock = handler => isTauri() ? listen('achievement-unlocked', ha
 export const onLibraryChange = handler => isTauri() ? listen('library-changed', handler) : Promise.resolve(() => {});
 export const onLauncherError = handler => isTauri() ? listen('launcher-error', handler) : Promise.resolve(() => {});
 export const onFileDrop = handler => isTauri() ? getCurrentWebviewWindow().onDragDropEvent(handler) : Promise.resolve(() => {});
+
+export const onOrganizationChange = handler => isTauri() ? listen('library-organization-changed', handler) : Promise.resolve(() => {});

@@ -1,4 +1,4 @@
-# 游迹备份格式 v1
+# 游迹备份格式 v2
 
 本文件记录实现约定；使用入口为「设置 → 数据与迁移」。备份恢复仅修改游迹的记录与缓存，不复制或执行游戏程序，不复制游戏存档。
 
@@ -6,18 +6,18 @@
 
 `.youji-backup` 为 ZIP。只允许 `manifest.json`、`data.json`、`preferences.json` 和 `covers/<UUID>.<jpg|png|gif|webp|avif>`；不允许目录条目、链接、未知文件或重复名称。
 
-- manifest：`format=youji-backup`、`formatVersion=1`、应用版本、快照时间、数量摘要、缺失封面项、每个有效载荷文件的字节数与 SHA-256。
+- manifest：`format=youji-backup`、`formatVersion=2`、应用版本、快照时间、数量摘要（含标签与收藏夹）、缺失封面项、每个有效载荷文件的字节数与 SHA-256。
 - data：`snapshotAt`、固定表名到固定列顺序的行数组、可迁移设置白名单。不是数据库原文件，不携带 SQL/schema、WAL 或空闲页。
 - preferences：主题、主题色、字体名称序列，以及通知和窗口行为白名单。网络代理不导出。
 - covers：仅当前游戏有效封面索引引用的文件。不存在、链接或无法识别的图片从索引移除并计入缺失摘要。
 
-表顺序与列由 `backup/schema.rs` 固定：games、achievements、unlocks、game_activity、play_sessions、daily_playtime、statistics_unlock_events。游戏 ID、会话 ID、平台关联、解锁证据和统计日期保持不变；未结束会话只在导出副本中写入快照结束时间。
+表顺序与列由 `backup/schema.rs` 固定：games、library_tags、library_collections、game_tags、game_collections、achievements、unlocks、game_activity、play_sessions、daily_playtime、statistics_unlock_events。游戏 ID、会话 ID、平台关联、解锁证据和统计日期保持不变；未结束会话只在导出副本中写入快照结束时间。
 
 允许的设置为 steam_id、statistics_started_at，以及 achievement_platform、statistics_official_baseline、steam_playtime、steam_family_playtime、cover_cache 的有效前缀。成就平台与封面关联只保留当前游戏引用。凭证、机器错误状态、捕获文件、运行恢复、通知弹出历史不导出。
 
 ## 校验与资源限制
 
-格式版本必须为 1。每个归档成员按固定名称规则验证，校验实际解压大小、ZIP 读取结果和清单 SHA-256；验证记录类型、非负计数、日期、主键唯一性、游戏／会话引用与封面引用。SHA-256 用于检测完整性，不表示备份来源可信或提供加密。
+格式版本必须为 2；旧 v1 备份明确拒绝，不做兼容读取。每个归档成员按固定名称规则验证，校验实际解压大小、ZIP 读取结果和清单 SHA-256；验证记录类型、非负计数、日期、主键唯一性、游戏／会话／分类引用与封面引用，分类 UUID、1–40 字符名称、各类型内大小写不敏感的唯一名称以及非负且唯一的收藏夹顺序。SHA-256 用于检测完整性，不表示备份来源可信或提供加密。
 
 解压总量 10 GiB，成员最多 100,000；manifest 1 MiB，preferences 64 KiB，data 256 MiB，单张图片 20 MiB。超过限制在当前数据被替换前拒绝。游戏路径只预览／重定位，不自动执行。
 

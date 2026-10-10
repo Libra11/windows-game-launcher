@@ -1,3 +1,6 @@
+import { createOrganizationController } from './lib/organization-controller.js';
+import { clearOrganizationSelection, reconcileOrganization } from './lib/library-organization.js';
+import { mountOrganizationSidebar, patchOrganizationSelection } from './ui/organization-controls.js';
 import './style.css';
 import './ui/library.css';
 import './ui/detail.css';
@@ -111,6 +114,7 @@ async function refreshOnce(silent) {
     const timeOrderChanged = state.sort === 'time' && queryGames(games,{sort:'time'}).map(game=>game.id).join('|') !== queryGames(state.games,{sort:'time'}).map(game=>game.id).join('|');
     const changed = timeOrderChanged || librarySnapshot(games) !== librarySnapshot(state.games) || (selectedId === state.selectedId && JSON.stringify(items) !== JSON.stringify(state.achievements));
     state.games = games;
+    reconcileOrganization(state);
     if (selectedId === state.selectedId) state.achievements = items;
     if (!silent || changed) render();
     else patchRuntime(app,state.games);
@@ -121,7 +125,7 @@ mountProgramDrop(dialogActions).catch(error => toast(`拖入导入暂不可用�
 const statistics = createStatisticsController({
   command, render, visible:()=>state.page==='statistics' && !state.selectedId && !document.hidden && !document.querySelector('dialog[open]'),
 });
-const actions = {
+const actions = { run, toast,
   select, launch, exitBigScreen: () => bigMode.exit(),
   get backLabel(){return state.page==='statistics'?'返回统计':state.page==='settings'?'返回设置':'返回游戏库';},
   settings:async(category)=>{
@@ -142,12 +146,12 @@ const actions = {
   game: id => state.games.find(game=>game.id === id),
   favorite: async game => {const current = actions.game(game.id) || game; await run('set_favorite',{gameId:game.id,favorite:!current.favorite}); await refresh();},
   guide: game => detectionGuide(game,{...dialogActions,game:actions.game,edit:actions.edit}),
-  bigCategory: value => { selectionVersion++; state.page='library'; state.bigCategory = value; state.selectedId = ''; render(`category-${value}`); },
-  bigCollection: value => {selectionVersion++; state.bigCollection = value; state.selectedId = ''; render(`collection-${value}`);},
+  bigCategory: value => { clearOrganizationSelection(state);selectionVersion++; state.page='library'; state.bigCategory = value; state.selectedId = ''; render(`category-${value}`); },
+  bigCollection: value => {clearOrganizationSelection(state);state.collectionId='';selectionVersion++; state.bigCollection = value; state.selectedId = ''; render(`collection-${value}`);},
   add: () => addDialog(dialogActions),
   importSteam: async () => { toast('正在从 Steam 导入游戏…'); const count = await run('import_steam'); await refresh(); toast(`新增 ${count} 款 Steam 游戏`); },
   sort: value => { state.sort = value; render(); },
-  installed: value => { state.installedOnly = value; render(); },
+  installed: value => { clearOrganizationSelection(state);state.installedOnly = value; render(); },
   view: value => { state.view = value; render(); },
   back: () => {
     selectionVersion++; const returning=!!state.selectedId && state.page==='statistics';
@@ -176,6 +180,7 @@ const actions = {
   filter: value => { state.achievementFilter = value; render(); },
   manual: async (game, item) => { await run('toggle_manual', { gameId: game.id, apiName: item.apiName }); await refresh(); },
 };
+const organizationController=createOrganizationController(state,render,actions,()=>selectionVersion++);
 const bigMode = createBigScreenMode(state, render, toast, {
   back: () => state.selectedId || state.page==='statistics' ? actions.back() : bigMode.exit(),
   category: direction => {
@@ -186,7 +191,7 @@ const bigMode = createBigScreenMode(state, render, toast, {
   },
 });
 mountSidebar($('.sidebar'), {
-  category: value => { selectionVersion++; state.page='library'; state.filter = value; state.selectedId = ''; render(); },
+  category: value => { clearOrganizationSelection(state);state.collectionId='';selectionVersion++; state.page='library'; state.filter = value; state.selectedId = ''; render(); },
   back:()=>{
     if (state.page === 'library' && state.selectedId) return actions.back();
     selectionVersion++;state.page='library';state.selectedId='';render();
@@ -194,13 +199,14 @@ mountSidebar($('.sidebar'), {
   settings: actions.settings, preview,
   statistics:actions.statistics,
 });
+const updateOrganizationSidebar=mountOrganizationSidebar($('#navigation'),state,actions);
 $('#add-action').append(button('添加游戏', 'primary add-button', actions.add, 'plus'));
 const displayMode=button('','header-icon-button',bigMode.enter,'screen');
 displayMode.id='big-screen-entry';displayMode.title='大屏模式';displayMode.setAttribute('aria-label','大屏模式');
 $('#header-display-action').append(displayMode);
 let searchFrame;
 $('#search').oninput = event => {
-  selectionVersion++;state.page='library';state.search=event.target.value;state.selectedId='';
+  clearOrganizationSelection(state);selectionVersion++;state.page='library';state.search=event.target.value;state.selectedId='';
   cancelAnimationFrame(searchFrame);
   searchFrame=requestAnimationFrame(()=>render());
 };
@@ -240,10 +246,11 @@ function render(preferredFocus) {
   const focusKey = content.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
   const statisticsScroll=state.page==='statistics' && !state.selectedId ? window.scrollY : null;
   $('#navigation').querySelectorAll('button').forEach(node => {
-    const category = node.dataset.filter; const active=node.dataset.page ? state.page===node.dataset.page : state.page==='library' && category===state.filter;
+    const category = node.dataset.filter; const active=node.dataset.page ? state.page===node.dataset.page : state.page==='library' && !state.collectionId && category===state.filter;
     node.classList.toggle('active',active);node.setAttribute('aria-current',active?'page':'false');
     if(category) node.querySelector('.nav-count').textContent = state.games.filter(game => inCategory(game,category)).length;
   });
+  updateOrganizationSidebar();
   const game = state.games.find(item => item.id === state.selectedId);
   if (!game) state.selectedId = '';
   app.classList.toggle('statistics-active',state.page==='statistics'&&!game);
@@ -257,6 +264,7 @@ function render(preferredFocus) {
   if(content.firstElementChild!==next)content.replaceChildren(next);
   activateArtwork(next);
   patchRuntime(next,state.games);
+  patchOrganizationSelection(next,state);
   if (diagnosticOpen && content.querySelector('details')) content.querySelector('details').open = true;
   if (restoreFocus && (preferredFocus||focusKey)) [...content.querySelectorAll('[data-focus-key]')].find(node=>node.dataset.focusKey === (preferredFocus||focusKey))?.focus({preventScroll:true});
   animateView(content.firstElementChild, state);
@@ -279,4 +287,5 @@ if(!preview)command('get_backup_restore_status').then(async notice=>{
 }).catch(()=>{});
 setInterval(() => { if (!document.hidden && !document.querySelector('dialog[open]')) refresh(true).catch(() => {}); }, 5000);
 $('#content').append(el('div', 'loading-state', '正在打开你的收藏…'));
+organizationController.start().catch(error=>toast(String(error),true));
 refresh().catch(() => { $('#content').replaceChildren(el('div', 'empty-state', '暂时无法读取游戏库，请在桌面启动器中打开。')); });

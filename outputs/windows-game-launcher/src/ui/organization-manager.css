@@ -1,0 +1,40 @@
+.modal.organization-manager-modal { width:min(620px,calc(100vw - 32px)); padding:26px; display:flex; flex-direction:column; max-height:calc(100dvh - 48px); overflow:hidden; }
+.organization-manager-modal .modal-header { margin-bottom:22px; gap:24px; }
+.organization-manager-modal .modal-header h2 { font-size:21px; letter-spacing:.2px; }
+.organization-manager-modal .modal-header p { line-height:1.7; margin-top:7px; }
+.organization-manager-modal .modal-header .icon-button { width:30px; height:30px; color:var(--muted); border-radius:50%; }
+.organization-manager-body { display:flex; flex-direction:column; min-height:0; }
+.organization-manager-toolbar { display:flex; gap:12px; align-items:center; padding-bottom:18px; }
+.organization-manager-toolbar input,.organization-manager-create input,.organization-manager-name-input { min-width:0; width:100%; border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:var(--input); color:var(--text); font:inherit; font-size:12px; }
+.organization-manager-toolbar input { flex:1; }
+.organization-manager-toolbar input::placeholder,.organization-manager-create input::placeholder { color:var(--muted); }
+.organization-manager-add { flex-shrink:0; font-size:12px; padding:10px 13px; }
+.organization-manager-create { display:flex; align-items:center; gap:8px; padding:0 0 18px; }
+.organization-manager-create[hidden] { display:none; }
+.organization-manager-create input { flex:1; }
+.organization-manager-create .primary { padding:9px 13px; font-size:12px; }
+.organization-manager-text { background:none; color:var(--muted); padding:8px; font-size:12px; white-space:nowrap; }
+.organization-manager-list { min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--line) transparent; border-top:1px solid var(--line); }
+.organization-manager-list::-webkit-scrollbar { width:4px; }
+.organization-manager-list::-webkit-scrollbar-thumb { background:var(--line); border-radius:4px; }
+.organization-manager-entry { display:flex; align-items:center; gap:16px; padding:13px 4px; border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent); }
+.organization-manager-entry:last-child { border-bottom:0; }
+.organization-manager-position { flex-shrink:0; width:22px; font-size:10px; font-variant-numeric:tabular-nums; color:var(--muted); opacity:.6; }
+.organization-manager-copy { flex:1; min-width:0; display:grid; gap:5px; }
+.organization-manager-copy strong { font-size:13px; font-weight:550; color:var(--text); overflow-wrap:anywhere; }
+.organization-manager-copy>span { font-size:10px; color:var(--muted); }
+.organization-manager-tools { display:flex; flex-shrink:0; gap:3px; }
+.organization-manager-icon { display:grid; place-items:center; width:29px; height:29px; padding:0; background:transparent; color:var(--muted); border-radius:6px; opacity:.7; }
+.organization-manager-icon .icon { width:15px; height:15px; }
+.organization-manager-entry:hover .organization-manager-icon,.organization-manager-entry:focus-within .organization-manager-icon { opacity:1; }
+.organization-manager-icon:hover:not(:disabled),.organization-manager-save { background:var(--accent-soft); color:var(--accent-ink); }
+.organization-manager-delete:hover:not(:disabled) { color:var(--error-text); background:var(--error-bg); }
+.organization-manager-icon:disabled { opacity:.22; cursor:default; }
+.organization-manager-icon.move-up .icon { transform:rotate(-90deg); }
+.organization-manager-icon.move-down .icon { transform:rotate(90deg); }
+.organization-manager-entry.editing { background:var(--accent-soft); border-radius:8px; padding-right:8px; }
+.organization-manager-footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding-top:16px; margin-top:4px; border-top:1px solid var(--line); font-size:10px; color:var(--muted); }
+.organization-manager-empty { display:grid; gap:9px; padding:40px 12px; text-align:center; }
+.organization-manager-empty strong { font-size:13px; font-weight:500; }
+.organization-manager-empty span { font-size:11px; color:var(--muted); }
+@media(max-width:560px) { .modal.organization-manager-modal { padding:20px; }.organization-manager-entry { gap:10px; }.organization-manager-position { display:none; }.organization-manager-tools { gap:0; } }

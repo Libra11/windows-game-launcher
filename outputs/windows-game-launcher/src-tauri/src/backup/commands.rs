@@ -69,7 +69,7 @@ pub(crate) async fn inspect_backup(app: tauri::AppHandle, path: String, operatio
         if archive::file_hash_with(&source, || check_cancel(&app))? != hash { return Err("备份在检查期间被修改，请重新选择".into()); }
         let state = app.state::<AppState>();
         let conn = lock_db(&state)?;
-        let current = Counts { games:db::games(&conn)?.len(), favorites:crate::activity::all(&conn)?.values().filter(|item| item.favorite).count(),
+        let current = Counts { tags:count(&conn,"library_tags")?, collections:count(&conn,"library_collections")?, games:db::games(&conn)?.len(), favorites:crate::activity::all(&conn)?.values().filter(|item| item.favorite).count(),
             sessions:count(&conn,"play_sessions")?, achievements:count(&conn,"achievements")?, unlocks:count(&conn,"unlocks")?, covers:{
                 let (_, root) = directories(&app)?;
                 let mut statement = conn.prepare("SELECT value FROM settings WHERE key LIKE 'cover_cache:%'").map_err(|error| error.to_string())?;

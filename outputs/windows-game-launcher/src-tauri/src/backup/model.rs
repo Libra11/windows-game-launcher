@@ -43,6 +43,8 @@ pub struct Dataset {
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Counts {
+    pub tags: usize,
+    pub collections: usize,
     pub games: usize,
     pub favorites: usize,
     pub sessions: usize,

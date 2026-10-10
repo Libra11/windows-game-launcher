@@ -1,3 +1,5 @@
+import { organizationOptions } from '../lib/library-organization.js';
+import { collectionSelect, tagFilter, tagChips } from './organization-controls.js';
 import { el, button, artwork, icon, sourceName, appIcon } from '../lib/dom.js';
 import { detailView } from './detail.js';
 import { queryGames, bigScreenCategories } from '../lib/library-query.js';
@@ -40,7 +42,7 @@ export function bigScreenView(state, actions, statistics) {
     content.classList.add('big-screen-statistics');
     content.append(statisticsView(statistics, actions));
   } else {
-    const games = queryGames(state.games,{category:state.bigCategory,collection:state.bigCollection,sort:state.sort,installedOnly:state.installedOnly});
+    const games = queryGames(state.games,{...organizationOptions(state),category:state.bigCategory,collection:state.bigCollection,sort:state.sort,installedOnly:state.installedOnly});
     const selected = games.find(item => item.id === state.bigFocusedId) || games[0];
     if (selected) state.bigFocusedId = selected.id;
     const hero = el('section', 'big-screen-hero');
@@ -56,9 +58,9 @@ export function bigScreenView(state, actions, statistics) {
       const tab = control(label,state.bigCollection === value ? 'active' : '',()=>actions.bigCollection(value),null,`collection-${value}`);
       tab.setAttribute('aria-pressed',String(state.bigCollection === value)); collection.append(tab);
     }
-    const title = el('div', 'big-screen-collection-heading'); title.append(el('h2', '', '游戏库'), el('span', '', `${games.length} 款收藏`));
-    const filters = el('div', 'big-screen-library-controls'); filters.append(collection, libraryControls(state, actions, true));
-    heading.append(title,filters); content.append(heading);
+    const title = el('div', 'big-screen-collection-heading'); title.append(el('h2', '', state.organization.collections.find(item=>item.id===state.collectionId)?.name||'游戏库'), el('span', '', `${games.length} 款收藏`));
+    const filters = el('div', 'big-screen-library-controls'); filters.append(collection,collectionSelect(state,actions), libraryControls(state, actions, true),tagFilter(state,actions));
+    heading.append(title,filters); content.append(heading,tagChips(state,actions));
     const grid = el('div', 'big-screen-grid');
     games.forEach(item => {
       const card = control('', 'big-screen-card', () => actions.select(item), null, `game-${item.id}`);
@@ -80,7 +82,8 @@ export function bigScreenView(state, actions, statistics) {
     if (!games.length) {
       hero.remove();
       const empty = el('div', 'empty-state', state.installedOnly ? '没有符合条件的已安装游戏。' : state.bigCollection==='steam-family'?'还没有符合此分类的家庭共享游戏，可以在设置中连接并导入 Steam 家庭库。':state.bigCollection === 'favorites' ? '还没有收藏。打开游戏详情，点击收藏置顶。' : state.bigCollection === 'recent' ? '还没有游玩记录。从启动器打开游戏后会自动记录。' : '这个分类还没有游戏，请退出大屏模式后添加或导入。');
-      if (state.installedOnly) empty.append(button('显示全部安装状态', 'secondary', () => actions.installed(false), 'library'));
+      if(state.collectionId||state.tagIds.length){empty.replaceChildren(el('h2','','没有符合条件的游戏'),el('p','','调整标签筛选，或退出大屏模式添加游戏到收藏夹。'),button('清除筛选','secondary',actions.organizationResetFilters));}
+      else if (state.installedOnly) empty.append(button('显示全部安装状态', 'secondary', () => actions.installed(false), 'library'));
       else if(state.bigCollection==='steam-family')empty.append(button('连接家庭游戏库','primary',()=>actions.settings('connections'),'steam'));
       grid.append(empty);
     }

@@ -11,11 +11,16 @@ fn source() -> rusqlite::Connection {
     let game = crate::model::Game { id:"local-one".into(),source:"local".into(),appid:"480".into(),title:"中文游戏".into(),
         exe_path:r"E:\Games\中文游戏\game.exe".into(),custom_unlock_path:r"E:\Games\中文游戏\record.ini".into(),metadata_json:"{}".into(),..Default::default() };
     db::upsert_game(&conn,&game).unwrap();
+    let tag=crate::organization::store::create(&mut conn,false,"待玩").unwrap();
+    let first=crate::organization::store::create(&mut conn,true,"周末").unwrap();
+    let second=crate::organization::store::create(&mut conn,true,"冒险").unwrap();
+    crate::organization::store::reorder(&mut conn,&[second,first.clone()]).unwrap();
+    crate::organization::store::set(&mut conn,&game.id,vec![tag],vec![first]).unwrap();
     crate::activity::set_favorite(&conn,&game.id,true).unwrap();
     crate::activity::start(&mut conn,"session-one",&game.id,TIME).unwrap();
     crate::activity::checkpoint(&mut conn,"session-one",125,false,&BTreeMap::from([("2026-10-10".into(),125)])).unwrap();
     conn.execute("INSERT INTO achievements VALUES('480','FIRST','首次','条件','',0)",[]).unwrap();
-    conn.execute("INSERT INTO unlocks VALUES('local-one','FIRST','manual',NULL,'历史证据 E:/Original/record.ini')",[]).unwrap();
+    conn.execute("INSERT INTO unlocks VALUES('local-one','FIRST','manual',?1,'历史证据 E:/Original/record.ini')",[TIME]).unwrap();
     for key in ["steam_api_key","epic_oauth_session","steam_family_session","runtime_recovery","achievement_definition_error:local-one"] {
         db::set_setting(&conn,key,"PRIVATE_SENTINEL_MUST_NOT_EXPORT").unwrap();
     }
@@ -48,7 +53,8 @@ fn archive_roundtrip_restores_history_and_proxy_without_logins_or_runtime() {
     let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
     let path=temp.path().join("portable.youji-backup");
     let manifest=archive::write(&path,data,prefs,&covers,"0.2.5".into(),|_,_,_|Ok(())).unwrap();
-    assert_eq!(manifest.counts.covers,1);
+    assert_eq!(manifest.counts.covers,1);assert_eq!(manifest.format_version,2);
+    assert_eq!(manifest.counts.tags,1);assert_eq!(manifest.counts.collections,2);
     let loaded=archive::read(&path).unwrap();
     let mut target=db::open(std::path::Path::new(":memory:")).unwrap();
     db::set_setting(&target,"steam_api_key","TARGET_CREDENTIAL").unwrap();
@@ -59,6 +65,7 @@ fn archive_roundtrip_restores_history_and_proxy_without_logins_or_runtime() {
     assert_eq!(db::setting(&target,"runtime_recovery").unwrap(),"[]");
     assert_eq!(crate::activity::all(&target).unwrap()["local-one"].played_seconds,125);
     assert_eq!(db::achievements(&target,"local-one").unwrap().len(),1);
+    assert_eq!(serde_json::to_value(crate::organization::store::read(&target).unwrap()).unwrap(),serde_json::to_value(crate::organization::store::read(&conn).unwrap()).unwrap());
     assert!(restore::appearance_script(&target).unwrap().unwrap().contains("launcher-font-settings"));
 }
 
@@ -67,10 +74,12 @@ fn rollback_preserves_target_data_if_restoring_fails() {
     let mut original=source();let (data,prefs)=export::capture(&mut original,appearance(),TIME).unwrap();
     let mut target=db::open(std::path::Path::new(":memory:")).unwrap();
     db::set_setting(&target,"steam_api_key","ORIGINAL_SECRET").unwrap();
+    let target_tag=crate::organization::store::create(&mut target,false,"原标签").unwrap();
     target.execute_batch("CREATE TRIGGER reject_game BEFORE INSERT ON games BEGIN SELECT RAISE(ABORT,'fixture failure'); END;").unwrap();
     assert!(restore::replace(&mut target,&data,&prefs,"fixture").is_err());
     assert_eq!(db::setting(&target,"steam_api_key").unwrap(),"ORIGINAL_SECRET");
     assert!(db::games(&target).unwrap().is_empty());
+    assert_eq!(crate::organization::store::read(&target).unwrap().tags[0].id,target_tag);
 }
 
 #[test]
@@ -113,4 +122,24 @@ fn digest_failure_is_detected_before_replacing_any_data() {
     for index in 0..zip.len(){let mut file=zip.by_index(index).unwrap();let name=file.name().unwrap().into_owned();let mut bytes=Vec::new();file.read_to_end(&mut bytes).unwrap();
         if name=="data.json"{bytes.push(b' ');}writer.start_file(name,zip::write::SimpleFileOptions::default()).unwrap();writer.write_all(&bytes).unwrap();}
     writer.finish().unwrap();assert!(archive::read(&bad).is_err());
+}
+
+#[test]
+fn organization_backup_rejects_orphans_duplicate_names_and_invalid_order() {
+    let mut conn=source();let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
+    let mut broken=data.clone();broken.tables.get_mut("game_tags").unwrap()[0][1]="unknown".into();assert!(schema::validate(&broken,&prefs).is_err());
+    let mut broken=data.clone();let mut row=broken.tables["library_tags"][0].clone();row[0]=uuid::Uuid::new_v4().to_string().into();broken.tables.get_mut("library_tags").unwrap().push(row);assert!(schema::validate(&broken,&prefs).is_err());
+    let mut broken=data.clone();broken.tables.get_mut("library_collections").unwrap()[0][2]=(-1).into();assert!(schema::validate(&broken,&prefs).is_err());
+    let mut broken=data.clone();let position=broken.tables["library_collections"][0][2].clone();broken.tables.get_mut("library_collections").unwrap()[1][2]=position;assert!(schema::validate(&broken,&prefs).is_err());
+}
+#[test]
+fn v1_archive_is_explicitly_rejected() {
+    let temp=tempfile::tempdir().unwrap();let mut conn=source();let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
+    let path=temp.path().join("new.youji-backup");archive::write(&path,data,prefs,temp.path(),"0.2.5".into(),|_,_,_|Ok(())).unwrap();
+    let mut zip=zip::ZipArchive::new(std::fs::File::open(&path).unwrap()).unwrap();
+    let old=temp.path().join("old.youji-backup");let mut writer=zip::ZipWriter::new(std::fs::File::create(&old).unwrap());
+    for index in 0..zip.len(){let mut file=zip.by_index(index).unwrap();let name=file.name().unwrap().into_owned();let mut bytes=Vec::new();file.read_to_end(&mut bytes).unwrap();
+        if name=="manifest.json"{let mut manifest:serde_json::Value=serde_json::from_slice(&bytes).unwrap();manifest["formatVersion"]=1.into();bytes=serde_json::to_vec(&manifest).unwrap();}
+        writer.start_file(name,zip::write::SimpleFileOptions::default()).unwrap();writer.write_all(&bytes).unwrap();}
+    writer.finish().unwrap();assert_eq!(archive::read(&old).err().unwrap(),"不支持此备份格式版本");
 }

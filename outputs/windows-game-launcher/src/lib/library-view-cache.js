@@ -1,3 +1,4 @@
+import { organizationOptions } from './library-organization.js';
 import { librarySnapshot } from './library-refresh.js';
 import { queryGames } from './library-query.js';
 
@@ -11,11 +12,12 @@ export function createLibraryViewCache() {
       : [state.filter,state.search,state.sort,state.installedOnly,state.view];
     // 秒数变化由局部补丁更新，只有时长排序顺序真的变化才重建列表。
     const order=state.sort==='time'
-      ? queryGames(state.games,{category:big?state.bigCategory:state.filter,
+      ? queryGames(state.games,{...organizationOptions(state),category:big?state.bigCategory:state.filter,
         collection:big?state.bigCollection:'all',search:big?'':state.search,
         installedOnly:state.installedOnly,sort:'time'}).map(game=>game.id)
       : null;
-    const key=librarySnapshot(state.games)+'|'+JSON.stringify([options,order]);
+    const organizationKey=[state.organizationRevision,state.collectionId,state.tagIds,state.tagMatch,big?false:state.organizationBatchMode];
+    const key=JSON.stringify(organizationKey)+'|'+librarySnapshot(state.games)+'|'+JSON.stringify([options,order]);
     const cached=views.get(mode);
     if(cached?.key===key)return cached.element;
     const element=build();

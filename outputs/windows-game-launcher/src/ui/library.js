@@ -1,3 +1,5 @@
+import { organizationOptions } from '../lib/library-organization.js';
+import { tagFilter, tagChips, batchToolbar, selectionControl, collectionSelect } from './organization-controls.js';
 import { el, button, icon, artwork, sourceName, sourceIcon } from '../lib/dom.js';
 import { queryGames, playedDate, categories, featuredGame } from '../lib/library-query.js';
 import { favoriteButton, runtimeBadge, installationBadge, playtimeBadge } from './game-controls.js';
@@ -5,14 +7,14 @@ import { libraryFeature } from './library-feature.js';
 import { libraryControls } from './library-controls.js';
 export function libraryView(state, actions) {
   const root = el('div', 'library-view');
-  const shown = queryGames(state.games,{category:state.filter,search:state.search,sort:state.sort,installedOnly:state.installedOnly});
-  if (!state.search && shown.length) {
+  const shown = queryGames(state.games,{...organizationOptions(state),category:state.filter,search:state.search,sort:state.sort,installedOnly:state.installedOnly});
+  if (!state.search && !state.organizationBatchMode && shown.length) {
     const featured = featuredGame(shown);
     root.append(libraryFeature(featured, actions));
   }
   const toolbar = el('div', 'collection-toolbar');
   const title = el('div', 'collection-title');
-  title.append(el('h2', '', state.search ? '搜索结果' : categories.find(([value])=>value === state.filter)?.[1] || '全部游戏'), el('span', 'count-pill', String(shown.length)));
+  title.append(el('h2', '', state.search ? '搜索结果' : state.organization.collections.find(item=>item.id===state.collectionId)?.name || categories.find(([value])=>value === state.filter)?.[1] || '全部游戏'), el('span', 'count-pill', String(shown.length)));
   const controls = el('div', 'collection-controls');
   const views = el('div', 'view-switch');
   for (const [value, glyph, label] of [['grid', 'library', '封面视图'], ['list', 'list', '列表视图']]) {
@@ -20,8 +22,14 @@ export function libraryView(state, actions) {
     control.dataset.focusKey = `view-${value}`;
     control.setAttribute('aria-label', label); control.setAttribute('aria-pressed', String(state.view === value)); control.title = label; views.append(control);
   }
-  controls.append(libraryControls(state, actions), views); toolbar.append(title, controls); root.append(toolbar);
+  const compactCollection=collectionSelect(state,actions);compactCollection.classList.add('organization-desktop-collection');
+  const compactManage=button('','organization-desktop-collection icon-button',()=>actions.organizationManage('collection'),'settings');compactManage.title='管理收藏夹';compactManage.setAttribute('aria-label','管理收藏夹');
+  controls.append(libraryControls(state, actions),compactCollection,compactManage,tagFilter(state,actions),button(state.organizationBatchMode?'结束整理':'批量整理','secondary',actions.organizationToggleBatch,'list'), views); toolbar.append(title, controls); root.append(toolbar,tagChips(state,actions));
+  if(state.organizationBatchMode)root.append(batchToolbar(state,shown,actions));
   if (!shown.length) {
+    if(state.collectionId||state.tagIds.length){
+      const empty=el('div','empty-state');empty.append(icon('folder'),el('h2','',state.collectionId&&!state.tagIds.length&&!state.search&&!state.installedOnly?'收藏夹还没有游戏':'没有符合条件的游戏'),el('p','','可调整筛选条件，或在全部游戏中通过整理入口将游戏加入收藏夹。'),button('清除筛选','secondary',actions.organizationResetFilters));root.append(empty);return root;
+    }
     if(state.filter==='steam-family'&&!state.search&&!state.installedOnly){
       const empty=el('div','empty-state');
       empty.append(icon('family'),el('h2','','还没有家庭共享游戏'),el('p','','连接 Steam 家庭库，导入你可以借用的游戏，包括尚未安装的游戏。'),button('连接家庭游戏库','primary',()=>actions.settings('connections'),'steam'));
@@ -41,7 +49,8 @@ export function libraryView(state, actions) {
   const grid = el('div', state.view === 'list' ? 'game-list' : 'game-grid');
   shown.forEach(game => {
     const tile = el('div','game-tile');
-    const card = button('', 'game-card', () => actions.select(game));
+    tile.classList.toggle('organization-selected',state.organizationBatchMode&&state.organizationSelection.has(game.id));
+    const card = button('', 'game-card', () => state.organizationBatchMode?actions.organizationToggleGame(game.id):actions.select(game));
     card.setAttribute('aria-label',`${game.title} ${sourceName(game)}`); card.dataset.focusKey = `game-${game.id}`;
     const art = el('div', 'game-art'); artwork(art, game, false, {defer:true});
     const hover = el('span', 'card-open'); hover.append(icon('arrow')); art.append(hover);
@@ -50,7 +59,7 @@ export function libraryView(state, actions) {
     copy.append(playtimeBadge(game));
     if (game.lastPlayed) copy.append(el('span','game-played',`上次 · ${playedDate(game.lastPlayed)}`));
     copy.append(runtimeBadge(game),installationBadge(game,true));
-    card.append(art, copy); tile.append(card,favoriteButton(game,actions,true,`favorite-${game.id}`)); grid.append(tile);
+    card.append(art, copy); if(state.organizationBatchMode)tile.append(selectionControl(game,state,actions));tile.append(card,favoriteButton(game,actions,true,`favorite-${game.id}`)); grid.append(tile);
   });
   root.append(grid); return root;
 }

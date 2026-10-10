@@ -25,11 +25,11 @@ export function settingsData(actions) {
     if(!path)return;
     const result=await actions.run('export_backup',{path,appearance:backupAppearance(),operationId});
     if(disposed)return;
-    status.textContent=`备份完成：${result.manifest.counts.games} 款游戏、${result.manifest.counts.unlocks} 条解锁、${result.manifest.counts.covers} 张封面。保存到 ${result.path}`
+    status.textContent=`备份完成：${result.manifest.counts.games} 款游戏、${result.manifest.counts.unlocks} 条解锁、${result.manifest.counts.tags} 个标签、${result.manifest.counts.collections} 个收藏夹、${result.manifest.counts.covers} 张封面。保存到 ${result.path}`
       +(result.manifest.missingCovers.length?`；${result.manifest.missingCovers.length} 项封面缺失，已跳过。`:'');
     actions.toast('备份已完成');
   }),'folder');
-  exportSection.append(el('h3','','创建备份'),el('p','settings-description','包含游戏、收藏、时长、成就、外观和当前封面。不包含游戏程序、存档、字体文件或登录凭证。游戏运行时可保存当前检查点。'),create);
+  exportSection.append(el('h3','','创建备份'),el('p','settings-description','包含游戏、星标、标签、收藏夹、时长、成就、外观和当前封面。不包含游戏程序、存档、字体文件或登录凭证。游戏运行时可保存当前检查点。'),create);
   const restoreSection=el('section','settings-service'),review=el('div','backup-review');
   const select=button('选择备份','secondary',()=>perform(async()=>{
     const path=await chooseFile({multiple:false,title:'选择游迹备份',filters:[{name:'游迹备份',extensions:['youji-backup']}]});
@@ -41,7 +41,7 @@ export function settingsData(actions) {
     heading.append(el('p','settings-description',`备份版本 ${inspection.manifest.appVersion} · ${new Date(inspection.manifest.createdAt).toLocaleString('zh-CN')}`));
     const table=el('table','backup-counts');
     const head=el('tr');for(const name of ['内容','备份数据','当前数据'])head.append(el('th','',name));table.append(head);
-    for(const [key,label] of [['games','游戏'],['favorites','收藏'],['sessions','游玩会话'],['achievements','成就定义'],['unlocks','解锁记录'],['covers','封面']]){
+    for(const [key,label] of [['games','游戏'],['favorites','星标收藏'],['tags','标签'],['collections','收藏夹'],['sessions','游玩会话'],['achievements','成就定义'],['unlocks','解锁记录'],['covers','封面']]){
       const row=el('tr');row.append(el('td','',label),el('td','',String(inspection.manifest.counts[key])),el('td','',String(inspection.current[key])));table.append(row);
     }
     heading.append(table,el('p','settings-description','完整恢复会替换当前游戏库及记录，并清除账号授权。恢复前会自动备份当前数据，网络代理保留在这台电脑。'));

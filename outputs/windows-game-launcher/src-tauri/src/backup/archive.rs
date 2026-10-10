@@ -74,7 +74,7 @@ pub fn write(
             writer.write_all(&bytes).map_err(err)?;
             records.insert(name.into(), FileRecord { size:bytes.len() as u64, sha256:digest(&bytes) });
         }
-        let manifest = Manifest { format:"youji-backup".into(), format_version:1, app_version:version,
+        let manifest = Manifest { format:"youji-backup".into(), format_version:2, app_version:version,
             created_at:data.snapshot_at.clone(), counts:schema::counts(&data, seen.len()), files:records, missing_covers:missing };
         let bytes = serde_json::to_vec(&manifest).map_err(err)?;
         if bytes.len() > 1024 * 1024 || manifest.files.len() + 1 > MAX_ENTRIES { return Err("备份清单过大".into()); }
@@ -121,7 +121,7 @@ pub fn read_with_progress(path: &Path, mut progress: impl FnMut(usize, usize) ->
         std::fs::write(directory.path().join(&name), bytes).map_err(err)?;
     }
     let manifest: Manifest = serde_json::from_reader(File::open(directory.path().join("manifest.json")).map_err(err)?).map_err(err)?;
-    if manifest.format != "youji-backup" || manifest.format_version != 1 { return Err("不支持此备份格式版本".into()); }
+    if manifest.format != "youji-backup" || manifest.format_version != 2 { return Err("不支持此备份格式版本".into()); }
     records.remove("manifest.json");
     if manifest.files.len() != records.len() || manifest.files.iter().any(|(name, expected)| {
         records.get(name).is_none_or(|actual| actual.size != expected.size || actual.sha256 != expected.sha256)

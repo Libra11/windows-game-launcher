@@ -29,6 +29,7 @@ pub fn open(path: &Path) -> Result<Connection, String> {
          CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
     ).map_err(|e| e.to_string())?;
     crate::activity::initialize(&conn)?;
+    crate::organization::store::initialize(&conn)?;
     if setting(&conn, "statistics_started_at")?.is_empty() {
         set_setting(&conn, "statistics_started_at", &chrono::Local::now().to_rfc3339())?;
     }

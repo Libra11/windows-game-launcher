@@ -17,6 +17,7 @@ export function detailView(game, achievements, filter, actions) {
   const description = el('p', 'game-description', metadata(game).description || (game.source === 'epic' ? '这段冒险，等待你来开启。重新导入 Epic 游戏库可更新游戏资料。' : '这段冒险，等待你来开启。更新资料可获取游戏简介。'));
   const buttons = el('div', 'game-actions');
   buttons.append(launchButton(game,actions), favoriteButton(game,actions));
+  buttons.append(button('整理', 'secondary', () => actions.organize(game), 'folder'));
   buttons.append(button('更新资料', 'secondary', () => actions.sync(game), 'refresh'));
   buttons.append(button(game.source === 'local' ? '编辑游戏' : '启动检测设置', 'secondary', () => actions.edit(game), 'settings'));
   if (game.source === 'local') {

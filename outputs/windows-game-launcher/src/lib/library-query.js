@@ -1,3 +1,4 @@
+import { organizationMatches } from './library-organization.js';
 import { isFamilyGame } from './family-library.js';
 
 export const platformCategories = [
@@ -19,9 +20,10 @@ export function inCategory(game, category) {
   return category === 'all' || game.source === category;
 }
 
-export function queryGames(games, { category = 'all', collection = 'all', search = '', sort = 'az', installedOnly = false } = {}) {
+export function queryGames(games, { category = 'all', collection = 'all', search = '', sort = 'az', installedOnly = false, organization, collectionId = '', tagIds = [], tagMatch = 'all' } = {}) {
   const term = search.trim().toLocaleLowerCase();
   return games.filter(game => inCategory(game, category) && inCategory(game, collection)
+    && organizationMatches(game,organization,collectionId,tagIds,tagMatch)
     && (!installedOnly || game.installation?.state === 'installed')
     && (!term || game.title.toLocaleLowerCase().includes(term))).sort((a, b) => {
     if (sort === 'time') {

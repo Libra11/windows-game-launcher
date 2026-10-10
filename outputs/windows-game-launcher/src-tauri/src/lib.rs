@@ -20,6 +20,7 @@ mod library_commands;
 mod library_removal;
 mod local_import;
 mod model;
+mod organization;
 mod network;
 mod record_paths;
 mod runtime;
@@ -154,6 +155,17 @@ pub fn run() {
         .on_window_event(desktop_lifecycle::closing)
         .invoke_handler(tauri::generate_handler![
             library_commands::list_games,
+            organization::get_library_organization,
+            organization::create_library_tag,
+            organization::rename_library_tag,
+            organization::delete_library_tag,
+            organization::create_library_collection,
+            organization::rename_library_collection,
+            organization::delete_library_collection,
+            organization::reorder_library_collections,
+            organization::set_game_organization,
+            organization::batch_update_game_organization,
+
             backup::export_backup,
             backup::inspect_backup,
             backup::preview_backup_paths,

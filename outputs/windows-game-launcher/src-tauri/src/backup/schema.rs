@@ -5,6 +5,10 @@ use std::collections::HashSet;
 pub struct Table { pub name: &'static str, pub columns: &'static [&'static str] }
 pub const TABLES: &[Table] = &[
     Table { name:"games", columns:&["id","source","appid","title","exe_path","launch_uri","custom_unlock_path","metadata_json","scan_status","source_file","last_scan","schema_source"] },
+    Table { name:"library_tags", columns:&["id","name"] },
+    Table { name:"library_collections", columns:&["id","name","position"] },
+    Table { name:"game_tags", columns:&["game_id","tag_id"] },
+    Table { name:"game_collections", columns:&["game_id","collection_id"] },
     Table { name:"achievements", columns:&["appid","api_name","name","description","icon","hidden"] },
     Table { name:"unlocks", columns:&["game_id","api_name","source","unlocked_at","evidence"] },
     Table { name:"game_activity", columns:&["game_id","favorite","last_played","played_seconds"] },
@@ -28,7 +32,7 @@ pub fn cover_name(file: &str) -> bool {
 
 pub fn counts(data: &Dataset, covers: usize) -> Counts {
     let length = |name| data.tables.get(name).map_or(0, Vec::len);
-    Counts { games:length("games"), favorites:data.tables.get("game_activity").map_or(0, |rows| rows.iter().filter(|row| row[1].as_i64() == Some(1)).count()),
+    Counts { tags:length("library_tags"), collections:length("library_collections"), games:length("games"), favorites:data.tables.get("game_activity").map_or(0, |rows| rows.iter().filter(|row| row[1].as_i64() == Some(1)).count()),
         sessions:length("play_sessions"), achievements:length("achievements"), unlocks:length("unlocks"), covers }
 }
 
@@ -47,7 +51,7 @@ pub fn validate(data: &Dataset, preferences: &Preferences) -> Result<(), String>
             }) { return Err(format!("备份 {} 数据格式无效", table.name)); }
             for (index, column) in table.columns.iter().enumerate() {
                 let value = &row[index];
-                if ["seconds","played_seconds","favorite","hidden"].contains(column) {
+                if ["seconds","played_seconds","favorite","hidden","position"].contains(column) {
                     let number = value.as_i64().filter(|value| *value >= 0).ok_or("备份计数或时长无效")?;
                     if ["favorite","hidden"].contains(column) && number > 1 { return Err("备份开关数值无效".into()); }
                 } else if !(value.is_string() || (*column == "unlocked_at" && value.is_null())) {
@@ -63,8 +67,8 @@ pub fn validate(data: &Dataset, preferences: &Preferences) -> Result<(), String>
                 }
             }
             let key: Vec<_> = match table.name {
-                "games" | "game_activity" | "play_sessions" => vec![row[0].clone()],
-                "achievements" | "unlocks" | "daily_playtime" => vec![row[0].clone(),row[1 + usize::from(table.name == "daily_playtime")].clone()],
+                "games" | "game_activity" | "play_sessions" | "library_tags" | "library_collections" => vec![row[0].clone()],
+                "achievements" | "unlocks" | "daily_playtime" | "game_tags" | "game_collections" => vec![row[0].clone(),row[1 + usize::from(table.name == "daily_playtime")].clone()],
                 _ => vec![row[0].clone(),row[1].clone(),row[2].clone()],
             };
             if !unique.insert(serde_json::to_string(&key).unwrap()) { return Err(format!("备份 {} 存在重复记录", table.name)); }
@@ -84,6 +88,21 @@ pub fn validate(data: &Dataset, preferences: &Preferences) -> Result<(), String>
             || (source == "epic" && !uri.starts_with("com.epicgames.launcher://apps/"))
             || (source == "local" && !uri.is_empty())
         { return Err("备份游戏平台启动地址无效".into()); }
+    }
+    let mut positions=HashSet::new();
+    for (entity,relation) in [("library_tags","game_tags"),("library_collections","game_collections")] {
+        let mut names=HashSet::new();let mut entities=HashSet::new();
+        for row in &data.tables[entity] {
+            let id=row[0].as_str().ok_or("分类标识无效")?;
+            uuid::Uuid::parse_str(id).map_err(|_|"分类标识无效")?;
+            let name=row[1].as_str().ok_or("分类名称无效")?;
+            if crate::organization::store::name(name)? != name || !names.insert(name.to_lowercase()) {return Err("分类名称重复或无效".into());}
+            entities.insert(id);
+            if entity=="library_collections" && !positions.insert(row[2].as_i64().ok_or("收藏夹顺序无效")?) {return Err("收藏夹顺序重复".into());}
+        }
+        for row in &data.tables[relation] {
+            if !row[0].as_str().is_some_and(|id|ids.contains(id)) || !row[1].as_str().is_some_and(|id|entities.contains(id)) {return Err("分类关联引用不存在的游戏或分类".into());}
+        }
     }
     let mut sessions = std::collections::HashMap::new();
     for row in &data.tables["play_sessions"] {

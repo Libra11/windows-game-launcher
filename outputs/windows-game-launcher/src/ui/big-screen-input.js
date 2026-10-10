@@ -4,7 +4,7 @@ import { reducedMotion } from './motion.js';
 
 export function mountBigScreenInput(root, actions) {
   const selector = 'button:not(:disabled), input, select, summary, a[href]';
-  const scope = () => document.querySelector('dialog[open]') || root;
+  const scope = () => document.querySelector('dialog[open]') || root.querySelector(':popover-open') || root;
   const controls = () => [...scope().querySelectorAll(selector)].filter(node => node.getBoundingClientRect().width && !node.closest('[hidden]'));
   function focus(node) {
     node.focus({ preventScroll: true });
@@ -40,10 +40,13 @@ export function mountBigScreenInput(root, actions) {
       if (!control.disabled) control.click();
     } else if (action === 'back') {
       const dialog = document.querySelector('dialog[open]');
-      if (dialog) closeModal(dialog); else actions.back();
-    } else if (!document.querySelector('dialog[open]')) actions.category(action === 'next' ? 1 : -1);
+      const popover=root.querySelector(':popover-open');
+      if(popover){popover.hidePopover();root.querySelector(`[popovertarget="${popover.id}"]`)?.focus();}
+      else if (dialog) closeModal(dialog); else actions.back();
+    } else if (!document.querySelector('dialog[open]')&&!root.querySelector(':popover-open')) actions.category(action === 'next' ? 1 : -1);
   }
   function keydown(event) {
+    if(event.defaultPrevented)return;
     const typing = event.target.matches('input, textarea, select');
     if (typing && event.key !== 'Escape') return;
     const action = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Enter: 'confirm', ' ': 'confirm', Escape: 'back' }[event.key];
