@@ -3,6 +3,13 @@ import { playTime, playedDate } from '../lib/library-query.js';
 import { launchState, installationHint } from '../lib/launch-state.js';
 import { playtimeText, playtimeHint } from '../lib/playtime.js';
 
+function setValue(node,key,value) {
+  if(node[key]!==value)node[key]=value;
+}
+function setState(node,key,value) {
+  if(node.dataset[key]!==value)node.dataset[key]=value;
+}
+
 export function launchButton(game, actions, className = 'primary', focusKey) {
   const node = el('button', className); node.type = 'button';
   node.dataset.launchId = game.id;
@@ -19,11 +26,11 @@ export function launchButton(game, actions, className = 'primary', focusKey) {
 }
 function updateLaunch(node, game) {
   const {label,disabled,reason} = launchState(game);
-  node.disabled = disabled;
-  node.dataset.launchState = ['starting','running'].includes(game.runtime?.state) ? game.runtime.state : game.installation?.state || 'local';
-  node.querySelector('span').textContent = label;
-  node.setAttribute('aria-label', label);
-  node.title = reason || label;
+  setValue(node,'disabled',disabled);
+  setState(node,'launchState',['starting','running'].includes(game.runtime?.state) ? game.runtime.state : game.installation?.state || 'local');
+  setValue(node.querySelector('span'),'textContent',label);
+  if(node.getAttribute('aria-label')!==label)node.setAttribute('aria-label',label);
+  setValue(node,'title',reason||label);
 }
 export function installationBadge(game, compact = false) {
   const node = el('span','installation-hint'); node.dataset.installationId = game.id;
@@ -32,9 +39,10 @@ export function installationBadge(game, compact = false) {
 }
 function updateInstallation(node,game) {
   const hint = installationHint(game);
-  node.hidden = !hint; node.textContent = hint && node.dataset.installationCompact === 'true' ? launchState(game).label : hint;
-  node.title = hint;
-  node.dataset.state = game.installation?.state || 'checking';
+  setValue(node,'hidden',!hint);
+  setValue(node,'textContent',hint && node.dataset.installationCompact === 'true' ? launchState(game).label : hint);
+  setValue(node,'title',hint);
+  setState(node,'state',game.installation?.state||'checking');
 }
 export function favoriteButton(game, actions, compact = false, focusKey) {
   const label = game.favorite ? '取消收藏' : '收藏置顶';
@@ -51,11 +59,11 @@ export function runtimeBadge(game) {
 }
 function updateBadge(node, game) {
   const state = game.runtime?.state || 'idle';
-  node.dataset.state = state;
-  node.hidden = state === 'idle';
-  node.textContent = state === 'running' ? `运行中 · ${playTime(game.runtime.elapsedSeconds)}`
-    : state === 'starting' ? '正在启动…' : state === 'error' ? '启动失败' : '未确认运行';
-  node.title = game.runtime?.message || '';
+  setState(node,'state',state);
+  setValue(node,'hidden',state==='idle');
+  setValue(node,'textContent',state === 'running' ? `运行中 · ${playTime(game.runtime.elapsedSeconds)}`
+    : state === 'starting' ? '正在启动…' : state === 'error' ? '启动失败' : '未确认运行');
+  setValue(node,'title',game.runtime?.message||'');
 }
 export function activitySummary(game) {
   const node = el('div', 'play-summary');
@@ -68,14 +76,18 @@ export function playtimeBadge(game) {
   updatePlaytime(node, game); return node;
 }
 function updatePlaytime(node, game) {
-  node.querySelector('span').textContent = playtimeText(game);
-  node.title = playtimeHint(game);
-  node.dataset.state = game.playtime?.state || (game.source === 'local' ? 'ready' : 'pending');
+  setValue(node.querySelector('span'),'textContent',playtimeText(game));
+  setValue(node,'title',playtimeHint(game));
+  setState(node,'state',game.playtime?.state||(game.source==='local'?'ready':'pending'));
 }
 export function patchRuntime(root, games) {
   const byId = new Map(games.map(game => [game.id,game]));
-  root.querySelectorAll('[data-launch-id]').forEach(node => { const game = byId.get(node.dataset.launchId); if (game) updateLaunch(node,game); });
-  root.querySelectorAll('[data-runtime-id]').forEach(node => { const game = byId.get(node.dataset.runtimeId); if (game) updateBadge(node,game); });
-  root.querySelectorAll('[data-installation-id]').forEach(node => { const game = byId.get(node.dataset.installationId); if (game) updateInstallation(node,game); });
-  root.querySelectorAll('[data-playtime-id]').forEach(node=> {const game = byId.get(node.dataset.playtimeId); if (game) updatePlaytime(node,game); });
+  root.querySelectorAll('[data-launch-id],[data-runtime-id],[data-installation-id],[data-playtime-id]').forEach(node=>{
+    const game=byId.get(node.dataset.launchId||node.dataset.runtimeId||node.dataset.installationId||node.dataset.playtimeId);
+    if(!game)return;
+    if(node.dataset.launchId)updateLaunch(node,game);
+    else if(node.dataset.runtimeId)updateBadge(node,game);
+    else if(node.dataset.installationId)updateInstallation(node,game);
+    else updatePlaytime(node,game);
+  });
 }

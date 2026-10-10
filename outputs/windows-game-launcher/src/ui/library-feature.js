@@ -33,7 +33,6 @@ export function libraryFeature(game, actions) {
   stage.append(poster);
   exhibit.append(art, copy, stage);
 
-  const footer = el('div', 'library-feature-footer');
   const information = el('div', 'library-feature-information');
   const platform = el('span', 'library-feature-platform');
   platform.append(icon(sourceIcon(game)), document.createTextNode(sourceName(game)));
@@ -48,9 +47,9 @@ export function libraryFeature(game, actions) {
   const status = el('div', 'library-feature-status');
   status.append(runtimeBadge(game), installationBadge(game));
   information.append(status);
+  copy.append(information);
   const buttons = el('div', 'library-feature-actions');
   buttons.append(button('详情与成就', 'library-feature-details', () => actions.select(game), 'arrow'), launchButton(game, actions));
-  footer.append(information, buttons);
-  hero.append(exhibit, footer);
+  hero.append(exhibit, buttons);
   return hero;
 }

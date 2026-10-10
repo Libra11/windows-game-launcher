@@ -10,6 +10,7 @@ use tauri::Manager;
 
 #[tauri::command]
 pub(crate) fn list_games(
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<activity::LibraryGame>, String> {
     let (games, mut activities, steam_time, connected) = {
@@ -17,7 +18,10 @@ pub(crate) fn list_games(
         let steamid = db::setting(&conn, "steam_id")?;
         let connected = !steamid.is_empty() && !db::setting(&conn, "steam_api_key")?.is_empty();
         (
-            db::games(&conn)?,
+            db::games(&conn)?.into_iter().map(|mut game| {
+                crate::cover_cache::decorate(&conn, &app, &mut game);
+                game
+            }).collect::<Vec<_>>(),
             activity::all(&conn)?,
             steam_playtime::read(&conn, &steamid)?,
             connected,

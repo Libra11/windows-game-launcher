@@ -1,5 +1,5 @@
 import { el, button, icon, artwork, sourceName, sourceIcon } from '../lib/dom.js';
-import { queryGames, playedDate, categories } from '../lib/library-query.js';
+import { queryGames, playedDate, categories, featuredGame } from '../lib/library-query.js';
 import { favoriteButton, runtimeBadge, installationBadge, playtimeBadge } from './game-controls.js';
 import { libraryFeature } from './library-feature.js';
 import { libraryControls } from './library-controls.js';
@@ -7,7 +7,7 @@ export function libraryView(state, actions) {
   const root = el('div', 'library-view');
   const shown = queryGames(state.games,{category:state.filter,search:state.search,sort:state.sort,installedOnly:state.installedOnly});
   if (!state.search && shown.length) {
-    const featured = queryGames(shown,{sort:'recent'}).find(game => game.lastPlayed) || shown.find(game => game.favorite) || shown.find(game => game.source === 'local') || shown[0];
+    const featured = featuredGame(shown);
     root.append(libraryFeature(featured, actions));
   }
   const toolbar = el('div', 'collection-toolbar');
@@ -38,7 +38,7 @@ export function libraryView(state, actions) {
     const tile = el('div','game-tile');
     const card = button('', 'game-card', () => actions.select(game));
     card.setAttribute('aria-label',`${game.title} ${sourceName(game)}`); card.dataset.focusKey = `game-${game.id}`;
-    const art = el('div', 'game-art'); artwork(art, game);
+    const art = el('div', 'game-art'); artwork(art, game, false, {defer:true});
     const hover = el('span', 'card-open'); hover.append(icon('arrow')); art.append(hover);
     const copy = el('div', 'game-copy'); copy.append(el('h3', '', game.title));
     const source = el('span', 'game-source'); source.append(icon(sourceIcon(game)), document.createTextNode(sourceName(game))); copy.append(source);

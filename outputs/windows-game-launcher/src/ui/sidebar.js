@@ -10,7 +10,7 @@ export function mountSidebar(host, actions) {
   brand.onclick = event => { event.preventDefault(); actions.back(); };
 
   const caption = el('div', 'nav-caption', '游戏库');
-  const navigation = el('nav'); navigation.id = 'navigation'; navigation.setAttribute('aria-label', '游戏库分类');
+  const navigation = el('nav'); navigation.id = 'navigation'; navigation.setAttribute('aria-label', '主导航');
   for (const [label, values] of [['收藏', ['all', 'recent', 'favorites']], ['平台', platformCategories.map(([value]) => value)]]) {
     const group = el('div', 'nav-group'); group.setAttribute('role', 'group'); group.setAttribute('aria-label', label);
     if (label === '平台') group.append(el('div', 'nav-group-label', label));
@@ -23,12 +23,13 @@ export function mountSidebar(host, actions) {
   }
 
   const bottom = el('div', 'sidebar-bottom'); bottom.id = 'sidebar-bottom';
+  const features=el('div','nav-group');features.setAttribute('role','group');features.setAttribute('aria-label','功能');
+  features.append(el('div','nav-group-label','功能'));
   const statistics = button('游戏统计', 'nav-item', actions.statistics, 'chart');
   statistics.dataset.page = 'statistics';
   statistics.title = '游戏统计';
-  navigation.append(statistics);
   const settings = button('设置','nav-item',actions.settings,'settings');settings.dataset.page='settings';settings.title='设置';
-  navigation.append(settings);
+  features.append(statistics,settings);navigation.append(features);
 
   const footer = el('div', 'sidebar-footer');
   const version = el('div', 'app-version');

@@ -31,22 +31,19 @@ button,select {
   box-shadow:0 0 0 3px var(--accent-soft);
 }
 .game-art,.big-screen-cover {
-  transition:transform 320ms var(--ease-out),box-shadow 320ms var(--ease-out),border-color var(--motion-normal) ease;
-}
-.game-art>img,.big-screen-cover>img {
-  transition:transform 420ms var(--ease-out);
+  transition:transform var(--art-hover-duration) var(--art-hover-ease),box-shadow 380ms ease,border-color 280ms ease;
 }
 .game-card:hover .game-art,.game-card:focus-visible .game-art {
-  transform:translateY(-4px);
+  transform:translateY(-2px);
   box-shadow:0 12px 24px var(--shadow);
 }
 .game-card:hover .game-art>img,.game-card:focus-visible .game-art>img,
 .big-screen-card:hover .big-screen-cover>img,.big-screen-card:focus-visible .big-screen-cover>img {
-  transform:scale(1.035);
+  transform:scale(1.025);
 }
 .game-card:active:not(:disabled) .game-art,.big-screen-card:active:not(:disabled) .big-screen-cover {
-  transform:translateY(-1px) scale(.985);
-  transition-duration:100ms;
+  transform:translateY(-1px);
+  transition-duration:200ms;
 }
 .card-open {
   transition:opacity var(--motion-normal) ease,transform var(--motion-normal) var(--ease-out);

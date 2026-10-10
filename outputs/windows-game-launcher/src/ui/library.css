@@ -5,12 +5,15 @@
   flex-wrap:wrap;
 }
 .collection-toolbar {
-  display:flex;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
   align-items:center;
   justify-content:space-between;
   gap:12px;
   margin:30px 0 20px;
 }
+/* 操作胶囊向 banner 下方延伸 22px，筛选栏再留出 32px 间隔。 */
+#app .library-feature + .collection-toolbar { margin-top:54px; }
 .collection-title {
   display:flex;
   gap:10px;
@@ -31,8 +34,29 @@
 }
 .collection-controls {
   display:flex;
-  gap:15px;
+  gap:10px;
   align-items:center;
+  flex-wrap:nowrap;
+  min-width:0;
+}
+.collection-controls .library-filter-controls {
+  flex-wrap:nowrap;
+  gap:10px;
+  min-width:0;
+}
+.collection-controls .installed-filter {
+  height:36px;
+  flex-shrink:0;
+  white-space:nowrap;
+  padding:8px 11px;
+}
+.collection-controls .custom-select.sort-select {
+  width:168px;
+  flex:0 0 168px;
+}
+.collection-controls .custom-select-trigger {
+  height:36px;
+  min-height:36px;
 }
 .sort-select {
   border:0;
@@ -42,10 +66,6 @@
   cursor:pointer;
   padding:8px;
 }
-.sort-select option {
-  background:var(--panel);
-  color:var(--text);
-}
 .view-switch {
   display:flex;
   gap:2px;
@@ -54,6 +74,8 @@
   border:1px solid var(--line);
   border-radius:7px;
 }
+.collection-controls .view-switch { flex-shrink:0; height:36px; padding:2px; }
+.collection-controls .view-switch .icon-button { width:30px; height:30px; }
 .icon-button {
   display:grid;
   place-items:center;
@@ -93,7 +115,7 @@
   border:1px solid var(--line);
   border-radius:10px;
   overflow:hidden;
-  transition:transform .23s,box-shadow .23s,border-color .23s;
+  transition:transform var(--art-hover-duration) var(--art-hover-ease),box-shadow 380ms ease,border-color 280ms ease;
 }
 .game-art>img,.detail-poster>img {
   width:100%;
@@ -102,19 +124,8 @@
   position:absolute;
   inset:0;
 }
-.art-letter {
-  position:absolute;
-  inset:0;
-  display:grid;
-  place-items:center;
-  font-size:70px;
-  color:var(--muted);
-}
-.art-loaded>.art-letter {
-  display:none;
-}
 .game-card:hover .game-art {
-  transform:translateY(-4px);
+  transform:translateY(-2px);
   border-color:var(--line);
   box-shadow:0 12px 24px var(--shadow);
 }

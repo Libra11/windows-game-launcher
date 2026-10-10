@@ -1,0 +1,76 @@
+/* 主题色只定义一份；设置色点、主界面与成就提示共用这些色值。 */
+:root {
+  --theme-sage-swatch:#d0e99b;
+  --theme-blue-swatch:#aac9f4;
+  --theme-violet-swatch:#c9b6f1;
+  --theme-rose-swatch:#efaebc;
+  --theme-amber-swatch:#efc27f;
+  --theme-teal-swatch:#8ed7c7;
+  --theme-accent:var(--theme-sage-swatch);
+  --theme-accent-light:#466526;
+  --theme-accent-deep:#29351e;
+}
+:root[data-theme-color="blue"] { --theme-accent:var(--theme-blue-swatch); --theme-accent-light:#315e97; --theme-accent-deep:#203650; }
+:root[data-theme-color="violet"] { --theme-accent:var(--theme-violet-swatch); --theme-accent-light:#6b49a2; --theme-accent-deep:#36294b; }
+:root[data-theme-color="rose"] { --theme-accent:var(--theme-rose-swatch); --theme-accent-light:#a0415d; --theme-accent-deep:#4d2633; }
+:root[data-theme-color="amber"] { --theme-accent:var(--theme-amber-swatch); --theme-accent-light:#8b5b20; --theme-accent-deep:#49321c; }
+:root[data-theme-color="teal"] { --theme-accent:var(--theme-teal-swatch); --theme-accent-light:#216e60; --theme-accent-deep:#193e36; }
+
+/* 保留原苔绿主题；其他主题沿用相同的层级和语义色，仅调整强调色与表面色调。 */
+:root:is([data-theme-color="blue"],[data-theme-color="violet"],[data-theme-color="rose"],[data-theme-color="amber"],[data-theme-color="teal"]) {
+  --text:color-mix(in srgb,#eef1f3 95%,var(--theme-accent));
+  --text-secondary:color-mix(in srgb,#b4bdc4 90%,var(--theme-accent));
+  --muted:color-mix(in srgb,#919aa3 90%,var(--theme-accent));
+  --background:color-mix(in srgb,#111315 97%,var(--theme-accent));
+  --sidebar:color-mix(in srgb,#15181b 96%,var(--theme-accent));
+  --panel:color-mix(in srgb,#1b2024 95%,var(--theme-accent));
+  --surface-hover:color-mix(in srgb,var(--theme-accent) 12%,var(--panel));
+  --input:color-mix(in srgb,#101519 96%,var(--theme-accent));
+  --line:color-mix(in srgb,#30363d 85%,var(--theme-accent));
+  --accent:var(--theme-accent);
+  --accent-hover:color-mix(in srgb,var(--theme-accent) 78%,white);
+  --accent-ink:var(--theme-accent);
+  --accent-text:var(--theme-accent-deep);
+  --accent-soft:color-mix(in srgb,var(--theme-accent) 10%,transparent);
+  --accent-line:color-mix(in srgb,var(--theme-accent) 44%,var(--background));
+  --track:color-mix(in srgb,var(--theme-accent) 15%,var(--background));
+  --placeholder-start:color-mix(in srgb,var(--theme-accent) 20%,var(--background));
+  --placeholder-end:color-mix(in srgb,var(--theme-accent) 7%,var(--background));
+  --backdrop:color-mix(in srgb,var(--theme-accent-deep) 80%,transparent);
+  --on-art:#eef3f5;
+}
+:root[data-theme="light"]:is([data-theme-color="blue"],[data-theme-color="violet"],[data-theme-color="rose"],[data-theme-color="amber"],[data-theme-color="teal"]) {
+  --text:color-mix(in srgb,#232a32 86%,var(--theme-accent-light));
+  --text-secondary:color-mix(in srgb,#454f5b 86%,var(--theme-accent-light));
+  --muted:color-mix(in srgb,#66727f 88%,var(--theme-accent-light));
+  --background:color-mix(in srgb,#f7f8fa 95%,var(--theme-accent));
+  --sidebar:color-mix(in srgb,#eef1f5 90%,var(--theme-accent));
+  --panel:#ffffff;
+  --surface-hover:color-mix(in srgb,var(--theme-accent) 24%,white);
+  --input:color-mix(in srgb,#fbfcfd 96%,var(--theme-accent));
+  --line:color-mix(in srgb,#d6dce3 90%,var(--theme-accent));
+  --accent-ink:var(--theme-accent-light);
+  --accent-soft:color-mix(in srgb,var(--theme-accent) 25%,white);
+  --accent-line:color-mix(in srgb,var(--theme-accent-light) 48%,white);
+  --track:color-mix(in srgb,var(--theme-accent) 23%,#e8edf3);
+  --placeholder-start:color-mix(in srgb,var(--theme-accent) 24%,white);
+  --placeholder-end:color-mix(in srgb,var(--theme-accent) 9%,white);
+  --shadow:color-mix(in srgb,var(--theme-accent-deep) 9%,transparent);
+  --modal-shadow:color-mix(in srgb,var(--theme-accent-deep) 20%,transparent);
+  --backdrop:color-mix(in srgb,var(--theme-accent-deep) 34%,transparent);
+}
+
+.theme-color-group { display:grid; gap:12px; margin-top:18px; }
+.theme-color-group h3 { font-size:13px; font-weight:500; }
+.theme-color-options { display:flex; flex-wrap:wrap; gap:12px 24px; }
+.theme-color-option { --swatch:var(--theme-sage-swatch); display:inline-flex; align-items:center; gap:9px; min-height:40px; padding:8px 0; border:0; border-bottom:2px solid transparent; background:none; color:var(--muted); font-size:12px; }
+.theme-color-option[data-color="blue"] { --swatch:var(--theme-blue-swatch); }
+.theme-color-option[data-color="violet"] { --swatch:var(--theme-violet-swatch); }
+.theme-color-option[data-color="rose"] { --swatch:var(--theme-rose-swatch); }
+.theme-color-option[data-color="amber"] { --swatch:var(--theme-amber-swatch); }
+.theme-color-option[data-color="teal"] { --swatch:var(--theme-teal-swatch); }
+.theme-color-swatch { width:16px; height:16px; flex-shrink:0; border-radius:50%; background:var(--swatch); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 14%,transparent); }
+.theme-color-option>.icon { width:13px; height:13px; opacity:0; }
+.theme-color-option.active { color:var(--accent-ink); border-bottom-color:var(--accent-ink); }
+.theme-color-option.active>.icon { opacity:1; }
+.theme-color-option:hover { color:var(--text); }

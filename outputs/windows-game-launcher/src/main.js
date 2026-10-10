@@ -7,6 +7,7 @@ import './ui/theme.css';
 import './ui/big-screen.css';
 import './ui/motion.css';
 import './ui/activity.css';
+import './ui/artwork.css';
 import { createViewMotion } from './ui/motion.js';
 import { bigScreenView } from './ui/big-screen.js';
 import { createBigScreenMode } from './ui/big-screen-mode.js';
@@ -22,7 +23,10 @@ import { detailView } from './ui/detail.js';
 import { addDialog, editDialog } from './ui/dialogs.js';
 import { createSettingsPage } from './ui/settings-dialog.js';
 import { mountTitlebar } from './ui/titlebar.js';
-import { librarySnapshot, preserveArtwork } from './lib/library-refresh.js';
+import { librarySnapshot } from './lib/library-refresh.js';
+import { createArtworkRetainer } from './lib/artwork-retainer.js';
+import { createLibraryViewCache } from './lib/library-view-cache.js';
+import { activateArtwork } from './lib/artwork-loader.js';
 import { createStatisticsController } from './lib/statistics.js';
 import { statisticsView } from './ui/statistics-view.js';
 import { closeModal } from './ui/modal.js';
@@ -31,6 +35,8 @@ import { watchNetworkImages } from './lib/network-images.js';
 
 const state = { page:'library', games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
 const animateView = createViewMotion();
+const retainArtworkView = createArtworkRetainer();
+const cachedLibraryView = createLibraryViewCache();
 const app = document.querySelector('#app');
 app.innerHTML = `
   <aside class="sidebar"></aside>
@@ -107,7 +113,7 @@ async function refreshOnce(silent) {
     state.games = games;
     if (selectedId === state.selectedId) state.achievements = items;
     if (!silent || changed) render();
-    patchRuntime(app,state.games);
+    else patchRuntime(app,state.games);
     statistics.refresh();
 }
 const dialogActions = { run, refresh, toast, added: async game => { await refresh(); await select(game); toast('游戏已加入收藏'); actions.guide(actions.game(game.id) || game); } };
@@ -191,7 +197,12 @@ $('#add-action').append(button('添加游戏', 'primary add-button', actions.add
 const displayMode=button('','header-icon-button',bigMode.enter,'screen');
 displayMode.id='big-screen-entry';displayMode.title='大屏模式';displayMode.setAttribute('aria-label','大屏模式');
 $('#header-display-action').append(displayMode);
-$('#search').oninput = event => { selectionVersion++; state.page='library'; state.search = event.target.value; state.selectedId = ''; render(); };
+let searchFrame;
+$('#search').oninput = event => {
+  selectionVersion++;state.page='library';state.search=event.target.value;state.selectedId='';
+  cancelAnimationFrame(searchFrame);
+  searchFrame=requestAnimationFrame(()=>render());
+};
 function render(preferredFocus) {
   // 后台刷新只更新内容，不能重新获取焦点、打断前台游戏。
   const restoreFocus = document.hasFocus();
@@ -206,9 +217,13 @@ function render(preferredFocus) {
     if (!state.games.some(game => game.id === state.selectedId)) state.selectedId = '';
     const samePage = host.firstElementChild?.dataset.view === (state.selectedId || state.page);
     const scrollTop = samePage && !preferredFocus ? host.querySelector('.big-screen-content')?.scrollTop || 0 : 0;
-    const next = bigScreenView(state, actions, statistics);
-    preserveArtwork(host, next);
-    host.replaceChildren(next);
+    const library=!state.selectedId&&state.page==='library';
+    const next = retainArtworkView(host,'big-screen',library,()=>library
+      ? cachedLibraryView('big-screen',state,()=>bigScreenView(state,actions,statistics))
+      : bigScreenView(state,actions,statistics));
+    if(host.firstElementChild!==next)host.replaceChildren(next);
+    activateArtwork(next);
+    patchRuntime(next,state.games);
     if (diagnosticOpen && host.querySelector('details')) host.querySelector('details').open = true;
     host.querySelector('.big-screen-content').scrollTop = scrollTop;
     const key = preferredFocus || focused || `game-${state.bigFocusedId}`;
@@ -236,9 +251,11 @@ function render(preferredFocus) {
   $('#page-intro').hidden = !!game || state.page!=='library';
   $('.topbar-actions').hidden=state.page!=='library' && !game;
   content.setAttribute('aria-label',state.page==='settings'&&!game?'设置内容':state.page==='statistics' && !game ? '游戏统计内容' : '游戏库内容');
-  const next = game ? detailView(game, state.achievements, state.achievementFilter, actions) : state.page==='settings'?settingsPage.element:state.page==='statistics' ? statisticsView(statistics,actions) : libraryView(state, actions);
+  const next = retainArtworkView(content,'desktop',!game&&state.page==='library',()=>game?detailView(game,state.achievements,state.achievementFilter,actions):state.page==='settings'?settingsPage.element:state.page==='statistics'?statisticsView(statistics,actions):cachedLibraryView('desktop',state,()=>libraryView(state,actions)));
   // 设置页保留表单节点，后台游戏库刷新不会覆盖用户正在输入的内容。
-  if(content.firstElementChild!==next){preserveArtwork(content,next);content.replaceChildren(next);}
+  if(content.firstElementChild!==next)content.replaceChildren(next);
+  activateArtwork(next);
+  patchRuntime(next,state.games);
   if (diagnosticOpen && content.querySelector('details')) content.querySelector('details').open = true;
   if (restoreFocus && (preferredFocus||focusKey)) [...content.querySelectorAll('[data-focus-key]')].find(node=>node.dataset.focusKey === (preferredFocus||focusKey))?.focus({preventScroll:true});
   animateView(content.firstElementChild, state);

@@ -1,5 +1,8 @@
 import { artworkSources } from './artwork-sources.js';
 import { setImageSource, failedArtwork } from './network-images.js';
+import { restoreArtwork } from './artwork-retainer.js';
+import { localCoverPath, localCoverUrl, requestLocalCover, usesLocalCovers } from './cover-cache.js';
+import { deferArtwork } from './artwork-loader.js';
 
 export function el(tag, className = '', text = '') {
   const node = document.createElement(tag);
@@ -71,28 +74,82 @@ export function metadata(game) {
   try { return JSON.parse(game.metadataJson || '{}'); } catch { return {}; }
 }
 const failed = failedArtwork;
-export function artwork(host, game, wide = false) {
+function artworkPlaceholder(game) {
+  const placeholder=el('span','art-letter');placeholder.setAttribute('aria-hidden','true');
+  const mark=el('span','art-placeholder-mark');mark.append(icon('game'));
+  const copy=el('span','art-placeholder-copy');copy.append(el('strong','art-placeholder-title',game.title),el('span','art-placeholder-caption','游戏收藏'));
+  placeholder.append(mark,copy);return placeholder;
+}
+function artworkImage(url, sources) {
+  const image=el('img');image.alt='';
+  image.decoding='async';
+  image.dataset.artworkReady='false';
+  image.onload=()=>{
+    const reveal=()=>{
+      if(!image.parentElement||!image.naturalWidth)return;
+      image.dataset.artworkReady='true';image.parentElement.classList.add('art-loaded');
+    };
+    // 先完成解码再显露；缓存搬移期间仍更新图片当前所在的封面。
+    image.decode().then(reveal,reveal);
+  };
+  // 回调只依赖当前父节点，不让被搬移的图片继续持有旧页面。
+  image.onerror=()=>{
+    const current=image.parentElement;if(!current)return;
+    failed.add(image.dataset.remoteSource || url);image.remove();appendArtworkImage(current,sources);
+  };
+  return image;
+}
+function appendArtworkImage(target, sources) {
+  const url=sources.shift();if(!url)return;
+  if(failed.has(url))return appendArtworkImage(target,sources);
+  const image=artworkImage(url,sources);image.loading=target.dataset.artworkWide==='true'?'eager':'lazy';
+  target.append(image);
+  if(target.dataset.artworkDefer==='true')deferArtwork(image,()=>setImageSource(image,url));
+  else setImageSource(image,url);
+}
+function appendCachedArtwork(target, game, wide, sources) {
+  // 先创建图片节点，跨页面复用也能接住尚未完成的磁盘缓存请求。
+  const image=artworkImage('',sources);
+  image.loading=wide?'eager':'lazy';target.append(image);
+  const load=()=>requestLocalCover(game,wide).then(path=>{
+    if(!image.parentElement)return;
+    if(path){
+      const key=JSON.stringify([game.id,game.appid,wide,game.title,sources,path]);
+      image.parentElement.dataset.artworkKey=key;
+      image.parentElement.dataset.artworkCacheKey=key;
+    }
+    const url=path?localCoverUrl(path):sources.shift();
+    if(!url||failed.has(url)){
+      const current=image.parentElement;image.remove();appendArtworkImage(current,sources);return;
+    }
+    setImageSource(image,url);
+  });
+  if(target.dataset.artworkDefer==='true')deferArtwork(image,load);else load();
+}
+export function artwork(host, game, wide = false, {defer=false}={}) {
   host.addEventListener('network-image-retry', () => {
     const key = host.dataset.artworkKey;
     host.classList.remove('art-loaded');
     [...host.children].filter(node => node.tagName === 'IMG' || node.classList.contains('art-letter')).forEach(node => node.remove());
-    artwork(host, game, wide); host.dataset.artworkKey = key;
+    artwork(host, game, wide, {defer}); host.dataset.artworkKey = key;
   }, {once:true});
-  host.append(el('span', 'art-letter', game.title.slice(0, 1).toUpperCase()));
+  host.classList.add('artwork-surface');
+  if(![...host.children].some(node=>node.classList.contains('artwork-glint'))){
+    const glint=el('span','artwork-glint');glint.setAttribute('aria-hidden','true');host.append(glint);
+  }
   const info = metadata(game);
   const sources = artworkSources(info, wide);
-  host.dataset.artworkKey = JSON.stringify([game.id, wide, game.title, sources]);
-  const next = (target = host) => {
-    const url = sources.shift();
-    if (!url) return;
-    if (failed.has(url)) return next(target);
-    const image = el('img');
-    image.alt = ''; image.loading = wide ? 'eager' : 'lazy';
-    image.onload = () => image.parentElement?.classList.add('art-loaded');
-    image.onerror = () => { const current = image.parentElement; if (!current) return; failed.add(url); image.remove(); next(current); };
-    setImageSource(image, url); target.append(image);
-  };
-  next();
+  const localPath=usesLocalCovers()?localCoverPath(info,wide,game):null;
+  host.dataset.artworkKey = JSON.stringify([game.id, game.appid, wide, game.title, sources, localPath]);
+  host.dataset.artworkCacheKey=host.dataset.artworkKey;
+  host.dataset.artworkWide=String(wide);
+  host.dataset.artworkDefer=String(defer);
+  const restored=restoreArtwork(host);
+  if(!host.classList.contains('art-loaded'))host.append(artworkPlaceholder(game));
+  if(restored)return;
+  if(localPath)appendArtworkImage(host,[localCoverUrl(localPath),...sources]);
+  else if(usesLocalCovers()&&sources.length)appendCachedArtwork(host,game,wide,sources);
+  else appendArtworkImage(host,sources);
 }
 export const sourceName = game => ({ steam:'Steam', epic:'Epic' }[game.source] || '本地游戏');
 export const sourceIcon = game => ({ steam:'steam', epic:'epic' }[game.source] || 'folder');

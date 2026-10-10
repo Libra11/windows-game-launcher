@@ -1,3 +1,5 @@
+@import './theme-colors.css';
+
 :root {
   --text:#e9ece5;
   --text-secondary:#b4c0ab;

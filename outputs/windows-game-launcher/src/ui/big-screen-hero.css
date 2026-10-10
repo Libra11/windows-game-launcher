@@ -1,7 +1,6 @@
 .big-screen-backdrop { position:absolute; z-index:0; inset:0 0 auto; height:clamp(460px,72vh,760px); overflow:hidden; pointer-events:none; }
-.big-screen-scene { position:absolute; inset:0; }
-.big-screen-scene>img { width:100%; height:100%; object-fit:cover; object-position:center 30%; opacity:.55; }
-.big-screen-scene>.art-letter { display:none; }
+.big-screen-scene { --art-image-opacity:.55; position:absolute; inset:0; }
+.big-screen-scene>img { width:100%; height:100%; object-fit:cover; object-position:center 30%; }
 .big-screen-backdrop::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,var(--background) 0%,color-mix(in srgb,var(--background) 88%,transparent) 25%,color-mix(in srgb,var(--background) 12%,transparent) 76%),linear-gradient(0deg,var(--background) 2%,color-mix(in srgb,var(--background) 70%,transparent) 25%,transparent 72%); }
 .big-screen-hero { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr); align-items:center; min-height:320px; position:relative; margin-bottom:6px; }
 .big-screen-copy { min-width:0; padding:24px 0 30px 4px; }
@@ -26,8 +25,8 @@
 .big-screen-favorite .icon { width:20px; height:20px; }
 .big-screen-hero-stage { position:relative; display:grid; place-items:center; padding:12px 4vw; }
 .big-screen-hero-stage::before { content:""; position:absolute; width:215px; height:285px; border:1px solid color-mix(in srgb,var(--accent-ink) 20%,transparent); border-radius:45% 55% 48% 52%; transform:translate(20px,8px) rotate(-15deg); pointer-events:none; }
-.big-screen-hero-poster { width:clamp(136px,12vw,190px); padding:5px; border:1px solid color-mix(in srgb,var(--text) 20%,transparent); border-radius:16px; background:var(--panel); transform:rotate(4deg); box-shadow:0 24px 50px #0006,0 4px 12px #0003; transition:transform 450ms var(--ease-out); }
-.big-screen-hero-poster:hover,.big-screen-hero-poster:focus-visible { transform:translateY(-5px) rotate(1deg); }
+.big-screen-hero-poster { width:clamp(136px,12vw,190px); padding:5px; border:1px solid color-mix(in srgb,var(--text) 20%,transparent); border-radius:16px; background:var(--panel); transform:rotate(4deg); box-shadow:0 24px 50px #0006,0 4px 12px #0003; transition:transform var(--art-hover-duration) var(--art-hover-ease); }
+.big-screen-hero-poster:hover,.big-screen-hero-poster:focus-visible { transform:translateY(-3px) rotate(2deg); }
 .big-screen-hero-cover { position:relative; aspect-ratio:2/3; border-radius:11px; overflow:hidden; background:var(--panel); }
 .big-screen-hero-cover>img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 @media(max-height:750px) {

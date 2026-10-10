@@ -23,7 +23,8 @@ test('失败封面重试保留交互节点，旧请求不能再次污染失败�
         remove: value => { this.className = this.className.split(' ').filter(item => item !== value).join(' '); },
       };
     }
-    append(child) { this.children.push(child); child.parentElement = this; }
+    append(...children) { for(const child of children){this.children.push(child);child.parentElement=this;} }
+    setAttribute(name,value) { if(name==='class')this.className=String(value); }
     remove() { if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this); this.parentElement = null; }
     closest() { return host; }
   }
@@ -31,6 +32,7 @@ test('失败封面重试保留交互节点，旧请求不能再次污染失败�
   globalThis.isTauri = true;
   globalThis.document = {
     createElement: tag => new Element(tag),
+    createElementNS: (_namespace,tag) => new Element(tag),
     querySelectorAll: selector => selector === '[data-artwork-key]' ? [host] : host.children.filter(node => node.tagName === 'IMG'),
   };
   try {

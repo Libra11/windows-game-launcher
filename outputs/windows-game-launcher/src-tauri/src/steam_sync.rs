@@ -41,6 +41,11 @@ pub(crate) async fn sync_game_internal(
         )
     };
     if game.source == "epic" {
+        if full {
+            if let Err(error) = crate::epic::refresh_metadata(app, &game).await {
+                eprintln!("Epic 商店资料更新失败，保留已有封面：{error}");
+            }
+        }
         return crate::epic_achievements::sync(app, &game).await;
     }
     let profile = crate::achievement_platform::for_game(&*lock_db(&state)?, &game)?;
@@ -177,6 +182,13 @@ pub(crate) async fn sync_game(app: tauri::AppHandle, game_id: String) -> Result<
             Err(error)
         }
     };
+    // 只有用户主动更新资料才刷新已有封面，定时成就同步不触发图片下载。
+    let cover_app = app.clone();
+    let cover_game_id = game_id.clone();
+    tauri::async_runtime::spawn(async move {
+        crate::cover_cache::refresh(&cover_app, &cover_game_id).await;
+        let _ = cover_app.emit("library-changed", ());
+    });
     let _ = app.emit("library-changed", ());
     result
 }

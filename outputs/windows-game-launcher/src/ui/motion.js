@@ -21,12 +21,19 @@ export function createViewMotion() {
     };
     const pageChanged = !previous || current.mode !== previous.mode || current.page !== previous.page;
     const collectionChanged = !previous || current.collection !== previous.collection;
-    if (pageChanged) reveal(root, { distance: current.mode ? 0 : 10 });
+    const returningToLibrary=current.page==='library'&&previous&&current.mode===previous.mode&&previous.page!=='library';
+    if (pageChanged&&!returningToLibrary) {
+      // 长列表不作为整张动画图层，只让推荐区与首屏卡片入场。
+      const target=current.page==='library'?root.querySelector('.library-feature, .big-screen-hero'):root;
+      reveal(target, { distance: current.mode ? 0 : 10 });
+    }
     const list = current.page !== 'library' ? root.querySelector('.achievement-list')
       : root.querySelector('.game-grid, .game-list, .big-screen-grid');
-    if (pageChanged || collectionChanged || current.achievements !== previous?.achievements) {
-      if (!pageChanged) reveal(list, { distance: 6, duration: 220 });
-      if (list) [...list.children].slice(0, 6).forEach((node, index) => reveal(node, { delay: index * 20, distance: 8 }));
+    if (!returningToLibrary&&(pageChanged || collectionChanged || current.achievements !== previous?.achievements)) {
+      if (!pageChanged&&current.page!=='library') reveal(list, { distance: 6, duration: 220 });
+      if (list) for(let index=0;index<Math.min(6,list.children.length);index++){
+        reveal(list.children[index], { delay: index * 20, distance: 8 });
+      }
     }
     previous = current;
   };

@@ -1,3 +1,5 @@
+@import './theme-colors.css';
+
 * { box-sizing:border-box; }
 html,body {
   margin:0;
@@ -18,7 +20,7 @@ body { padding:10px; }
   padding:14px 18px;
   border:1px solid #ffffff1c;
   border-radius:18px;
-  background:linear-gradient(110deg,#242825,#181c1b 65%);
+  background:linear-gradient(110deg,color-mix(in srgb,#242729 96%,var(--theme-accent)),#181c1d 65%);
   box-shadow:0 4px 9px #0006,inset 0 1px 0 #ffffff07;
   opacity:0;
   pointer-events:none;
@@ -29,7 +31,7 @@ body { padding:10px; }
   z-index:-1;
   inset:0;
   border-radius:inherit;
-  background:radial-gradient(ellipse at 0 50%,#d0e99b0e,transparent 65%);
+  background:radial-gradient(ellipse at 0 50%,color-mix(in srgb,var(--theme-accent) 5%,transparent),transparent 65%);
 }
 #card::after {
   content:"";
@@ -38,7 +40,7 @@ body { padding:10px; }
   left:24px;
   right:24px;
   height:1px;
-  background:linear-gradient(90deg,transparent,#dceabb66 25%,#ffffff14 75%,transparent);
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--theme-accent) 40%,transparent) 25%,#ffffff14 75%,transparent);
 }
 /* 内容立即可见；仅徽章光泽使用动画，避免后台帧暂停时隐藏通知。 */
 #card.visible { opacity:1; }
@@ -48,10 +50,10 @@ body { padding:10px; }
   width:60px;
   height:60px;
   padding:5px;
-  border:1px solid #d5e7a94d;
+  border:1px solid color-mix(in srgb,var(--theme-accent) 30%,transparent);
   border-radius:18px;
-  background:linear-gradient(145deg,#d4e8a726,#d4e8a708);
-  box-shadow:0 0 20px #d0e99b0a,inset 0 1px 0 #eaffcf12;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--theme-accent) 15%,transparent),color-mix(in srgb,var(--theme-accent) 3%,transparent));
+  box-shadow:0 0 20px color-mix(in srgb,var(--theme-accent) 4%,transparent),inset 0 1px 0 #ffffff12;
 }
 .badge-art {
   position:relative;
@@ -61,8 +63,8 @@ body { padding:10px; }
   height:100%;
   overflow:hidden;
   border-radius:12px;
-  color:#d8eab2;
-  background:#d0e99b08;
+  color:var(--theme-accent);
+  background:color-mix(in srgb,var(--theme-accent) 3%,transparent);
 }
 .badge-art > .icon { width:30px; height:30px; }
 .badge-art.has-art > .icon { visibility:hidden; }
@@ -92,13 +94,13 @@ body { padding:10px; }
   height:20px;
   border:3px solid #222724;
   border-radius:50%;
-  background:#d0e99b;
-  color:#28351e;
+  background:var(--theme-accent);
+  color:var(--theme-accent-deep);
 }
 .unlocked-mark .icon { width:11px; height:11px; stroke-width:2.6; }
 .copy { flex:1; min-width:0; }
 .eyebrow { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.unlock-label { color:#d0e99b; font-size:10px; font-weight:600; letter-spacing:1.5px; }
+.unlock-label { color:var(--theme-accent); font-size:10px; font-weight:600; letter-spacing:1.5px; }
 .brand { color:#8b958d; font-size:10px; letter-spacing:2px; }
 #name {
   display:-webkit-box;

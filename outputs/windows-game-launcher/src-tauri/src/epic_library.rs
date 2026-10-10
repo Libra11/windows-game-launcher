@@ -93,20 +93,8 @@ fn parse_game(item: &Value, metadata: &Value) -> Option<Game> {
     {
         return None;
     }
-    let images = metadata.get("keyImages").and_then(Value::as_array);
-    let image = |types: &[&str]| {
-        images
-            .and_then(|images| {
-                types.iter().find_map(|kind| {
-                    images
-                        .iter()
-                        .find(|i| text(i, "type") == *kind)
-                        .map(|i| text(i, "url"))
-                })
-            })
-            .filter(|url| url.starts_with("https://"))
-            .unwrap_or("")
-    };
+    let covers = crate::epic_artwork::covers(metadata);
+    let heroes = crate::epic_artwork::heroes(metadata);
     let title = text(metadata, "title");
     let launch_id = format!(
         "{}%3A{}%3A{}",
@@ -120,7 +108,8 @@ fn parse_game(item: &Value, metadata: &Value) -> Option<Game> {
         launch_uri:format!("com.epicgames.launcher://apps/{launch_id}?action=launch&silent=true"),
         custom_unlock_path:String::new(),
         metadata_json:serde_json::json!({"epicAppName":name,"epicNamespace":namespace,"epicCatalogItemId":catalog,
-            "cover":image(&["DieselGameBoxTall","OfferImageTall","DieselGameBox","Thumbnail"]),
+            "cover":covers.first().cloned().unwrap_or_default(),
+            "libraryCovers":covers,"libraryHeroes":heroes,
             "description":text(metadata,"description")}).to_string(),
         scan_status:String::new(), source_file:String::new(), last_scan:String::new(), schema_source:String::new(),
     })
@@ -150,6 +139,22 @@ async fn game(token: String, item: Value) -> Result<Option<Game>, Error> {
         .filter(|v| v.is_object())
         .ok_or_else(|| Error::Message("Epic 未返回部分游戏资料，请稍后重新导入".into()))?;
     Ok(parse_game(&item, metadata))
+}
+
+pub(crate) async fn refresh_game(token: &str, stored: &Game) -> Result<Game, Error> {
+    let metadata: Value = serde_json::from_str(&stored.metadata_json)
+        .map_err(|_| Error::Message("Epic 游戏资料无效，请重新导入".into()))?;
+    let item = serde_json::json!({
+        "appName":text(&metadata,"epicAppName"),
+        "namespace":text(&metadata,"epicNamespace"),
+        "catalogItemId":text(&metadata,"epicCatalogItemId"),
+        "sandboxType":"PUBLIC",
+    });
+    if ["appName", "namespace", "catalogItemId"].iter().any(|field| text(&item,field).is_empty()) {
+        return Err(Error::Message("Epic 游戏身份缺失，请重新导入账号游戏库".into()));
+    }
+    game(token.to_owned(), item).await?.filter(|game| game.id == stored.id)
+        .ok_or_else(|| Error::Message("Epic 返回的游戏资料身份不一致".into()))
 }
 
 pub(crate) async fn owned_games(token: &str) -> Result<Vec<Game>, Error> {

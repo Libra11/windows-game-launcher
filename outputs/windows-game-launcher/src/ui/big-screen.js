@@ -46,7 +46,7 @@ export function bigScreenView(state, actions, statistics) {
     const hero = el('section', 'big-screen-hero');
     function showGame(item, animate = false) {
       state.bigFocusedId = item.id;
-      showBigScreenGame(hero, backdrop, item, actions, animate);
+      showBigScreenGame(hero, backdrop, actions.game(item.id)||item, actions, animate);
     }
     if (selected) showGame(selected);
     content.append(hero);
@@ -65,7 +65,7 @@ export function bigScreenView(state, actions, statistics) {
       card.setAttribute('aria-label', `${item.title} ${sourceName(item)}`);
       card.classList.toggle('selected', item.id === state.bigFocusedId);
       card.setAttribute('aria-current', item.id === state.bigFocusedId ? 'true' : 'false');
-      const cover = el('div', 'big-screen-cover'); artwork(cover, item);
+      const cover = el('div', 'big-screen-cover'); artwork(cover, item, false, {defer:true});
       const marker = el('span', 'big-screen-card-marker'); marker.append(icon('arrow')); cover.append(marker);
       if (item.favorite) { const mark = el('span','favorite-mark'); mark.append(icon('star')); cover.append(mark); }
       const caption = el('div', 'big-screen-card-caption'); caption.append(el('h3', '', item.title), el('span', '', sourceName(item))); cover.append(caption);

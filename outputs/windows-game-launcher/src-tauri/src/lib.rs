@@ -3,10 +3,13 @@ mod achievement_overlay;
 mod achievement_platform;
 mod achievement_repair;
 mod activity;
+mod cover_cache;
+mod cover_download;
 mod db;
 mod desktop_lifecycle;
 mod detection;
 mod epic;
+mod epic_artwork;
 mod epic_achievements;
 mod epic_auth;
 mod epic_library;
@@ -72,6 +75,7 @@ pub fn run() {
             let mut conn = db::open(&dir.join("games.sqlite")).map_err(std::io::Error::other)?;
             let proxy = network::initialize(&conn, app.handle()).map_err(std::io::Error::other)?;
             app.manage(webview_proxy::WebviewProxy::from(&proxy));
+            app.manage(cover_cache::CoverCache::default());
             achievement_repair::remove_inferred_unlocks(&mut conn)
                 .map_err(std::io::Error::other)?;
             app.manage(AppState {
@@ -134,6 +138,7 @@ pub fn run() {
         .on_window_event(desktop_lifecycle::closing)
         .invoke_handler(tauri::generate_handler![
             library_commands::list_games,
+            cover_cache::get_cached_cover,
             statistics::get_statistics,
             statistics::list_statistics_sessions,
             library_commands::list_achievements,

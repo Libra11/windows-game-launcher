@@ -1,0 +1,75 @@
+/* 图片、占位与光效独立成层，复用已加载节点时不重播显露过程。 */
+:root { --art-hover-duration:500ms; --art-hover-ease:cubic-bezier(.2,.08,.2,1); }
+.artwork-surface { --art-image-opacity:1; --art-transform-time:var(--art-hover-duration); }
+.artwork-surface[data-artwork-key] { transition:transform var(--art-hover-duration) var(--art-hover-ease),box-shadow 380ms ease,border-color 280ms ease; }
+.artwork-surface[data-artwork-key]>.art-letter {
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  padding:18px;
+  overflow:hidden;
+  pointer-events:none;
+  font-size:inherit;
+  color:var(--text-secondary);
+  background:radial-gradient(ellipse at 12% 12%,color-mix(in srgb,var(--accent-ink) 18%,transparent),transparent 62%),radial-gradient(ellipse at 90% 90%,var(--accent-soft),transparent 65%),repeating-linear-gradient(135deg,transparent 0,transparent 20px,color-mix(in srgb,var(--text) 4%,transparent) 20px,color-mix(in srgb,var(--text) 4%,transparent) 21px),linear-gradient(145deg,var(--placeholder-start),var(--placeholder-end));
+  opacity:1;
+  visibility:visible;
+  transition:opacity 220ms ease,visibility 0s;
+}
+.artwork-surface[data-artwork-key]>.art-letter::before { content:''; position:absolute; inset:12px; border:1px solid color-mix(in srgb,var(--accent-ink) 14%,transparent); border-radius:inherit; pointer-events:none; }
+.art-placeholder-mark { position:relative; display:grid; place-items:center; flex:0 0 52px; width:52px; height:52px; border:1px solid color-mix(in srgb,var(--accent-ink) 30%,transparent); border-radius:17px; background:color-mix(in srgb,var(--panel) 62%,transparent); color:var(--accent-ink); box-shadow:0 8px 20px var(--shadow); transform:rotate(-7deg); }
+.art-placeholder-mark>.icon { width:28px; height:28px; stroke-width:1.3; transform:rotate(7deg); }
+.art-placeholder-copy { display:grid; justify-items:center; gap:9px; min-width:0; text-align:center; }
+.art-placeholder-title { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; overflow-wrap:anywhere; font-size:13px; line-height:1.6; font-weight:500; color:var(--text-secondary); }
+.art-placeholder-caption { font-size:9px; letter-spacing:2px; color:var(--muted); }
+.artwork-surface[data-artwork-wide="true"]>.art-letter { background:radial-gradient(ellipse at 70% 30%,color-mix(in srgb,var(--accent-ink) 16%,transparent),transparent 64%),linear-gradient(125deg,var(--placeholder-end),var(--placeholder-start)); }
+.artwork-surface[data-artwork-wide="true"] .art-placeholder-mark,.artwork-surface[data-artwork-wide="true"] .art-placeholder-copy { display:none; }
+.artwork-surface[data-artwork-key]>img {
+  opacity:0;
+  filter:blur(3px);
+  transform:scale(1);
+  transform-origin:50% 45%;
+  transition:opacity 460ms ease,filter 560ms var(--ease-out),transform var(--art-transform-time) var(--art-hover-ease);
+}
+.artwork-surface.art-loaded[data-artwork-key]>img { opacity:var(--art-image-opacity); filter:none; }
+.artwork-surface.art-loaded[data-artwork-key]>.art-letter { opacity:0; visibility:hidden; transition:opacity 220ms ease,visibility 0s 220ms; }
+
+.artwork-glint { position:absolute; z-index:1; top:-40%; bottom:-40%; left:-90%; width:70%; pointer-events:none; background:linear-gradient(90deg,transparent 12%,color-mix(in srgb,var(--on-art) 4%,transparent) 30%,color-mix(in srgb,var(--on-art) 18%,transparent) 47%,color-mix(in srgb,var(--accent-ink) 14%,transparent) 53%,color-mix(in srgb,var(--on-art) 7%,transparent) 65%,transparent 88%); opacity:0; transform:translateX(0) skewX(-18deg); }
+@keyframes artwork-glint-sweep {
+  0% { opacity:0; transform:translateX(0) skewX(-18deg); }
+  20% { opacity:.85; }
+  75% { opacity:.65; }
+  100% { opacity:0; transform:translateX(350%) skewX(-18deg); }
+}
+@media(hover:hover) and (pointer:fine) {
+  .game-card:hover .game-art>.artwork-glint,
+  .big-screen-card:hover .big-screen-cover>.artwork-glint,
+  .library-feature-poster:hover .library-feature-cover>.artwork-glint,
+  .big-screen-hero-poster:hover .big-screen-hero-cover>.artwork-glint,
+  .stats-completed-game:hover .stats-game-cover>.artwork-glint,
+  .stats-game-row:hover .stats-game-cover>.artwork-glint { animation:artwork-glint-sweep 850ms ease-out; }
+}
+.game-card:focus-visible .game-art>.artwork-glint,
+.big-screen-card:focus-visible .big-screen-cover>.artwork-glint,
+.library-feature-poster:focus-visible .library-feature-cover>.artwork-glint,
+.big-screen-hero-poster:focus-visible .big-screen-hero-cover>.artwork-glint,
+.stats-completed-game:focus-visible .stats-game-cover>.artwork-glint { animation:artwork-glint-sweep 850ms ease-out; }
+.game-card:is(:hover,:focus-visible) .game-art { border-color:var(--accent-line); box-shadow:0 12px 26px var(--shadow); }
+.library-feature-poster:is(:hover,:focus-visible) .library-feature-cover>img,.big-screen-hero-poster:is(:hover,:focus-visible) .big-screen-hero-cover>img { transform:scale(1.025); }
+.game-list .game-art>.art-letter,.stats-game-row .stats-game-cover>.art-letter { padding:4px; gap:0; }
+.game-list .art-placeholder-mark,.stats-game-row .art-placeholder-mark { width:24px; height:24px; flex-basis:24px; border-radius:8px; box-shadow:none; }
+.game-list .art-placeholder-mark>.icon,.stats-game-row .art-placeholder-mark>.icon { width:15px; height:15px; }
+.game-list .art-placeholder-copy,.stats-game-row .art-placeholder-copy { display:none; }
+.stats-completed-game .art-placeholder-mark { width:40px; height:40px; flex-basis:40px; border-radius:12px; }
+.stats-completed-game .art-placeholder-mark>.icon { width:22px; height:22px; }
+.stats-completed-game .art-placeholder-title { font-size:11px; }
+.card-open { z-index:2; }
+@media(prefers-reduced-motion:reduce) {
+  .artwork-surface[data-artwork-key]>img { filter:none; transform:none!important; transition:none; }
+  .artwork-surface[data-artwork-key]>.art-letter { transition:none; }
+  .artwork-glint { display:none; }
+}

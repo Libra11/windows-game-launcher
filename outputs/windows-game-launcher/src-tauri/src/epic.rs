@@ -1,6 +1,39 @@
 use crate::{db, epic_auth, epic_library, lock_db, model::Game, AppState};
 use tauri::{Emitter, Manager};
 
+pub(crate) async fn refresh_metadata(app: &tauri::AppHandle, stored: &Game) -> Result<(), String> {
+    let _guard = epic_auth::AUTH_LOCK.lock().await;
+    let session = epic_auth::session(app, false).await?;
+    let updated = match epic_library::refresh_game(&session.access_token, stored).await {
+        Ok(game) => game,
+        Err(epic_library::Error::Unauthorized) => {
+            let session = epic_auth::session(app, true).await?;
+            epic_library::refresh_game(&session.access_token, stored).await.map_err(|error| match error {
+                epic_library::Error::Unauthorized => "Epic 授权已失效，请重新登录".into(),
+                epic_library::Error::Message(message) => message,
+            })?
+        }
+        Err(epic_library::Error::Message(message)) => return Err(message),
+    };
+    let state = app.state::<AppState>();
+    let conn = lock_db(&state)?;
+    let current = db::game(&conn, &stored.id)?.ok_or("游戏不存在")?;
+    let mut metadata: serde_json::Value = serde_json::from_str(&current.metadata_json)
+        .map_err(|_| "Epic 游戏资料无效")?;
+    let incoming: serde_json::Value = serde_json::from_str(&updated.metadata_json)
+        .map_err(|_| "Epic 游戏资料无效")?;
+    if current.source != "epic" || ["epicAppName", "epicNamespace", "epicCatalogItemId"]
+        .iter().any(|field| metadata.get(*field) != incoming.get(*field))
+    {
+        return Err("Epic 游戏关联已变更，已丢弃旧资料".into());
+    }
+    // 合并商店字段，保留独立同步的成就资料和账号解锁状态。
+    for field in ["cover", "libraryCovers", "libraryHeroes", "description"] {
+        if let Some(value) = incoming.get(field) { metadata[field] = value.clone(); }
+    }
+    db::save_metadata(&conn, &stored.id, &metadata)
+}
+
 fn save_imported(conn: &mut rusqlite::Connection, games: Vec<Game>) -> Result<usize, String> {
     let transaction = conn.transaction().map_err(|error| error.to_string())?;
     let mut added = 0;
