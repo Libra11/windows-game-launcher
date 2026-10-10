@@ -58,6 +58,18 @@ jobs:
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: ../../.github/scripts/check-release-version.ps1 -Tag $env:RELEASE_TAG
 
+      - name: 检查签名配置和中文发布说明
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY) -or [string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD)) {
+            throw '请先配置更新签名私钥和密码的 GitHub Actions Secrets。'
+          }
+          . ../../.github/scripts/prepare-update-release.ps1
+          $version = (Get-Content -LiteralPath 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json).version
+          $null = Read-ReleaseNotes '.' $version
+
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
@@ -76,22 +88,22 @@ jobs:
         run: npm ci
 
       - name: 构建 Windows x64 安装包
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- --target x86_64-pc-windows-msvc --bundles nsis --ci -- --locked
 
-      - name: 统一安装包文件名
+      - name: 准备签名更新包和更新清单
         run: |
-          $installers = @(Get-ChildItem -LiteralPath 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Filter '*.exe' -File)
-          if ($installers.Count -ne 1) {
-            throw '预期生成一个 NSIS 安装包。'
-          }
-          $version = (Get-Content -LiteralPath 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json).version
-          Rename-Item -LiteralPath $installers[0].FullName -NewName "youji_${version}_x64-setup.exe"
+          ../../.github/scripts/prepare-update-release.ps1 -ProjectDirectory '.' `
+            -BundleDirectory 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' `
+            -OutputDirectory 'update-release' -Repository '${{ github.repository }}'
 
-      - name: 上传安装包
+      - name: 上传签名更新产物
         uses: actions/upload-artifact@v7
         with:
           name: youji-windows-x64
-          path: outputs/windows-game-launcher/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          path: outputs/windows-game-launcher/update-release/*
           if-no-files-found: error
           retention-days: 14
 
@@ -113,32 +125,10 @@ jobs:
           name: youji-windows-x64
           path: release
 
-      - name: 发布 Release 并生成说明
+      - name: 上传完整产物后发布 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_SHA: ${{ github.sha }}
         shell: bash
-        run: |
-          if tag_sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}" 2>/dev/null); then
-            if [[ "$tag_sha" != "$RELEASE_SHA" ]]; then
-              echo "版本标签已指向其他提交，请升级版本号后发布。" >&2
-              exit 1
-            fi
-          fi
-          if draft=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft'); then
-            if [[ "$draft" != "true" ]]; then
-              echo "Release 已发布，跳过重复发布。"
-              exit 0
-            fi
-            gh release upload "$RELEASE_TAG" release/*.exe --repo "$GITHUB_REPOSITORY" --clobber
-            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
-          else
-            flags=()
-            if [[ "$RELEASE_TAG" == *-* ]]; then
-              flags+=(--prerelease)
-            fi
-            gh release create "$RELEASE_TAG" release/*.exe \
-              --repo "$GITHUB_REPOSITORY" --target "$RELEASE_SHA" \
-              --title "游迹 $RELEASE_TAG" --generate-notes "${flags[@]}"
-          fi
+        run: bash .github/scripts/publish-update-release.sh release

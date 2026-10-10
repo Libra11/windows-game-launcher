@@ -343,7 +343,8 @@ pub(crate) fn get_settings(state: tauri::State<'_, AppState>) -> Result<serde_js
         "steamId": db::setting(&conn, "steam_id")?,
         "minimizeOnLaunch": db::setting(&conn, "minimize_on_launch")? == "true",
         "closeToTray": db::setting(&conn, "close_to_tray")? != "false",
-        "achievementNotifications": db::setting(&conn, "achievement_notifications")? != "false"
+        "achievementNotifications": db::setting(&conn, "achievement_notifications")? != "false",
+        "checkUpdatesOnStartup": db::setting(&conn, "check_updates_on_startup")? != "false"
     }))
 }
 
@@ -356,11 +357,13 @@ pub(crate) fn save_settings(
     minimize_on_launch: bool,
     close_to_tray: bool,
     achievement_notifications: bool,
+    check_updates_on_startup: bool,
 ) -> Result<(), String> {
     if !steam_id.is_empty() && !steam_id.chars().all(|ch| ch.is_ascii_digit()) {
         return Err("SteamID 必须是数字".into());
     }
     let conn = lock_db(&state)?;
+    let credentials_changed=db::setting(&conn,"steam_api_key")?!=steam_api_key.trim() || db::setting(&conn,"steam_id")?!=steam_id.trim();
     db::set_setting(&conn, "steam_api_key", steam_api_key.trim())?;
     db::set_setting(&conn, "steam_id", steam_id.trim())?;
     db::set_setting(
@@ -382,8 +385,9 @@ pub(crate) fn save_settings(
             "false"
         },
     )?;
+    db::set_setting(&conn,"check_updates_on_startup",if check_updates_on_startup {"true"} else {"false"})?;
     drop(conn);
-    steam_playtime::start_refresh(app);
+    if credentials_changed {steam_playtime::start_refresh(app);}
     Ok(())
 }
 

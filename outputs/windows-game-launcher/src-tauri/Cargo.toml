@@ -1,6 +1,6 @@
 [package]
 name = "local_achievement_launcher"
-version = "0.2.5"
+version = "0.2.6"
 description = "Windows game launcher with local achievements"
 edition = "2021"
 
@@ -20,6 +20,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"
 sha2 = "0.10"
+semver = "1"
+minisign-verify = "0.2"
 tempfile = "3"
 zip = { version = "9", default-features = false, features = ["deflate"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
@@ -33,6 +35,9 @@ roxmltree = "0.20"
 scraper = "0.24"
 
 [target."cfg(windows)".dependencies]
+tauri-plugin-updater = "=2.13.2"
+# 更新插件使用 reqwest 0.13，单独启用自定义 SOCKS5 代理。
+updater-http = { package = "reqwest", version = "0.13", default-features = false, features = ["socks"] }
 windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Registry", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Storage_FileSystem"] }
 winreg = "0.56"
 windows-sys = { version = "0.61", features = ["Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }

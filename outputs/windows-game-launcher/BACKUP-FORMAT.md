@@ -8,12 +8,12 @@
 
 - manifest：`format=youji-backup`、`formatVersion=2`、应用版本、快照时间、数量摘要（含标签与收藏夹）、缺失封面项、每个有效载荷文件的字节数与 SHA-256。
 - data：`snapshotAt`、固定表名到固定列顺序的行数组、可迁移设置白名单。不是数据库原文件，不携带 SQL/schema、WAL 或空闲页。
-- preferences：主题、主题色、字体名称序列，以及通知和窗口行为白名单。网络代理不导出。
+- preferences：主题、主题色、字体名称序列，以及通知、窗口行为和启动检查更新开关白名单。网络代理不导出。
 - covers：仅当前游戏有效封面索引引用的文件。不存在、链接或无法识别的图片从索引移除并计入缺失摘要。
 
 表顺序与列由 `backup/schema.rs` 固定：games、library_tags、library_collections、game_tags、game_collections、achievements、unlocks、game_activity、play_sessions、daily_playtime、statistics_unlock_events。游戏 ID、会话 ID、平台关联、解锁证据和统计日期保持不变；未结束会话只在导出副本中写入快照结束时间。
 
-允许的设置为 steam_id、statistics_started_at，以及 achievement_platform、statistics_official_baseline、steam_playtime、steam_family_playtime、cover_cache 的有效前缀。成就平台与封面关联只保留当前游戏引用。凭证、机器错误状态、捕获文件、运行恢复、通知弹出历史不导出。
+允许的设置为 steam_id、statistics_started_at，以及 achievement_platform、statistics_official_baseline、steam_playtime、steam_family_playtime、cover_cache 的有效前缀。成就平台与封面关联只保留当前游戏引用。凭证、机器错误状态、捕获文件、运行恢复、通知弹出历史不导出。更新安装包、下载状态、准备 ID 和安装尝试记录也不导出。
 
 ## 校验与资源限制
 

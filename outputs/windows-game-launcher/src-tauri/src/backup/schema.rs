@@ -16,7 +16,7 @@ pub const TABLES: &[Table] = &[
     Table { name:"daily_playtime", columns:&["session_id","game_id","date","seconds"] },
     Table { name:"statistics_unlock_events", columns:&["game_id","namespace","api_name","recorded_at","date"] },
 ];
-pub const BEHAVIOR: &[&str] = &["minimize_on_launch","close_to_tray","achievement_notifications","achievement_overlay_options"];
+pub const BEHAVIOR: &[&str] = &["minimize_on_launch","close_to_tray","achievement_notifications","achievement_overlay_options","check_updates_on_startup"];
 
 pub fn portable_setting(key: &str) -> bool {
     ["steam_id","statistics_started_at"].contains(&key) || [
@@ -127,7 +127,7 @@ pub fn validate(data: &Dataset, preferences: &Preferences) -> Result<(), String>
             if !value.is_object() { return Err("平台缓存或关联资料格式无效".into()); }
         }
     }
-    for key in ["minimize_on_launch","close_to_tray","achievement_notifications"] {
+    for key in ["minimize_on_launch","close_to_tray","achievement_notifications","check_updates_on_startup"] {
         if preferences.behavior.get(key).is_some_and(|value| !["true","false",""].contains(&value.as_str())) {
             return Err("备份行为开关无效".into());
         }

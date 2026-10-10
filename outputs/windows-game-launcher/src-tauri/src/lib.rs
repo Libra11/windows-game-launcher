@@ -3,6 +3,7 @@ mod achievement_overlay;
 mod achievement_platform;
 mod achievement_repair;
 mod activity;
+mod app_update;
 mod backup;
 mod cover_cache;
 mod cover_download;
@@ -20,6 +21,7 @@ mod library_commands;
 mod library_removal;
 mod local_import;
 mod model;
+mod maintenance;
 mod organization;
 mod network;
 mod record_paths;
@@ -53,6 +55,7 @@ use tauri::Manager;
 
 struct AppState {
     maintenance: std::sync::atomic::AtomicBool,
+    operation_gate: Mutex<()>,
     db: Mutex<Connection>,
     initialized: Mutex<HashSet<String>>,
     metadata_refreshing: Mutex<bool>,
@@ -64,20 +67,22 @@ struct AppState {
 }
 
 fn lock_db(state: &AppState) -> Result<std::sync::MutexGuard<'_, Connection>, String> {
-    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("游迹正在准备恢复，请等待重启".into()); }
+    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("游迹正在准备更新或恢复，请等待操作完成".into()); }
     let conn = state.db.lock().map_err(|_| "数据库暂时不可用".to_string())?;
-    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("游迹正在准备恢复，请等待重启".into()); }
+    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("游迹正在准备更新或恢复，请等待操作完成".into()); }
     Ok(conn)
 }
 
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             desktop_lifecycle::show(app)
         }))
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .plugin(tauri_plugin_dialog::init());
+    #[cfg(windows)]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    builder.setup(|app| {
             let dir = app.path().app_data_dir()?;
             let mut conn = db::open(&dir.join("games.sqlite")).map_err(std::io::Error::other)?;
             let covers = app.path().app_cache_dir()?.join("covers");
@@ -87,10 +92,13 @@ pub fn run() {
             app.manage(webview_proxy::WebviewProxy::from(&proxy));
             app.manage(cover_cache::CoverCache::default());
             app.manage(backup::Manager::default());
+            let updates=app_update::initialize(app.handle(),&conn).map_err(std::io::Error::other)?;
+            app.manage(updates);
             achievement_repair::remove_inferred_unlocks(&mut conn)
                 .map_err(std::io::Error::other)?;
             app.manage(AppState {
                 maintenance: Default::default(),
+                operation_gate: Mutex::new(()),
                 db: Mutex::new(conn),
                 initialized: Mutex::new(HashSet::new()),
                 metadata_refreshing: Mutex::new(false),
@@ -114,6 +122,7 @@ pub fn run() {
             if let Err(error) = desktop_lifecycle::initialize(app.handle()) {
                 eprintln!("托盘初始化失败：{error}");
             }
+            app_update::start(app.handle().clone());
             start_metadata_refresh(app.handle().clone());
             steam_playtime::watch(app.handle().clone());
             let family_time = app.handle().clone();
@@ -154,6 +163,11 @@ pub fn run() {
         })
         .on_window_event(desktop_lifecycle::closing)
         .invoke_handler(tauri::generate_handler![
+            app_update::get_app_update_status,
+            app_update::check_app_update,
+            app_update::download_app_update,
+            app_update::cancel_app_update_download,
+            app_update::install_app_update,
             library_commands::list_games,
             organization::get_library_organization,
             organization::create_library_tag,
@@ -248,6 +262,7 @@ mod tests {
         fs::write(&original, include_str!("../fixtures/runtime-initial.json")).unwrap();
         let state = AppState {
             maintenance: Default::default(),
+            operation_gate: Mutex::new(()),
             db: Mutex::new(db::open(&root.join("games.sqlite")).unwrap()),
             initialized: Mutex::new(HashSet::new()),
             metadata_refreshing: Mutex::new(false),

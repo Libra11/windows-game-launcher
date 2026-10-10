@@ -143,3 +143,9 @@ fn v1_archive_is_explicitly_rejected() {
         writer.start_file(name,zip::write::SimpleFileOptions::default()).unwrap();writer.write_all(&bytes).unwrap();}
     writer.finish().unwrap();assert_eq!(archive::read(&old).err().unwrap(),"不支持此备份格式版本");
 }
+
+#[test]
+fn update_installation_gate_refuses_an_active_backup_operation() {
+    let manager=super::Manager::default();let operation=manager.operation.lock().unwrap();
+    assert!(manager.prevent_operations().is_err());drop(operation);assert!(manager.prevent_operations().is_ok());
+}

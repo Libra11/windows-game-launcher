@@ -12,6 +12,7 @@ pub(crate) async fn launch_game(
 }
 fn launch(app: &tauri::AppHandle, game_id: &str) -> Result<runtime::RuntimeInfo, String> {
     let state = app.state::<AppState>();
+    let _gate=crate::maintenance::lock_operation(&state.operation_gate,&state.maintenance)?;
     let game = db::game(&*lock_db(&state)?, game_id)?.ok_or("游戏不存在")?;
     crate::steam_family::require_available(&game)?;
     if matches!(
@@ -116,6 +117,7 @@ pub(crate) fn watch(app: tauri::AppHandle) {
         let mut save_error_reported = false;
         loop {
             let state = app.state::<AppState>();
+            if state.maintenance.load(std::sync::atomic::Ordering::Acquire){std::thread::sleep(std::time::Duration::from_millis(250));continue;}
             let updates = match crate::runtime_persistence::checkpoint(&app, false) {
                 Ok(updates) => {
                     save_error_reported = false;

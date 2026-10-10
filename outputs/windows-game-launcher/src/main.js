@@ -1,3 +1,5 @@
+import { createAppUpdateController } from './lib/app-update-controller.js';
+import { updateAvailable } from './lib/app-update.js';
 import { createOrganizationController } from './lib/organization-controller.js';
 import { clearOrganizationSelection, reconcileOrganization } from './lib/library-organization.js';
 import { mountOrganizationSidebar, patchOrganizationSelection } from './ui/organization-controls.js';
@@ -16,7 +18,7 @@ import { bigScreenView } from './ui/big-screen.js';
 import { createBigScreenMode } from './ui/big-screen-mode.js';
 import { mountSidebar } from './ui/sidebar.js';
 import { el, button, icon } from './lib/dom.js';
-import { command, onUnlock, onLibraryChange, onLauncherError, preview } from './lib/bridge.js';
+import { command, onAppUpdateProgress, onUnlock, onLibraryChange, onLauncherError, preview } from './lib/bridge.js';
 import { inCategory, queryGames, bigScreenCategories } from './lib/library-query.js';
 import { patchRuntime } from './ui/game-controls.js';
 import { launchState } from './lib/launch-state.js';
@@ -37,6 +39,7 @@ import { mountProgramDrop } from './ui/program-drop.js';
 import { watchNetworkImages } from './lib/network-images.js';
 
 const state = { page:'library', games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
+const appUpdates=createAppUpdateController(command,onAppUpdateProgress);
 const animateView = createViewMotion();
 const retainArtworkView = createArtworkRetainer();
 const cachedLibraryView = createLibraryViewCache();
@@ -131,7 +134,7 @@ const actions = { run, toast,
   settings:async(category)=>{
     if(state.bigScreen)await bigMode.exit();
     selectionVersion++;state.page='settings';state.selectedId='';
-    settingsPage ||= createSettingsPage({...dialogActions,add:actions.add,importSteam:actions.importSteam});
+    settingsPage ||= createSettingsPage({...dialogActions,updates:appUpdates,add:actions.add,importSteam:actions.importSteam});
     if(category)settingsPage.openCategory(category);
     render();window.scrollTo(0,0);
   },
@@ -287,5 +290,7 @@ if(!preview)command('get_backup_restore_status').then(async notice=>{
 }).catch(()=>{});
 setInterval(() => { if (!document.hidden && !document.querySelector('dialog[open]')) refresh(true).catch(() => {}); }, 5000);
 $('#content').append(el('div', 'loading-state', '正在打开你的收藏…'));
+appUpdates.subscribe(status=>$('#navigation [data-page="settings"]')?.classList.toggle('update-available',updateAvailable(status)));
+appUpdates.start().catch(()=>{});
 organizationController.start().catch(error=>toast(String(error),true));
 refresh().catch(() => { $('#content').replaceChildren(el('div', 'empty-state', '暂时无法读取游戏库，请在桌面启动器中打开。')); });

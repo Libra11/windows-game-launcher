@@ -8,6 +8,8 @@ mod commands;
 
 pub(crate) use commands::*;
 pub(crate) use restore::{appearance_script, startup};
+#[cfg(windows)]
+pub(crate) use commands::require_idle;
 use std::{collections::HashMap, path::PathBuf, sync::{Mutex, MutexGuard, atomic::{AtomicBool, Ordering}}};
 
 struct Prepared { path: PathBuf, sha256: String, loaded: archive::Loaded }
@@ -22,6 +24,10 @@ pub(crate) struct Manager {
 
 struct Operation<'a> { manager: &'a Manager, _guard: MutexGuard<'a, ()> }
 impl Manager {
+    #[cfg(any(windows,test))]
+    pub(crate) fn prevent_operations(&self)->Result<MutexGuard<'_ ,()>,String> {
+        self.operation.try_lock().map_err(|_|"备份或恢复操作正在进行，请稍后安装更新".into())
+    }
     fn seal(&self) -> Result<(), String> {
         let _active = self.active.lock().map_err(|_| "备份操作状态不可用")?;
         if self.cancelled.load(Ordering::Acquire) { return Err("备份操作已取消".into()); }

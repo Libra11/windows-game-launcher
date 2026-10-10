@@ -1,3 +1,4 @@
+import packageInfo from '../../package.json';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { createStatisticsPreview } from './statistics-preview.js';
 import { demoArtwork } from './preview-artwork.js';
@@ -38,7 +39,7 @@ try {
 const demoAchievements = [
   ['初次觉醒', '激活你的第一个替身。'], ['吸收', '获得你的第一个特性。'], ['巨石之下', '击败第一个强大的对手。'], ['探索者', '发现一处隐藏区域。'], ['全副武装', '收集新的武器。'], ['新的道路', '解锁新的移动能力。'], ['不屈', '继续你的旅程。'], ['蜕变', '发掘身体中的潜能。'],
 ].map(([name, description], i) => ({ apiName: `DEMO_${i}`, name, description, icon: '', unlockedAt: i < 3 ? '2026-09-28T13:30:00Z' : null, unlockSource: 'local' }));
-const demoSettings={steamApiKey:'',steamId:'',minimizeOnLaunch:false,closeToTray:true,achievementNotifications:true};
+const demoSettings={steamApiKey:'',steamId:'',minimizeOnLaunch:false,closeToTray:true,achievementNotifications:true,checkUpdatesOnStartup:true};
 const demoNetwork={mode:'system',address:'',webviewRestartRequired:false};
 export async function command(name, args = {}) {
   if (!preview) {
@@ -53,6 +54,7 @@ export async function command(name, args = {}) {
   if (name === 'epic_connection_status') return { connected:false, displayName:'' };
   if (name === 'steam_family_connection_status') return {connected:false,expired:false,steamId:'',familyName:'',hasFamily:false,accountMismatch:false};
   if (name === 'get_backup_restore_status') return null;
+  if (name === 'get_app_update_status') return {revision:0,currentVersion:packageInfo.version,supported:false,reason:'浏览器预览不支持安装更新，请在 Windows x64 正式安装版中使用。',autoCheck:demoSettings.checkUpdatesOnStartup,phase:'idle'};
   if (name === 'remove_local_game') {
     const index = demoGames.findIndex(game => game.id === args.gameId);
     if (index < 0) throw new Error('游戏不存在或已被移除');
@@ -99,3 +101,5 @@ export const onLauncherError = handler => isTauri() ? listen('launcher-error', h
 export const onFileDrop = handler => isTauri() ? getCurrentWebviewWindow().onDragDropEvent(handler) : Promise.resolve(() => {});
 
 export const onOrganizationChange = handler => isTauri() ? listen('library-organization-changed', handler) : Promise.resolve(() => {});
+
+export const onAppUpdateProgress = handler => isTauri() ? listen('app-update-progress', handler) : Promise.resolve(() => {});

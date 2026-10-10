@@ -30,7 +30,9 @@ pub(super) fn directory(app: &tauri::AppHandle, game: &Game) -> Result<PathBuf, 
 }
 
 pub(super) fn ensure(app: &tauri::AppHandle, game: &Game) -> Result<(PathBuf, String), String> {
-    if app.state::<crate::AppState>().maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("数据恢复期间不能启动捕获".into()); }
+    let state=app.state::<crate::AppState>();
+    let _gate=crate::maintenance::lock_operation(&state.operation_gate,&state.maintenance)?;
+    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("更新或恢复期间不能启动捕获".into()); }
     let directory = directory(app, game)?;
     let mut probes = PROBES
         .get_or_init(Mutex::default)

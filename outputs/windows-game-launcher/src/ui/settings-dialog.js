@@ -1,3 +1,5 @@
+import { settingsUpdates } from './settings-updates.js';
+import { updateAvailable } from '../lib/app-update.js';
 import { el, button, icon } from '../lib/dom.js';
 import { settingsAppearance } from './settings-appearance.js';
 import { settingsConnections } from './settings-connections.js';
@@ -14,6 +16,7 @@ const categories=[
   ['general','后台与运行','settings','启动与退出行为'],
   ['network','网络与代理','network','连接方式与代理设置'],
   ['data','数据与迁移','folder','备份、恢复与路径重定位'],
+  ['updates','关于与更新','info','版本说明与应用更新'],
 ];
 let sequence=0;
 
@@ -31,6 +34,7 @@ export function createSettingsPage(actions) {
     const tab=button('','settings-category',()=>show(key,true));tab.setAttribute('role','tab');tab.id=id+'-tab-'+key;tab.setAttribute('aria-controls',id+'-'+key);
     const text=el('span');text.append(el('strong','',label));if(description)text.append(el('small','',description));tab.append(icon(glyph),text);navigation.append(tab);return tab;
   });
+  const stopUpdateIndicator=actions.updates.subscribe(status=>tabs.at(-1).classList.toggle('update-available',updateAvailable(status)));
   function show(key,scroll=false) {
     active=key;
     tabs.forEach((tab,index)=>{const selected=categories[index][0]===key;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',String(selected));});
@@ -54,7 +58,7 @@ export function createSettingsPage(actions) {
       const networkPart=settingsNetwork(network,actions,saved);
       const notifications=await settingsNotifications(settings,actions,save,options,saved);
       const general=settingsGeneral(settings,actions,save);
-      const built=[appearance,connections,notifications,general,networkPart,settingsData(actions)];
+      const built=[appearance,connections,notifications,general,networkPart,settingsData(actions),settingsUpdates(settings,actions,save)];
       if(disposed){built.forEach(part=>part.dispose());return;}
       parts=built;
       parts.forEach((part,index)=>{
@@ -68,7 +72,7 @@ export function createSettingsPage(actions) {
   }
   show(active);load();
   return {element,openCategory(key){if(categories.some(category=>category[0]===key))show(key);},dispose(){
-    disposed=true;parts.forEach(part=>part.dispose());
+    disposed=true;stopUpdateIndicator();parts.forEach(part=>part.dispose());
     element.querySelectorAll('.custom-select-menu:popover-open').forEach(menu=>menu.hidePopover());
   }};
 }

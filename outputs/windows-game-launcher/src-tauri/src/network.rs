@@ -183,7 +183,7 @@ pub(crate) fn client(service: Service) -> Result<Client, String> {
     Ok(client)
 }
 
-fn read(conn: &rusqlite::Connection) -> Result<ProxySettings, String> {
+pub(crate) fn read(conn: &rusqlite::Connection) -> Result<ProxySettings, String> {
     let value = db::setting(conn, "network_proxy")?;
     if value.is_empty() {
         return Ok(ProxySettings::default());

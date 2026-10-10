@@ -25,16 +25,16 @@ fn count(conn: &rusqlite::Connection, table: &str) -> Result<usize, String> {
     let value: i64 = conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| row.get(0)).map_err(|error| error.to_string())?;
     usize::try_from(value).map_err(|_| "当前数据数量超出有效范围".into())
 }
-fn idle(app: &tauri::AppHandle) -> Result<(), String> {
+pub(crate) fn require_idle(app: &tauri::AppHandle) -> Result<(), String> {
     let state = app.state::<AppState>();
     let tracker = state.runtime.lock().map_err(|_| "运行状态不可用")?;
     let conn = state.db.lock().map_err(|_| "数据库暂时不可用")?;
     let games = db::games(&conn)?;
     if games.iter().any(|game| matches!(tracker.info(&game.id).state.as_str(), "starting" | "running")) {
-        return Err("请先退出正在启动或运行的游戏，再恢复数据".into());
+        return Err("请先退出正在启动或运行的游戏，再执行维护操作".into());
     }
     drop(conn); drop(tracker);
-    if crate::runtime::any_running(&games) { return Err("检测到游戏进程仍在运行，请退出游戏后恢复".into()); }
+    if crate::runtime::any_running(&games) { return Err("检测到游戏进程仍在运行，请退出游戏后重试".into()); }
     if crate::xbox_local::has_active_capture() { return Err("成就捕获尚未停止，请退出游戏并等待捕获结束后重试".into()); }
     Ok(())
 }
@@ -117,12 +117,13 @@ pub(crate) async fn schedule_backup_restore(app: tauri::AppHandle, preparation_i
         let bundle = prepared.get(&preparation_id).ok_or("备份准备已过期，请重新选择")?;
         if archive::file_hash_with(&bundle.path, || check_cancel(&app))? != bundle.sha256 { return Err("备份已改变，请重新检查".into()); }
         let mut candidate = bundle.loaded.data.clone(); paths::apply(&mut candidate, &relocation)?;
-        idle(&app)?;
+        require_idle(&app)?;
         crate::runtime_persistence::checkpoint(&app, true)?;
         let state = app.state::<AppState>();
-        if state.maintenance.swap(true, Ordering::AcqRel) { return Err("游迹正在维护数据，请稍后重试".into()); }
+        let _gate=state.operation_gate.lock().map_err(|_|"启动操作状态不可用")?;
+        let maintenance=crate::maintenance::Guard::enter(&state.maintenance)?;
         let scheduled = (|| {
-            idle(&app)?;
+            require_idle(&app)?;
             let (directory, covers) = directories(&app)?;
             let safety_dir = app.path().app_local_data_dir().map_err(|error| error.to_string())?.join("safety-backups");
             std::fs::create_dir_all(&safety_dir).map_err(|error| error.to_string())?;
@@ -140,13 +141,13 @@ pub(crate) async fn schedule_backup_restore(app: tauri::AppHandle, preparation_i
             archive::copy_verified(&bundle.path, &staged, &bundle.sha256)?;
             let pending = Pending { restore_id:id, archive:archive_name, sha256:bundle.sha256.clone(), relocation,
                 safety_backup:safety.to_string_lossy().into_owned() };
-            idle(&app)?;
+            require_idle(&app)?;
             manager.seal()?;
             archive::atomic_json(&directory.join("pending-backup-restore.json"), &pending)?;
             progress(&app, &operation_id, "restart", 1, 1)?;
             Ok::<_, String>(serde_json::json!({"safetyBackup":pending.safety_backup,"restartScheduled":true}))
         })();
-        if scheduled.is_err() { state.maintenance.store(false, Ordering::Release); }
+        if scheduled.is_ok() {maintenance.keep_active();}
         scheduled
     }).await.map_err(|error| error.to_string())??;
     tauri::async_runtime::spawn(async move {

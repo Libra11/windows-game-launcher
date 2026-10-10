@@ -12,6 +12,7 @@ fn ini_history_new_unlock_duplicate_write_and_wrong_game() {
     fs::write(root.join("steam_emu.ini"), "[Settings]\nAppId=2456740\n").unwrap();
     let state = AppState {
         maintenance: Default::default(),
+        operation_gate: Mutex::new(()),
         db: Mutex::new(db::open(&root.join("games.sqlite")).unwrap()),
         initialized: Mutex::new(HashSet::new()),
         metadata_refreshing: Mutex::new(false),
