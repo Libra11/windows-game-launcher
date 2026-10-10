@@ -1,9 +1,22 @@
 .stats-ranking { display:grid; margin-top:14px; }
+.stats-rankings-grid { display:grid; grid-template-columns:minmax(0,1.8fr) minmax(320px,1fr); gap:var(--stats-column-gap); align-items:start; }
+.stats-rankings-compact { grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr); }
+.stats-rankings-compact .stats-favorite-shelf { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.stats-favorite-panel { background:none; border:0; padding:4px 0 0; }
+.stats-favorite-panel>.stats-segment { margin-top:12px; }
+.stats-favorite-shelf { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:18px; margin-top:20px; }
+.stats-favorite-shelf>.stats-empty-state { grid-column:1/-1; }
+.stats-favorite-game { min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:8px; padding:0; text-align:left; background:none; border-radius:10px; }
+.stats-favorite-game .stats-game-cover { width:100%; height:auto; aspect-ratio:3/4; border-radius:10px; box-shadow:0 8px 20px var(--shadow); }
+.stats-favorite-game>strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; line-height:1.5; font-weight:500; margin-top:4px; }
+.stats-favorite-time { color:var(--accent-ink); font-size:13px; font-variant-numeric:tabular-nums; }
+.stats-favorite-rank { position:absolute; z-index:3; top:10px; left:10px; display:grid; place-items:center; width:28px; height:28px; border-radius:50%; background:color-mix(in srgb,var(--accent) 88%,#000); color:var(--accent-text); box-shadow:0 2px 8px rgba(0,0,0,.35); font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; }
+.stats-favorite-game:hover>strong { color:var(--accent-ink); }
 .stats-achievement-ranking { margin-top:12px; }
-.stats-game-row { display:flex; align-items:center; text-align:left; width:100%; gap:10px; background:none; padding:10px 4px; border-bottom:1px solid var(--stats-border); }
+.stats-game-row { display:flex; align-items:center; text-align:left; width:100%; gap:12px; background:none; padding:12px 8px; border-bottom:1px solid var(--stats-border); border-radius:6px; }
 .stats-game-row:last-child { border-bottom:0; }
-.stats-game-row.leading { padding-inline:4px; }
-.stats-game-row:hover { background:none; }
+.stats-game-row.leading { background:var(--stats-soft); }
+.stats-game-row:hover { background:var(--stats-soft); }
 .stats-game-row:hover .stats-game-copy strong { color:var(--stats-accent); }
 .stats-rank-index { font-size:10px; color:var(--stats-faint); width:17px; flex-shrink:0; font-variant-numeric:tabular-nums; }
 .leading .stats-rank-index { color:var(--stats-accent); }
@@ -11,10 +24,10 @@
 .stats-game-cover img { width:100%; height:100%; position:absolute; inset:0; object-fit:cover; }
 .stats-game-cover .art-letter { position:absolute; inset:0; display:grid; place-items:center; color:var(--stats-muted); font-size:18px; }
 .stats-game-copy { display:grid; gap:4px; min-width:0; flex:1; }
-.stats-game-copy strong { font-size:11px; line-height:1.5; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.stats-game-copy small,.stats-rank-value small { font-size:9px; color:var(--stats-faint); }
-.stats-rank-value { display:grid; justify-items:end; gap:6px; font-size:11px; color:var(--stats-ink); flex-shrink:0; font-variant-numeric:tabular-nums; }
-.stats-rank-track { width:76px; height:3px; border-radius:2px; background:var(--stats-track); overflow:hidden; }
+.stats-game-copy strong { font-size:14px; line-height:1.5; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.stats-game-copy small,.stats-rank-value small { font-size:11px; color:var(--stats-faint); }
+.stats-rank-value { display:grid; justify-items:end; gap:6px; font-size:14px; color:var(--stats-ink); flex-shrink:0; font-variant-numeric:tabular-nums; }
+.stats-rank-track { width:76px; height:4px; border-radius:2px; background:var(--stats-track); overflow:hidden; }
 .stats-rank-track i { display:block; height:100%; background:linear-gradient(90deg,var(--stats-steam),var(--stats-accent)); border-radius:2px; }
 .stats-unlocks { max-height:296px; overflow:auto; scrollbar-width:thin; scrollbar-color:var(--stats-track) transparent; }
 .stats-unlock-row { display:flex; align-items:center; width:100%; background:none; gap:10px; padding:11px 2px; text-align:left; border-bottom:1px solid var(--stats-border); }
@@ -37,7 +50,7 @@
 .stats-completed-game strong { font-size:11px; line-height:1.5; font-weight:500; }
 .stats-completed-game>span:last-child { color:var(--stats-faint); font-size:9px; line-height:1.6; }
 .stats-table-wrap { overflow:auto; scrollbar-width:thin; scrollbar-color:var(--stats-track) transparent; }
-.stats-table { border-collapse:collapse; width:100%; text-align:left; font-size:10px; font-variant-numeric:tabular-nums; }
+.stats-table { border-collapse:collapse; width:100%; text-align:left; font-size:13px; font-variant-numeric:tabular-nums; }
 .stats-table th { color:var(--stats-faint); font-weight:500; padding:8px 10px 12px; white-space:nowrap; }
 .stats-table td { padding:12px 10px; border-top:1px solid var(--stats-border); color:var(--stats-muted); line-height:1.7; }
 .stats-table tr:hover td { background:var(--stats-soft); }
