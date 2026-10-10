@@ -49,6 +49,7 @@ export function libraryView(state, actions) {
   const grid = el('div', state.view === 'list' ? 'game-list' : 'game-grid');
   shown.forEach(game => {
     const tile = el('div','game-tile');
+    tile.dataset.gameMenuId = game.id;
     tile.classList.toggle('organization-selected',state.organizationBatchMode&&state.organizationSelection.has(game.id));
     const card = button('', 'game-card', () => state.organizationBatchMode?actions.organizationToggleGame(game.id):actions.select(game));
     card.dataset.organizationDragGame = game.id;
@@ -60,7 +61,14 @@ export function libraryView(state, actions) {
     copy.append(playtimeBadge(game));
     if (game.lastPlayed) copy.append(el('span','game-played',`上次 · ${playedDate(game.lastPlayed)}`));
     copy.append(runtimeBadge(game),installationBadge(game,true));
-    card.append(art, copy); if(state.organizationBatchMode)tile.append(selectionControl(game,state,actions));tile.append(card,favoriteButton(game,actions,true,`favorite-${game.id}`)); grid.append(tile);
+    const menu = el('button', 'game-menu-button'); menu.type = 'button';
+    menu.dataset.gameMenuButton = game.id; menu.dataset.focusKey = `game-menu-${game.id}`;
+    menu.setAttribute('aria-label', `${game.title} 的更多操作`); menu.setAttribute('aria-haspopup', 'menu');
+    menu.setAttribute('aria-expanded', 'false'); menu.setAttribute('popovertarget', 'game-context-menu');
+    menu.setAttribute('aria-controls', 'game-context-menu');
+    menu.setAttribute('popovertargetaction', 'toggle');
+    menu.title = '更多操作'; menu.append(icon('more'));
+    card.append(art, copy); if(state.organizationBatchMode)tile.append(selectionControl(game,state,actions));tile.append(card,favoriteButton(game,actions,true,`favorite-${game.id}`),menu); grid.append(tile);
   });
   root.append(grid); return root;
 }

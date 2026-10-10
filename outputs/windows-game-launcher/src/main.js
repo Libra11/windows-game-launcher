@@ -38,6 +38,7 @@ import { statisticsView } from './ui/statistics-view.js';
 import { closeModal } from './ui/modal.js';
 import { mountProgramDrop } from './ui/program-drop.js';
 import { mountCollectionDrag } from './ui/collection-drag.js';
+import { mountGameContextMenu } from './ui/game-context-menu.js';
 import { watchNetworkImages } from './lib/network-images.js';
 
 const state = { page:'library', games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
@@ -129,6 +130,7 @@ async function refreshOnce(silent) {
     if (selectedId === state.selectedId) state.achievements = items;
     if (!silent || changed) render();
     else patchRuntime(app,state.games);
+    gameContextMenu.reconcile();
     statistics.refresh();
 }
 const dialogActions = { run, refresh, toast, added: async game => { await refresh(); await select(game); toast('游戏已加入收藏'); actions.guide(actions.game(game.id) || game); } };
@@ -212,6 +214,7 @@ mountSidebar($('.sidebar'), {
 });
 const organizationSidebar=mountOrganizationSidebar($('#navigation'),state,actions);
 const collectionDrag=mountCollectionDrag(state,actions,organizationSidebar);
+const gameContextMenu=mountGameContextMenu(state,actions);
 $('#add-action').append(button('添加游戏', 'primary add-button', actions.add, 'plus'));
 const displayMode=button('','header-icon-button',bigMode.enter,'screen');
 displayMode.id='big-screen-entry';displayMode.title='大屏模式';displayMode.setAttribute('aria-label','大屏模式');
@@ -224,6 +227,7 @@ $('#search').oninput = event => {
 };
 function render(preferredFocus) {
   collectionDrag.reconcile();
+  gameContextMenu.reconcile();
   // 后台刷新只更新内容，不能重新获取焦点、打断前台游戏。
   const restoreFocus = document.hasFocus();
   if(state.page!=='settings'&&settingsPage){settingsPage.dispose();settingsPage=null;}
