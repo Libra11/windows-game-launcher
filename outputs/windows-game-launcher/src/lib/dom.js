@@ -19,7 +19,6 @@ export function appIcon(className = '') {
   return image;
 }
 const paths = {
-  more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
   edit:'<path d="m16 3 5 5-12 12-6 1 1-6L16 3Zm-2 2 5 5"/>',
   family:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2m2-16a3 3 0 0 1 0 6m4 10v-2a6 6 0 0 0-3-5"/>',
   chart: '<path d="M4 3v17h17M8 15v-4m5 4V7m5 8V4"/>',

@@ -30,7 +30,6 @@ export function mountGameContextMenu(state, actions) {
   }
   function close(focus = false) {
     const previous = session;
-    if (previous?.anchor.dataset.gameMenuButton) previous.anchor.setAttribute('aria-expanded', 'false');
     session = undefined; closeSubmenu(); root?.remove(); root = undefined;
     if (focus && previous) restoreFocus(previous);
   }
@@ -162,7 +161,6 @@ export function mountGameContextMenu(state, actions) {
       || document.body.classList.contains('collection-drag-active') || document.querySelector('dialog[open]')) return;
     const scope = gameMenuScope(state, gameId); if (!scope) return;
     close(); anchor.focus({ preventScroll: true });
-    if (anchor.dataset.gameMenuButton) anchor.setAttribute('aria-expanded', 'true');
     const rect = anchor.getBoundingClientRect();
     session = { scope, anchor, focusKey: anchor.dataset.focusKey, context: context(),
       x: x ?? rect.right, y: y ?? rect.top, pending: false };
@@ -209,12 +207,6 @@ export function mountGameContextMenu(state, actions) {
     const tile = event.target.closest?.(TILE);
     if (!tile || !tile.closest('#content .library-view')) { close(); return; }
     open(tile.dataset.gameMenuId, tile.querySelector('.game-card'), event.clientX, event.clientY);
-  });
-  listen(document, 'click', event => {
-    const node = event.target.closest?.('[data-game-menu-button]'); if (!node) return;
-    event.preventDefault(); event.stopPropagation();
-    if (session?.anchor === node) { close(true); return; }
-    open(node.dataset.gameMenuButton, node);
   });
   listen(document, 'keydown', event => {
     if (!root) {
