@@ -6,6 +6,8 @@ pub(crate) mod downloads;
 mod fetch;
 mod parser;
 #[cfg(test)]
+mod qr_tests;
+#[cfg(test)]
 mod tests;
 
 use reqwest::Url;

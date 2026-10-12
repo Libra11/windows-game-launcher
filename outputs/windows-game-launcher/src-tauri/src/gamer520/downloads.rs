@@ -67,6 +67,12 @@ fn associated_code(node: ElementRef<'_>) -> Option<String> {
                     .classes()
                     .any(|value| matches!(value, "bdp-card" | "wpkqcg_qrcode_wrapper"))
         })?;
+    if let Some(value) = parent
+        .select(&selector(".bdp-pwd-box"))
+        .find_map(|field| code(&text(field)))
+    {
+        return Some(value);
+    }
     if let Some(value) = code(&text(parent)) {
         return Some(value);
     }
@@ -114,18 +120,43 @@ fn text_urls(value: &str) -> Vec<&str> {
         .collect()
 }
 
+fn qr_share_url(node: ElementRef<'_>) -> Option<String> {
+    ["data-src", "data-original", "src"]
+        .into_iter()
+        .find_map(|attribute| {
+            let url = Url::parse(node.value().attr(attribute)?).ok()?;
+            if url.scheme() != "https"
+                || url.host_str() != Some("api.qrserver.com")
+                || url.path() != "/v1/create-qr-code/"
+                || url.port().is_some()
+                || !url.username().is_empty()
+                || url.password().is_some()
+            {
+                return None;
+            }
+            // 读取原站二维码的编码内容，不下载二维码图片，也不向生成服务提交分享链接。
+            let mut values = url.query_pairs().filter(|(name, _)| name == "data");
+            let value = values.next()?.1.into_owned();
+            if values.next().is_some() || cloud_url(&value).is_none() {
+                return None;
+            }
+            Some(value)
+        })
+}
+
 pub(super) fn parse_content(content: ElementRef<'_>) -> DownloadInfo {
     let mut info = DownloadInfo::default();
     let mut seen = HashSet::new();
     for node in content.select(&selector(
-        "a[href], input[id$='_content'][value], p, li, pre, td",
+        "a[href], input[id$='_content'][value], .bdp-qrcode-box img, p, li, pre, td",
     )) {
         let value = match node.value().name() {
             "input" => node.value().attr("value").unwrap_or("").to_owned(),
             "a" => node.value().attr("href").unwrap_or("").to_owned(),
+            "img" => qr_share_url(node).unwrap_or_default(),
             _ => text(node),
         };
-        let candidates = if matches!(node.value().name(), "a" | "input") {
+        let candidates = if matches!(node.value().name(), "a" | "input" | "img") {
             vec![value.as_str()]
         } else {
             text_urls(&value)
