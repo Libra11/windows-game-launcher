@@ -166,7 +166,7 @@ pub(crate) fn epic_open_account_login() -> Result<(), String> {
     open_browser("https://www.epicgames.com/id/login?redirectUrl=https%3A%2F%2Fstore.epicgames.com%2F")
 }
 
-fn open_browser(url: &str) -> Result<(), String> {
+pub(crate) fn open_browser(url: &str) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};

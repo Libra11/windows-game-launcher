@@ -1,6 +1,7 @@
 import packageInfo from '../../package.json';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { createStatisticsPreview } from './statistics-preview.js';
+import { createOnlineSearchPreview } from './online-search-preview.js';
 import { demoArtwork } from './preview-artwork.js';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
@@ -41,6 +42,7 @@ const demoAchievements = [
 ].map(([name, description], i) => ({ apiName: `DEMO_${i}`, name, description, icon: '', unlockedAt: i < 3 ? '2026-09-28T13:30:00Z' : null, unlockSource: 'local' }));
 const demoSettings={steamApiKey:'',steamId:'',minimizeOnLaunch:false,closeToTray:true,achievementNotifications:true,checkUpdatesOnStartup:true};
 const demoNetwork={mode:'system',address:'',webviewRestartRequired:false};
+const onlineSearchPreview=createOnlineSearchPreview(demoGames);
 export async function command(name, args = {}) {
   if (!preview) {
     if (!isTauri()) throw new Error('请在桌面启动器中使用此功能。');
@@ -50,6 +52,7 @@ export async function command(name, args = {}) {
   if (name === 'get_achievement_overlay_options') return {position:'bottom-right',duration:5,sound:'chime'};
   if (name === 'save_achievement_overlay_options') return;
   if (name === 'list_games') return demoGames;
+  if(name==='search_gamer520' || name==='get_gamer520_detail')return onlineSearchPreview(name,args);
   if (name === 'get_library_organization') return {tags:[],collections:[],gameTags:[],gameCollections:[]};
   if (name === 'epic_connection_status') return { connected:false, displayName:'' };
   if (name === 'steam_family_connection_status') return {connected:false,expired:false,steamId:'',familyName:'',hasFamily:false,accountMismatch:false};

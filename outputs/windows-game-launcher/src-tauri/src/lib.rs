@@ -16,6 +16,7 @@ mod epic_achievements;
 mod epic_auth;
 mod epic_library;
 mod game_install;
+mod gamer520;
 mod grime;
 mod installation;
 mod library_commands;
@@ -193,6 +194,10 @@ pub fn run() {
             xbox::public::xbox_refresh_definitions,
             library_removal::remove_local_game,
             steam_search::search_steam_games,
+            gamer520::search_gamer520,
+            gamer520::open_gamer520_page,
+            gamer520::detail::get_gamer520_detail,
+            gamer520::downloads::open_gamer520_resource,
             library_commands::update_local,
             library_commands::import_steam,
             steam_family::steam_family_begin_login,

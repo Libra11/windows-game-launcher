@@ -29,7 +29,9 @@ export function mountSidebar(host, actions) {
   statistics.dataset.page = 'statistics';
   statistics.title = '游戏统计';
   const settings = button('设置','nav-item',actions.settings,'settings');settings.dataset.page='settings';settings.title='设置';
-  features.append(statistics,settings);navigation.append(features);
+  const onlineSearch = button('在线搜索', 'nav-item', actions.onlineSearch, 'search');
+  onlineSearch.dataset.page = 'online-search'; onlineSearch.title = '在线搜索 Gamer520';
+  features.append(onlineSearch,statistics,settings);navigation.append(features);
 
   const footer = el('div', 'sidebar-footer');
   const version = el('div', 'app-version');

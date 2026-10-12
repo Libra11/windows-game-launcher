@@ -40,6 +40,7 @@ import { mountProgramDrop } from './ui/program-drop.js';
 import { mountCollectionDrag } from './ui/collection-drag.js';
 import { mountGameContextMenu } from './ui/game-context-menu.js';
 import { watchNetworkImages } from './lib/network-images.js';
+import { createOnlineSearchPage } from './ui/online-search.js';
 
 const state = { page:'library', games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
 const appUpdates=createAppUpdateController(command,onAppUpdateProgress);
@@ -107,6 +108,7 @@ const gameInstalls = createGameInstallController({
 });
 let refreshTask, refreshAgain = false, forceRefresh = false;
 let settingsPage;
+let onlineSearchPage;
 function refresh(silent = false) {
   refreshAgain = true; forceRefresh ||= !silent;
   if (refreshTask) return refreshTask;
@@ -149,6 +151,13 @@ const actions = { run, toast,
     render();window.scrollTo(0,0);
   },
   statistics:()=>{selectionVersion++; state.page='statistics'; state.selectedId=''; render(); statistics.refresh(true);},
+  onlineSearch:async()=>{
+    if(state.bigScreen)await bigMode.exit();
+    selectionVersion++;state.page='online-search';state.selectedId='';
+    onlineSearchPage ||= createOnlineSearchPage({command,preview,toast});
+    render();window.scrollTo(0,0);
+    if(document.hasFocus())onlineSearchPage.element.querySelector('input').focus({preventScroll:true});
+  },
   selectStatistic:async id=>{
     const game=actions.game(id); if(!game)return;
     statistics.state.scroll=state.bigScreen ? $('#big-screen-host .big-screen-content')?.scrollTop||0 : window.scrollY;
@@ -211,6 +220,7 @@ mountSidebar($('.sidebar'), {
   },
   settings: actions.settings, preview,
   statistics:actions.statistics,
+  onlineSearch:actions.onlineSearch,
 });
 const organizationSidebar=mountOrganizationSidebar($('#navigation'),state,actions);
 const collectionDrag=mountCollectionDrag(state,actions,organizationSidebar);
@@ -272,11 +282,11 @@ function render(preferredFocus) {
   if (!game) state.selectedId = '';
   app.classList.toggle('statistics-active',state.page==='statistics'&&!game);
   app.classList.toggle('settings-active',state.page==='settings'&&!game);
-  $('#page-name').textContent = game ? game.title : state.page==='statistics' ? '游戏统计' : state.page==='settings'?'设置':'游戏库';
+  $('#page-name').textContent = game ? game.title : state.page==='statistics' ? '游戏统计' : state.page==='settings'?'设置':state.page==='online-search'?'在线搜索':'游戏库';
   $('#page-intro').hidden = !!game || state.page!=='library';
   $('.topbar-actions').hidden=state.page!=='library' && !game;
-  content.setAttribute('aria-label',state.page==='settings'&&!game?'设置内容':state.page==='statistics' && !game ? '游戏统计内容' : '游戏库内容');
-  const next = retainArtworkView(content,'desktop',!game&&state.page==='library',()=>game?detailView(game,state.achievements,state.achievementFilter,actions):state.page==='settings'?settingsPage.element:state.page==='statistics'?statisticsView(statistics,actions):cachedLibraryView('desktop',state,()=>libraryView(state,actions)));
+  content.setAttribute('aria-label',state.page==='settings'&&!game?'设置内容':state.page==='statistics' && !game ? '游戏统计内容' : state.page==='online-search'&&!game?'在线搜索内容':'游戏库内容');
+  const next = retainArtworkView(content,'desktop',!game&&state.page==='library',()=>game?detailView(game,state.achievements,state.achievementFilter,actions):state.page==='settings'?settingsPage.element:state.page==='online-search'?onlineSearchPage.element:state.page==='statistics'?statisticsView(statistics,actions):cachedLibraryView('desktop',state,()=>libraryView(state,actions)));
   // 设置页保留表单节点，后台游戏库刷新不会覆盖用户正在输入的内容。
   if(content.firstElementChild!==next)content.replaceChildren(next);
   activateArtwork(next);
