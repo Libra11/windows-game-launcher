@@ -103,6 +103,19 @@ pub async fn owned_games(key: &str, steamid: &str) -> Result<Vec<Game>, String> 
 }
 
 pub async fn definitions(appid: &str, key: &str) -> Result<Vec<AchievementDefinition>, String> {
+    let numeric_appid = appid.parse::<u32>().ok().filter(|id| *id > 0)
+        .ok_or("Steam AppID 无效")?;
+    let input = serde_json::json!({"appid": numeric_appid, "language": "schinese"}).to_string();
+    let primary = json_get(
+        "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/",
+        &[("input_json", &input)],
+    ).await.and_then(|data| steam_achievements::parse_game_definitions(&data, appid));
+    match primary {
+        Ok(items) => return Ok(items),
+        Err(error) if key.is_empty() => return Err(error),
+        Err(_) => {},
+    }
+    // 空 response 不等于已确认暂无成就；失败时沿用旧定义接口核对。
     let data = json_get(
         "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/",
         &[("key", key), ("appid", appid), ("l", "schinese")],

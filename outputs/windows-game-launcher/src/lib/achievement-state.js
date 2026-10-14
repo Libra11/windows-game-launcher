@@ -9,7 +9,7 @@ export function achievementEmptyMessage(game, achievements) {
   if (game.achievementPlatform?.platform === 'xbox' && game.schemaSource !== 'Xbox 公开成就资料（Exophase）') return '点击“更新资料”获取 Xbox 公开成就名称、条件和图标，无需登录。其他游戏可在编辑游戏中填写公开页面地址。本地事件独立保存。';
   if (game.schemaSource === 'Xbox 本地事件（仅已确认）') return '尚未捕获成功的 Xbox 成就事件。启动游戏后将自动记录；Steam 成就列表不会用于匹配 Xbox ID。';
   if (game.scanStatus?.startsWith('同步失败：')) return '成就资料暂未获取成功，请查看右侧记录状态了解原因。';
-  return '尚未获取成就定义，点击“更新资料”从 Steam 获取；API Key 可在设置中配置。';
+  return '尚未获取成就定义，点击“更新资料”从 Steam 获取；同步账号解锁状态需要配置 API Key 和 SteamID。';
 }
 export function epicUnlockError(game) {
   if (game.source !== 'epic') return '';

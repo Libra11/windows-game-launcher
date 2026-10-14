@@ -1,4 +1,4 @@
-import { el, button, icon } from '../lib/dom.js';
+import { el, button, icon, artwork } from '../lib/dom.js';
 import { command, preview } from '../lib/bridge.js';
 import { setImageSource } from '../lib/network-images.js';
 import { field } from './form-fields.js';
@@ -27,10 +27,10 @@ export function steamGameSearch(initial = null) {
     element.dispatchEvent(new Event('change'));
   }
 
-  function select(game) {
+  function select(game, savedGame = null) {
     invalidate(); selected = game; name.input.value = game.name;
     status.textContent = '已匹配 Steam，保存后将获取封面、简介和成就定义。';
-    const chosen = candidate(game);
+    const chosen = candidate(game, false, savedGame);
     chosen.classList.add('selected');
     const change = button('重新选择', 'steam-search-change', () => {
       invalidate(); name.input.focus(); return find();
@@ -40,12 +40,16 @@ export function steamGameSearch(initial = null) {
     element.dispatchEvent(new Event('change'));
   }
 
-  function candidate(game, selectable = false) {
+  function candidate(game, selectable = false, savedGame = null) {
     const item = selectable ? button('', 'steam-search-result', () => select(game)) : el('div', 'steam-search-result');
-    const art = el('div', 'steam-search-art'); art.append(icon('game'));
-    if (game.image) {
-      const image = el('img'); image.alt = ''; image.loading = 'lazy';
-      image.onerror = () => { image.hidden = true; }; setImageSource(image, game.image); art.append(image);
+    const art = el('div', 'steam-search-art');
+    if (savedGame) artwork(art, savedGame, true);
+    else {
+      art.append(icon('game'));
+      if (game.image) {
+        const image = el('img'); image.alt = ''; image.loading = 'lazy';
+        image.onerror = () => { image.hidden = true; }; setImageSource(image, game.image); art.append(image);
+      }
     }
     const copy = el('div', 'steam-search-copy');
     copy.append(el('strong', '', game.name), el('span', '', `Steam 官方资料 · AppID ${game.appid}`));
@@ -105,7 +109,7 @@ export function steamGameSearch(initial = null) {
   search.addEventListener('click', find);
 
   if (initial) {
-    if (initial.appid) select({ appid:initial.appid, name:initial.title, image:initial.image || '' });
+    if (initial.appid) select({ appid:initial.appid, name:initial.title, image:initial.image || '' }, initial.id ? initial : null);
     else {
       name.input.value = initial.title;
       name.input.dispatchEvent(new Event('input', { bubbles: true }));
