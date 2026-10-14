@@ -79,7 +79,7 @@ pub(crate) async fn sync_game_internal(
         return Err("Steam 成就需要关联 Steam AppID".into());
     }
     let mut no_steam_achievements = game.schema_source == NO_ACHIEVEMENTS_SOURCE;
-    if !key.is_empty() && (full || game.schema_source.is_empty()) {
+    if full || game.schema_source.is_empty() {
         match steam::definitions(&game.appid, &key).await {
             Ok(items) => {
                 save_steam_schema(&mut *lock_db(&state)?, &game, &items)?;
@@ -216,7 +216,7 @@ mod tests {
         let definition = AchievementDefinition {
             api_name: "FIRST".into(),
             name: "初次冒险".into(),
-            description: String::new(),
+            description: "完成教程".into(),
             icon: String::new(),
             hidden: false,
         };
@@ -234,6 +234,14 @@ mod tests {
         let cached = db::achievements(&conn, &game.id).unwrap();
         assert_eq!(cached.len(), 1);
         assert_eq!(cached[0].name, "初次冒险");
+        assert_eq!(cached[0].unlock_source.as_deref(), Some("steam"));
+        save_steam_schema(&mut conn, &game, &[AchievementDefinition {
+            api_name: "FIRST".into(), name: "FIRST".into(),
+            description: String::new(), icon: String::new(), hidden: true,
+        }]).unwrap();
+        let cached = db::achievements(&conn, &game.id).unwrap();
+        assert_eq!(cached[0].name, "初次冒险");
+        assert_eq!(cached[0].description, "完成教程");
         assert_eq!(cached[0].unlock_source.as_deref(), Some("steam"));
     }
 }

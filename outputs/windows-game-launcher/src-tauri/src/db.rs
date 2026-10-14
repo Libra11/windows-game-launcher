@@ -163,7 +163,14 @@ pub fn save_definitions(
         return Err("成就平台关联已更换，已丢弃旧成就资料".into());
     }
     for item in items {
-        let sql = if source == "Steam Web API" || source == crate::xbox::SCHEMA {
+        let sql = if source == "Steam Web API" {
+            "INSERT INTO achievements(appid,api_name,name,description,icon,hidden)
+             VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(appid,api_name) DO UPDATE SET
+             name=CASE WHEN excluded.name<>'' AND excluded.name<>excluded.api_name THEN excluded.name ELSE achievements.name END,
+             description=CASE WHEN excluded.description<>'' THEN excluded.description ELSE achievements.description END,
+             icon=CASE WHEN excluded.icon<>'' THEN excluded.icon ELSE achievements.icon END,
+             hidden=excluded.hidden"
+        } else if source == crate::xbox::SCHEMA {
             "INSERT INTO achievements(appid,api_name,name,description,icon,hidden)
              VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(appid,api_name) DO UPDATE SET
              name=excluded.name,description=excluded.description,icon=excluded.icon,hidden=excluded.hidden"
