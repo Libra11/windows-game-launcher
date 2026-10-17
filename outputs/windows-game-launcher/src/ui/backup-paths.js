@@ -29,11 +29,11 @@ export function backupPaths(inspection,actions,changed) {
     }catch(error){if(!disposed)status.textContent=String(error);}
     finally{busy=false;if(!disposed){renderRows();notify();}}
   }
-  async function pick(path,record=false) {
-    const selected=await chooseFile(record?{multiple:false,title:'选择自定义成就记录文件'}:{multiple:false,title:'选择游戏程序',filters:[{name:'游戏程序',extensions:['exe']}]});
+  async function pick(path,kind='program') {
+    const selected=await chooseFile(kind==='record'?{multiple:false,title:'选择自定义成就记录文件'}:{multiple:false,title:kind==='launcher'?'选择启动器程序':'选择游戏程序',filters:[{name:'程序',extensions:['exe']}]});
     if(!selected||disposed)return;
     const previous=overrides.get(path.gameId)||{gameId:path.gameId,exePath:path.exePath};
-    overrides.set(path.gameId,{...previous,...(record?{customUnlockPath:selected}:{exePath:selected})});
+    overrides.set(path.gameId,{...previous,...(kind==='record'?{customUnlockPath:selected}:kind==='launcher'?{launcherPath:selected}:{exePath:selected})});
     dirty=true;notify();await preview();
   }
   function renderRows() {
@@ -44,8 +44,10 @@ export function backupPaths(inspection,actions,changed) {
       const row=el('div','backup-path-row'),copy=el('div','backup-path-copy'),tools=el('div','settings-tools');
       copy.append(el('strong','',path.title),el('span','',path.exePath||'通过游戏平台客户端启动'),el('small','',backupPathLabels[path.status]||path.status));
       if(path.customUnlockPath)copy.append(el('span','',`记录：${path.customUnlockPath}`),el('small','',`记录路径：${backupPathLabels[path.recordStatus]||path.recordStatus}`));
+      if(path.launcherPath)copy.append(el('span','',`启动器：${path.launcherPath}`),el('small','',`启动器路径：${backupPathLabels[path.launcherStatus]||path.launcherStatus}`));
       const program=button('选择程序','secondary',()=>pick(path),'folder');program.disabled=busy||disabled;tools.append(program);
-      if(path.customUnlockPath){const record=button('选择记录','settings-link',()=>pick(path,true));record.disabled=busy||disabled;tools.append(record);}
+      if(path.customUnlockPath){const record=button('选择记录','settings-link',()=>pick(path,'record'));record.disabled=busy||disabled;tools.append(record);}
+      if(path.launcherPath){const launcher=button('选择启动器','settings-link',()=>pick(path,'launcher'));launcher.disabled=busy||disabled;tools.append(launcher);}
       row.append(copy,tools);rows.append(row);
     }
   }

@@ -11,4 +11,6 @@ test('路径预览区分本地缺失、记录缺失和平台客户端启动',()=
   assert.equal(needsRelocation({source:'local',status:'not_configured',recordStatus:'not_configured'}),true);
   assert.equal(needsRelocation({source:'local',status:'exists',recordStatus:'inaccessible'}),true);
   assert.equal(needsRelocation({source:'local',status:'exists',recordStatus:'exists'}),false);
+  assert.equal(needsRelocation({source:'local',status:'exists',launcherStatus:'missing'}),true);
+  assert.equal(needsRelocation({source:'local',status:'exists',launcherStatus:'exists'}),false);
 });

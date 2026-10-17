@@ -10,6 +10,8 @@ mod clock;
 mod daily;
 mod launch;
 mod recovery;
+#[cfg(test)]
+mod launcher_tests;
 pub(crate) use recovery::Record as RecoveryRecord;
 
 #[derive(Clone, Serialize)]
@@ -90,7 +92,7 @@ impl Tracker {
                 message: if session.started.is_some() {
                     "游戏正在运行"
                 } else {
-                    "等待游戏进程启动"
+                    if session.game.uses_launcher() { "等待游戏启动；可取消等待" } else { "等待游戏进程启动" }
                 }
                 .into(),
                 elapsed_seconds: session.clock.seconds(),
@@ -152,7 +154,7 @@ impl Tracker {
         if let Some(session) = self.sessions.get_mut(game_id) {
             session.launch_pending = false;
             session.requested = Instant::now();
-            if let Some(pid) = pid {
+            if let Some(pid) = pid.filter(|_| !session.game.uses_launcher()) {
                 let pid = Pid::from_u32(pid);
                 if let Some(process) = self.system.process(pid) {
                     session.known.insert(pid, process.start_time());
@@ -183,6 +185,21 @@ impl Tracker {
     }
     pub fn forget(&mut self, game_id: &str) {
         self.last.remove(game_id);
+    }
+    pub fn cancel_wait(&mut self, game_id: &str) -> Result<(), String> {
+        self.refresh_processes(false);
+        let session = self.sessions.get(game_id).ok_or("当前没有等待中的启动请求")?;
+        if !session.game.uses_launcher() || session.launch_pending {
+            return Err("当前启动请求尚不能取消，请稍后重试".into());
+        }
+        if session.started.is_some() || self.system.processes().values().any(|process| {
+            !helper_process(process) && process.exe().is_some_and(|exe| same_path(exe, Path::new(&session.game.exe_path)))
+        }) {
+            return Err("游戏已开始运行，不能取消等待".into());
+        }
+        self.sessions.remove(game_id);
+        self.last.remove(game_id);
+        Ok(())
     }
     pub fn is_empty(&self) -> bool {
         self.sessions.is_empty()
@@ -221,7 +238,8 @@ impl Tracker {
                             .is_some_and(|path| same_path(path, Path::new(&session.game.exe_path)));
                     let steam = session.game.source == "steam"
                         && steam_process(process, &session.game.appid);
-                    if child || exact || steam {
+                    // 启动器模式仅跟踪明确指定的游戏，避免把更新器、反作弊或常驻启动器计入时长。
+                    if exact || (!session.game.uses_launcher() && (child || steam)) {
                         session.known.insert(*pid, process.start_time());
                     }
                 }
@@ -245,6 +263,7 @@ impl Tracker {
                 session.empty_ticks = session.empty_ticks.saturating_add(1);
             }
             let failed = !session.launch_pending
+                && !session.game.uses_launcher()
                 && session.started.is_none()
                 && session.requested.elapsed() >= Duration::from_secs(90);
             let finished = session.started.is_some() && session.empty_ticks >= 2;
@@ -332,7 +351,11 @@ fn steam_process(process: &sysinfo::Process, appid: &str) -> bool {
 
 pub fn spawn(game: &Game) -> Result<Option<u32>, String> {
     if game.source == "local" {
-        launch::local(Path::new(&game.exe_path)).map(Some)
+        if !Path::new(&game.exe_path).is_file() {
+            return Err("游戏启动文件不存在，请在编辑游戏中重新选择".into());
+        }
+        let pid = launch::local(Path::new(game.local_launch_path()))?;
+        Ok((!game.uses_launcher()).then_some(pid))
     } else {
         #[cfg(target_os = "windows")]
         let child = std::process::Command::new("explorer.exe")

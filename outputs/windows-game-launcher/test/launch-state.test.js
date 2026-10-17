@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { launchState, installState, installationHint } from '../src/lib/launch-state.js';
+import { launchState, installState, installationHint, isLauncherWaiting } from '../src/lib/launch-state.js';
+
+test('仅本地启动器模式显示等待游戏，运行后恢复统一运行状态',()=>{
+  const game={source:'local',launchUri:'D:/launcher.exe',runtime:{state:'starting',message:'等待游戏启动'}};
+  assert.equal(isLauncherWaiting(game),true);
+  assert.equal(launchState(game).label,'等待游戏启动'); assert.equal(launchState(game).disabled,true);
+  game.runtime.state='running'; assert.equal(isLauncherWaiting(game),false); assert.equal(launchState(game).label,'游戏运行中');
+  game.runtime.state='starting'; game.launchUri=''; assert.equal(isLauncherWaiting(game),false); assert.equal(launchState(game).label,'正在启动…');
+});
 
 const steam = state => ({source:'steam',installation:{state,reason:'检测说明'},runtime:{state:'idle'}});
 test('Steam 已安装可启动、未安装可安装，其余状态禁用',()=> {

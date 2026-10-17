@@ -81,6 +81,15 @@ fn reserve_launch(
 }
 
 #[tauri::command]
+pub(crate) fn cancel_launch_wait(app: tauri::AppHandle, game_id: String) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let _gate = crate::maintenance::lock_operation(&state.operation_gate, &state.maintenance)?;
+    state.runtime.lock().map_err(|_| "运行状态暂时不可用")?.cancel_wait(&game_id)?;
+    let _ = app.emit("library-changed", &game_id);
+    Ok(())
+}
+
+#[tauri::command]
 pub(crate) fn set_favorite(
     app: tauri::AppHandle,
     game_id: String,
@@ -103,9 +112,6 @@ pub(crate) fn set_launch_path(
         || (!exe_path.is_empty() && !std::path::Path::new(&exe_path).is_file())
     {
         return Err("请选择存在的游戏启动程序".into());
-    }
-    if game.source == "local" {
-        game.launch_uri.clear();
     }
     game.exe_path = exe_path;
     db::upsert_game(&conn, &game)

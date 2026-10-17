@@ -17,6 +17,17 @@ pub struct Game {
     pub schema_source: String,
 }
 
+impl Game {
+    // 本地游戏的 launch_uri 保存可选启动器程序；exe_path 始终指向实际游戏。
+    pub fn uses_launcher(&self) -> bool {
+        self.source == "local" && !self.launch_uri.is_empty()
+    }
+
+    pub fn local_launch_path(&self) -> &str {
+        if self.uses_launcher() { &self.launch_uri } else { &self.exe_path }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Achievement {

@@ -1,6 +1,6 @@
 import { el, button, icon } from '../lib/dom.js';
 import { playTime, playedDate } from '../lib/library-query.js';
-import { launchState, installState, installationHint } from '../lib/launch-state.js';
+import { launchState, installState, installationHint, isLauncherWaiting } from '../lib/launch-state.js';
 import { playtimeText, playtimeHint } from '../lib/playtime.js';
 
 function setValue(node,key,value) {
@@ -47,6 +47,18 @@ export function installButton(game, actions, className = 'secondary', focusKey) 
   };
   return node;
 }
+export function cancelLaunchButton(game, actions) {
+  const node = button('取消等待', 'secondary', async () => {
+    if (node.disabled || !isLauncherWaiting(actions.game(game.id) || game)) return;
+    node.disabled = true;
+    try { await actions.cancelLaunchWait(game); } catch { /* 错误由统一提示显示。 */ }
+    finally { node.disabled = false; }
+  });
+  node.dataset.cancelLaunchId = game.id;
+  node.dataset.focusKey = `cancel-launch-${game.id}`;
+  node.hidden = !isLauncherWaiting(game);
+  return node;
+}
 function updateInstall(node,game) {
   const {label,disabled,reason} = installState(game);
   setValue(node,'disabled',disabled); setValue(node.querySelector('span'),'textContent',label);
@@ -84,7 +96,7 @@ function updateBadge(node, game) {
   setState(node,'state',state);
   setValue(node,'hidden',state==='idle');
   setValue(node,'textContent',state === 'running' ? `运行中 · ${playTime(game.runtime.elapsedSeconds)}`
-    : state === 'starting' ? '正在启动…' : state === 'error' ? '启动失败' : '未确认运行');
+    : state === 'starting' ? isLauncherWaiting(game) ? '等待游戏启动' : '正在启动…' : state === 'error' ? '启动失败' : '未确认运行');
   setValue(node,'title',game.runtime?.message||'');
 }
 export function activitySummary(game) {
@@ -104,10 +116,11 @@ function updatePlaytime(node, game) {
 }
 export function patchRuntime(root, games) {
   const byId = new Map(games.map(game => [game.id,game]));
-  root.querySelectorAll('[data-launch-id],[data-install-id],[data-runtime-id],[data-installation-id],[data-playtime-id]').forEach(node=>{
-    const game=byId.get(node.dataset.launchId||node.dataset.installId||node.dataset.runtimeId||node.dataset.installationId||node.dataset.playtimeId);
+  root.querySelectorAll('[data-launch-id],[data-cancel-launch-id],[data-install-id],[data-runtime-id],[data-installation-id],[data-playtime-id]').forEach(node=>{
+    const game=byId.get(node.dataset.launchId||node.dataset.cancelLaunchId||node.dataset.installId||node.dataset.runtimeId||node.dataset.installationId||node.dataset.playtimeId);
     if(!game)return;
     if(node.dataset.launchId)updateLaunch(node,game);
+    else if(node.dataset.cancelLaunchId)node.hidden=!isLauncherWaiting(game);
     else if(node.dataset.runtimeId)updateBadge(node,game);
     else if(node.dataset.installId)updateInstall(node,game);
     else if(node.dataset.installationId)updateInstallation(node,game);

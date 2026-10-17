@@ -1,6 +1,6 @@
 import { el, button, icon, artwork, metadata, sourceName, sourceIcon } from '../lib/dom.js';
 import { playedDate } from '../lib/library-query.js';
-import { launchButton, installButton, favoriteButton, runtimeBadge, installationBadge, playtimeBadge } from './game-controls.js';
+import { launchButton, cancelLaunchButton, installButton, favoriteButton, runtimeBadge, installationBadge, playtimeBadge } from './game-controls.js';
 import { reveal } from './motion.js';
 import './big-screen-hero.css';
 
@@ -22,7 +22,7 @@ export function showBigScreenGame(hero, backdrop, game, actions, animate = false
   const details = button('详情与成就', 'big-screen-details', () => actions.select(game), 'trophy'); details.dataset.focusKey = 'details';
   const favorite = favoriteButton(game, actions, false, 'hero-favorite');
   favorite.className = 'big-screen-favorite favorite-button-wide'; favorite.replaceChildren(icon('star'));
-  buttons.append(launchButton(game, actions, 'primary', 'launch'));
+  buttons.append(launchButton(game, actions, 'primary', 'launch'), cancelLaunchButton(game, actions));
   if (game.source === 'epic') buttons.append(installButton(game,actions,'big-screen-details','install'));
   buttons.append(details, favorite); copy.append(buttons);
 

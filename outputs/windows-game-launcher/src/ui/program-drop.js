@@ -3,6 +3,7 @@ import { createProgramDropHandler } from '../lib/program-drop.js';
 import { el } from '../lib/dom.js';
 import { addDialog } from './add-game-dialog.js';
 import './program-drop.css';
+import { programPathTarget } from './program-path-field.js';
 
 export async function mountProgramDrop(actions) {
   const overlay = el('div', 'program-drop-overlay');
@@ -16,10 +17,20 @@ export async function mountProgramDrop(actions) {
     notify: actions.toast, isBlocked,
   });
   try {
+    let highlighted;
     return await onFileDrop(event => {
-      const { type, paths } = event.payload;
+      const { type, paths, position } = event.payload;
+      const target = ['enter','over','drop'].includes(type) ? programPathTarget(position) : null;
+      highlighted?.classList.remove('program-path-hover');
+      highlighted = target?.wrapper;
+      if (type !== 'drop') highlighted?.classList.add('program-path-hover');
       overlay.hidden = !['enter', 'over'].includes(type) || isBlocked();
-      if (type === 'drop') void handle(paths);
+      if (type === 'drop') {
+        if (target) {
+          if (paths.length !== 1) actions.toast('请一次拖入一个程序或快捷方式。', true);
+          else void target.select(paths[0]);
+        } else void handle(paths);
+      }
     });
   } catch (error) { overlay.remove(); throw error; }
 }

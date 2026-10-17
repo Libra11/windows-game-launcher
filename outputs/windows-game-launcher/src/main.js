@@ -141,6 +141,7 @@ const statistics = createStatisticsController({
   command, render, visible:()=>state.page==='statistics' && !state.selectedId && !document.hidden && !document.querySelector('dialog[open]'),
 });
 const actions = { run, toast,
+  cancelLaunchWait: async game => { await run('cancel_launch_wait',{gameId:game.id}); await refresh(true); toast('已取消等待'); },
   select, launch, install:gameInstalls.install, exitBigScreen: () => bigMode.exit(),
   get backLabel(){return state.page==='statistics'?'返回统计':state.page==='settings'?'返回设置':'返回游戏库';},
   settings:async(category)=>{

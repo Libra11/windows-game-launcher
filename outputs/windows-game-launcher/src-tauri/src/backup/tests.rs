@@ -3,6 +3,26 @@ use crate::db;
 use std::{collections::BTreeMap, io::{Read, Write}};
 
 const TIME: &str = "2026-10-10T08:00:00+00:00";
+
+#[test]
+fn local_launcher_paths_survive_backup_mapping_and_individual_relocation() {
+    let mut conn=source();
+    let mut game=db::game(&conn,"local-one").unwrap().unwrap();
+    game.launch_uri="E:/Games/Launcher/launcher.exe".into(); db::upsert_game(&conn,&game).unwrap();
+    let (mut data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
+    schema::validate(&data,&prefs).unwrap();
+    let previews=paths::apply(&mut data,&Relocation{mappings:vec![PathMapping{from:"E:/Games".into(),to:"D:/Games".into()}],overrides:vec![]}).unwrap();
+    assert_eq!(previews[0].launcher_path,"D:/Games/Launcher/launcher.exe");
+    let relocation=Relocation{mappings:vec![],overrides:vec![PathOverride{game_id:game.id.clone(),exe_path:"D:/Games/game.exe".into(),launcher_path:Some("C:/Launcher/start.exe".into()),..Default::default()}]};
+    paths::apply(&mut data,&relocation).unwrap(); schema::validate(&data,&prefs).unwrap();
+    let mut target=db::open(std::path::Path::new(":memory:")).unwrap();
+    restore::replace(&mut target,&data,&prefs,"fixture").unwrap();
+    assert_eq!(db::game(&target,&game.id).unwrap().unwrap().launch_uri,"C:/Launcher/start.exe");
+    for invalid in ["steam://run/480","../start.exe","C:/Games/start.lnk","C:/Games/start.exe\n"] {
+        data.tables.get_mut("games").unwrap()[0][5]=invalid.into();
+        assert!(schema::validate(&data,&prefs).is_err());
+    }
+}
 fn appearance() -> Appearance {
     Appearance { theme:"dark".into(), theme_color:"amber".into(), fonts:vec!["Microsoft YaHei".into(),"system-ui".into()] }
 }

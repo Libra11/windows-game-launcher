@@ -1,0 +1,8 @@
+.local-launch-fields { display:grid; gap:20px; min-width:0; }
+.local-launcher-section { display:grid; gap:16px; padding:16px; background:var(--surface-hover); border:1px solid var(--line); border-radius:10px; }
+.local-launcher-toggle { margin:0; }
+.program-path-field>span { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.program-path-hint { font-size:10px; color:var(--muted); font-weight:400; }
+.program-path-field.program-path-hover .input-row { outline:2px dashed var(--accent-line); outline-offset:4px; border-radius:7px; }
+.program-path-error { margin:0; color:var(--error-text); font-size:11px; }
+.local-launch-fields [hidden] { display:none; }

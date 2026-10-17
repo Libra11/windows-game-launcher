@@ -11,6 +11,9 @@ fn absolute(path: &str) -> bool {
 fn valid(path: &str) -> bool {
     absolute(path) && !path.chars().any(char::is_control) && !normalized(path).split('/').any(|part| part == ".." || part == ".")
 }
+pub(super) fn valid_program_path(path: &str) -> bool {
+    valid(path) && path.to_lowercase().ends_with(".exe")
+}
 pub fn mapped(path: &str, mappings: &[PathMapping]) -> String {
     let path = normalized(path);
     let parts: Vec<_> = path.split('/').collect();
@@ -44,6 +47,7 @@ pub fn apply(data: &mut Dataset, relocation: &Relocation) -> Result<Vec<PathPrev
     for item in &relocation.overrides {
         if !valid(&item.exe_path) || !item.exe_path.to_lowercase().ends_with(".exe")
             || item.custom_unlock_path.as_ref().is_some_and(|path| !path.is_empty() && !valid(path))
+            || item.launcher_path.as_ref().is_some_and(|path| !path.is_empty() && !valid_program_path(path))
             || overrides.insert(item.game_id.as_str(), item).is_some()
         { return Err("单款游戏程序或记录路径无效".into()); }
     }
@@ -54,13 +58,21 @@ pub fn apply(data: &mut Dataset, relocation: &Relocation) -> Result<Vec<PathPrev
         let record = row[6].as_str().unwrap();
         let mut exe = mapped(&original, &relocation.mappings);
         let mut custom = mapped(record, &relocation.mappings);
+        let local = row[1].as_str() == Some("local");
+        let mut launcher = if local { mapped(row[5].as_str().unwrap(), &relocation.mappings) } else { String::new() };
         if let Some(item) = overrides.remove(id.as_str()) {
             exe = item.exe_path.clone();
             if let Some(path) = &item.custom_unlock_path { custom = path.clone(); }
+            if let Some(path) = &item.launcher_path {
+                if !local { return Err("只有本地游戏可设置启动器程序".into()); }
+                launcher = path.clone();
+            }
         }
         result.push(PathPreview { game_id:id, title:row[3].as_str().unwrap().into(), source:row[1].as_str().unwrap().into(),
-            original_path:original, status:status(&exe), record_status:status(&custom), exe_path:exe.clone(), custom_unlock_path:custom.clone() });
+            original_path:original, status:status(&exe), record_status:status(&custom), exe_path:exe.clone(), custom_unlock_path:custom.clone(),
+            launcher_status:status(&launcher), launcher_path:launcher.clone() });
         row[4] = exe.into(); row[6] = custom.into();
+        if local { row[5] = launcher.into(); }
     }
     if !overrides.is_empty() { return Err("路径修改引用了不存在的游戏".into()); }
     Ok(result)

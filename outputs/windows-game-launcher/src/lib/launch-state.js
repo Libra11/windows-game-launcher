@@ -6,7 +6,7 @@ const installationLabels = {
 export function launchState(game) {
   const runtime = game.runtime || {};
   if (runtime.state === 'starting' || runtime.state === 'running') {
-    return {label:runtime.state === 'starting' ? '正在启动…' : '游戏运行中', disabled:true, reason:runtime.message || ''};
+    return {label:runtime.state === 'starting' ? isLauncherWaiting(game) ? '等待游戏启动' : '正在启动…' : '游戏运行中', disabled:true, reason:runtime.message || ''};
   }
   if (game.installRequestPending) return {label:'正在打开安装…',disabled:true,reason:'正在打开游戏客户端的安装入口'};
   if (game.source === 'epic') return { label:'在 Epic 中打开', disabled:false, reason:'通过 Epic 客户端处理安装和启动；指定实际游戏程序后可记录运行时长' };
@@ -24,6 +24,10 @@ export function launchState(game) {
     return {label:game.installation.state === 'not_installed' ? '启动文件缺失' : '无法访问游戏',disabled:true,reason:game.installation.reason};
   }
   return {label:'开始游戏',disabled:false,reason:runtime.message || '开始游戏'};
+}
+
+export function isLauncherWaiting(game) {
+  return game.source === 'local' && !!game.launchUri && game.runtime?.state === 'starting';
 }
 
 export function installState(game) {

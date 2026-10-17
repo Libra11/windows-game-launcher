@@ -13,6 +13,8 @@
 
 表顺序与列由 `backup/schema.rs` 固定：games、library_tags、library_collections、game_tags、game_collections、achievements、unlocks、game_activity、play_sessions、daily_playtime、statistics_unlock_events。游戏 ID、会话 ID、平台关联、解锁证据和统计日期保持不变；未结束会话只在导出副本中写入快照结束时间。
 
+games 的 exe_path 保存实际游戏程序；本地游戏的 launch_uri 为空表示直接启动，非空时保存可选启动器的完整 Windows EXE 路径，Steam／Epic 则仍为客户端协议地址。游戏程序、启动器和自定义记录分别预览可用状态，支持目录映射与单款覆盖；不将客户端协议当作文件路径映射。无新增列或格式版本变更，启动器路径不包含快捷方式参数。
+
 允许的设置为 steam_id、statistics_started_at，以及 achievement_platform、statistics_official_baseline、steam_playtime、steam_family_playtime、cover_cache 的有效前缀。成就平台与封面关联只保留当前游戏引用。凭证、机器错误状态、捕获文件、运行恢复、通知弹出历史不导出。更新安装包、下载状态、准备 ID 和安装尝试记录也不导出。
 
 ## 校验与资源限制

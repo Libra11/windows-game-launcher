@@ -86,7 +86,7 @@ pub fn validate(data: &Dataset, preferences: &Preferences) -> Result<(), String>
         let uri = row[5].as_str().unwrap();
         if (source == "steam" && (appid.parse::<u32>().ok().is_none_or(|id| id == 0) || uri != format!("steam://rungameid/{appid}")))
             || (source == "epic" && !uri.starts_with("com.epicgames.launcher://apps/"))
-            || (source == "local" && !uri.is_empty())
+            || (source == "local" && !uri.is_empty() && !super::paths::valid_program_path(uri))
         { return Err("备份游戏平台启动地址无效".into()); }
     }
     let mut positions=HashSet::new();
