@@ -79,6 +79,7 @@ pub struct PathOverride {
     pub game_id: String,
     pub exe_path: String,
     pub custom_unlock_path: Option<String>,
+    pub launcher_path: Option<String>,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -91,6 +92,7 @@ pub struct PathPreview {
     pub game_id: String, pub title: String, pub source: String,
     pub original_path: String, pub exe_path: String, pub custom_unlock_path: String,
     pub status: String, pub record_status: String,
+    pub launcher_path: String, pub launcher_status: String,
 }
 
 #[derive(Serialize)]

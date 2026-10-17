@@ -220,6 +220,8 @@ pub fn run() {
             runtime_commands::launch_game,
             game_install::install_game,
             local_import::prepare_local_import,
+            local_import::resolve_program_path,
+            runtime_commands::cancel_launch_wait,
             runtime_commands::set_favorite,
             runtime_commands::set_launch_path,
             detection::check_detection,

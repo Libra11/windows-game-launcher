@@ -65,6 +65,7 @@ impl Tracker {
                 let process = self.system.process(pid)?;
                 if process.start_time() != saved.started
                     || helper_process(process)
+                    || (game.uses_launcher() && !process.exe().is_some_and(|exe| same_path(exe, Path::new(&game.exe_path))))
                     || !process
                         .exe()
                         .is_some_and(|exe| same_path(exe, Path::new(&saved.exe)))

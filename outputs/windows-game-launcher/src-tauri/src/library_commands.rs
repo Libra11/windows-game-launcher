@@ -42,21 +42,7 @@ pub(crate) fn list_games(
                     checked_at: String::new(),
                 }
             } else {
-                let path = PathBuf::from(&game.exe_path);
-                let (status, reason) = match path.try_exists() {
-                    Ok(true) if path.is_file() => (
-                        crate::installation::Status::Installed,
-                        "本地启动文件可用".to_string(),
-                    ),
-                    Ok(_) => (
-                        crate::installation::Status::NotInstalled,
-                        "本地启动文件不存在，请重新选择".to_string(),
-                    ),
-                    Err(error) => (
-                        crate::installation::Status::Unknown,
-                        format!("无法访问本地启动文件：{error}"),
-                    ),
-                };
+                let (status, reason) = local_installation(&game);
                 crate::installation::Info {
                     state: status,
                     reason,
@@ -86,6 +72,19 @@ pub(crate) fn list_games(
         .collect())
 }
 
+fn local_installation(game: &Game) -> (crate::installation::Status, String) {
+    use crate::installation::Status;
+    for (file, label) in [(game.exe_path.as_str(), "游戏程序"), (game.local_launch_path(), "启动程序")] {
+        let path = PathBuf::from(file);
+        match path.try_exists() {
+            Ok(true) if path.is_file() => {},
+            Ok(_) => return (Status::NotInstalled, format!("{label}不存在，请重新选择")),
+            Err(error) => return (Status::Unknown, format!("无法访问{label}：{error}")),
+        }
+    }
+    (Status::Installed, "本地启动文件可用".into())
+}
+
 #[tauri::command]
 pub(crate) fn list_achievements(
     state: tauri::State<'_, AppState>,
@@ -98,16 +97,14 @@ pub(crate) fn list_achievements(
 pub(crate) fn import_local(
     state: tauri::State<'_, AppState>,
     exe_path: String,
+    launcher_path: Option<String>,
     appid: String,
     title: String,
     achievement_platform: String,
     public_achievement_url: String,
     steam_identity_confirmed: bool,
 ) -> Result<Game, String> {
-    let path = PathBuf::from(&exe_path);
-    if !path.is_file() {
-        return Err("请选择存在的游戏可执行文件".into());
-    }
+    let (exe_path, launcher_path) = crate::local_import::resolve_paths(&exe_path, launcher_path.as_deref().unwrap_or(""))?;
     if !appid.is_empty() && !appid.chars().all(|ch| ch.is_ascii_digit()) {
         return Err("Steam AppID 必须是数字".into());
     }
@@ -121,7 +118,7 @@ pub(crate) fn import_local(
         appid,
         title: title.to_owned(),
         exe_path,
-        launch_uri: String::new(),
+        launch_uri: launcher_path,
         custom_unlock_path: String::new(),
         metadata_json: "{}".into(),
         scan_status: String::new(),
@@ -157,6 +154,7 @@ pub(crate) fn update_local(
     appid: String,
     custom_unlock_path: String,
     exe_path: String,
+    launcher_path: Option<String>,
     achievement_platform: String,
     public_achievement_url: String,
     steam_identity_confirmed: bool,
@@ -186,10 +184,8 @@ pub(crate) fn update_local(
     game.title = title.trim().to_owned();
     game.appid = appid;
     game.custom_unlock_path = custom_unlock_path.trim().to_owned();
-    if !PathBuf::from(&exe_path).is_file() {
-        return Err("游戏启动文件不存在".into());
-    }
-    game.launch_uri.clear();
+    let (exe_path, launcher_path) = crate::local_import::resolve_paths(&exe_path, launcher_path.as_deref().unwrap_or(""))?;
+    game.launch_uri = launcher_path;
     game.exe_path = exe_path;
     if changed {
         game.metadata_json = "{}".into();

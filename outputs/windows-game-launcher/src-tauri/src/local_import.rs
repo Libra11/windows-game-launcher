@@ -50,6 +50,25 @@ pub(crate) fn resolve(path: &Path) -> Result<ProgramImport, String> {
     })
 }
 
+pub(crate) fn resolve_paths(exe: &str, launcher: &str) -> Result<(String, String), String> {
+    let exe = resolve(Path::new(exe.trim()))?.exe_path;
+    let launcher = if launcher.trim().is_empty() {
+        String::new()
+    } else {
+        resolve(Path::new(launcher.trim()))?.exe_path
+    };
+    if !launcher.is_empty() && same_program(&exe, &launcher) {
+        return Err("启动器程序不能与实际游戏程序相同".into());
+    }
+    Ok((exe, launcher))
+}
+
+#[tauri::command]
+pub(crate) async fn resolve_program_path(path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || resolve(Path::new(&path)).map(|item| item.exe_path))
+        .await.map_err(|error| error.to_string())?
+}
+
 #[cfg(windows)]
 fn shortcut(path: &Path) -> Result<String, String> {
     use std::os::windows::ffi::OsStrExt;
@@ -142,6 +161,20 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn resolves_separate_game_and_launcher_paths_and_rejects_invalid_targets() {
+        let fixture = Fixture::new();
+        let game = fixture.0.join("game.exe");
+        let launcher = fixture.0.join("launcher.exe");
+        std::fs::write(&game, b"not executed").unwrap();
+        std::fs::write(&launcher, b"not executed").unwrap();
+        let game = game.to_str().unwrap(); let launcher = launcher.to_str().unwrap();
+        assert_eq!(resolve_paths(game, "").unwrap(), (game.into(), String::new()));
+        assert_eq!(resolve_paths(game, launcher).unwrap(), (game.into(), launcher.into()));
+        assert!(resolve_paths(game, game).is_err());
+        assert!(resolve_paths(game, "missing-launcher.exe").is_err());
     }
 
     #[test]
