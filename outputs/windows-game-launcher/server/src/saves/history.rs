@@ -25,10 +25,10 @@ pub async fn download(
     Path(id): Path<Uuid>,
 ) -> Result<Json<Value>> {
     let storage = storage(&app)?;
-    let key:Option<String>=sqlx::query_scalar("SELECT o.object_key FROM save_snapshots s JOIN save_objects o ON s.user_id=o.user_id AND s.object_id=o.id WHERE s.user_id=$1 AND s.id=$2")
+    let key:Option<String>=sqlx::query_scalar("SELECT o.object_key FROM save_snapshots s JOIN save_objects o ON s.user_id=o.user_id AND s.object_id=o.id WHERE s.user_id=$1 AND s.id=$2 AND o.available")
         .bind(identity.user_id).bind(id).fetch_optional(&app.pool).await?;
     Ok(Json(
-        json!({"url":storage.download_url(&key.ok_or_else(missing)?).await?}),
+        json!({"url":storage.download_url(&key.ok_or_else(||ApiError::bad("快照不存在或归档已清理"))?).await?}),
     ))
 }
 #[derive(Deserialize)]
@@ -57,7 +57,7 @@ pub async fn resolve(
     }
     parents(&mut tx, identity.user_id, id, &request.parent_ids).await?;
     let object: Uuid = sqlx::query_scalar(
-        "SELECT object_id FROM save_snapshots WHERE user_id=$1 AND profile_id=$2 AND id=$3",
+        "SELECT s.object_id FROM save_snapshots s JOIN save_objects o ON o.user_id=s.user_id AND o.id=s.object_id WHERE s.user_id=$1 AND s.profile_id=$2 AND s.id=$3 AND o.available",
     )
     .bind(identity.user_id)
     .bind(id)
@@ -107,9 +107,13 @@ pub async fn delete_snapshot(
         .execute(&mut *tx)
         .await?;
     // 完成幂等记录保留；再次 complete 已删除的快照返回不存在，不会重新创建。
-    let object=sqlx::query("DELETE FROM save_objects o WHERE user_id=$1 AND id=$2 AND NOT EXISTS(SELECT 1 FROM save_snapshots s WHERE s.user_id=o.user_id AND s.object_id=o.id) RETURNING object_key,bytes")
+    let object=sqlx::query("DELETE FROM save_objects o WHERE user_id=$1 AND id=$2 AND NOT EXISTS(SELECT 1 FROM save_snapshots s WHERE s.user_id=o.user_id AND s.object_id=o.id) RETURNING object_key,bytes,available")
         .bind(identity.user_id).bind(object).fetch_optional(&mut *tx).await?;
     if let Some(object) = object {
+        if !object.get::<bool, _>("available") {
+            tx.commit().await?;
+            return Ok(Json(json!({"deleted":true})));
+        }
         let key: String = object.get("object_key");
         let bytes: i64 = object.get("bytes");
         // 已签发的下载地址最多十分钟；延后物理删除避免截断正在下载的历史版本。

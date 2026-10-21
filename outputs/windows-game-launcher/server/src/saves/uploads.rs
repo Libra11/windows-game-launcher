@@ -3,7 +3,7 @@ use youji_cloud_protocol::saves::{valid_hash, UploadRequest, MAX_BYTES};
 
 // 调用方须已取得用户同步锁；GC 覆盖暂存、失败尝试和延迟删除对象。
 pub(super) async fn quota_used(tx: &mut Transaction<'_, Postgres>, user: Uuid) -> Result<i64> {
-    Ok(sqlx::query_scalar("SELECT COALESCE((SELECT sum(bytes) FROM save_objects WHERE user_id=$1),0)::bigint + COALESCE((SELECT sum(bytes) FROM save_object_gc WHERE user_id=$1),0)::bigint")
+    Ok(sqlx::query_scalar("SELECT COALESCE((SELECT sum(bytes) FROM save_objects WHERE user_id=$1 AND available),0)::bigint + COALESCE((SELECT sum(bytes) FROM save_object_gc WHERE user_id=$1),0)::bigint")
         .bind(user).fetch_one(&mut **tx).await?)
 }
 fn validate(request: &UploadRequest) -> Result<()> {
@@ -116,7 +116,7 @@ pub async fn cleanup(app: &App) -> Result<()> {
     };
     // 只锁 GC 队列行；不持有用户同步锁等待 OSS。未发布对象不允许重新挂接。
     let mut tx = app.pool.begin().await?;
-    let keys:Vec<String>=sqlx::query_scalar("SELECT object_key FROM save_object_gc g WHERE not_before<now() AND NOT EXISTS(SELECT 1 FROM save_objects o WHERE o.object_key=g.object_key) AND NOT EXISTS(SELECT 1 FROM save_uploads u WHERE (u.object_key=g.object_key OR u.staging_key=g.object_key) AND NOT u.completed AND u.expires_at>now()) LIMIT 100 FOR UPDATE SKIP LOCKED")
+    let keys:Vec<String>=sqlx::query_scalar("SELECT object_key FROM save_object_gc g WHERE not_before<now() AND NOT EXISTS(SELECT 1 FROM save_objects o WHERE o.object_key=g.object_key AND o.available) AND NOT EXISTS(SELECT 1 FROM save_uploads u WHERE (u.object_key=g.object_key OR u.staging_key=g.object_key) AND NOT u.completed AND u.expires_at>now()) LIMIT 100 FOR UPDATE SKIP LOCKED")
         .fetch_all(&mut *tx).await?;
     for key in keys {
         storage.delete(&key).await?;

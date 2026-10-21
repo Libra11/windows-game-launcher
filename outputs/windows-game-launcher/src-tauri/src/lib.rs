@@ -5,15 +5,15 @@ mod achievement_repair;
 mod activity;
 mod app_update;
 mod backup;
+pub mod cloud;
 mod cover_cache;
 mod cover_download;
 mod db;
-pub mod cloud;
 mod desktop_lifecycle;
 mod detection;
 mod epic;
-mod epic_artwork;
 mod epic_achievements;
+mod epic_artwork;
 mod epic_auth;
 mod epic_library;
 mod game_install;
@@ -23,23 +23,23 @@ mod installation;
 mod library_commands;
 mod library_removal;
 mod local_import;
-mod model;
 mod maintenance;
-mod organization;
+mod model;
 mod network;
+mod organization;
 mod record_paths;
 mod runtime;
 mod runtime_commands;
 mod runtime_environment;
 mod runtime_persistence;
 mod runtime_record;
-mod scanner;
 mod saves;
+mod scanner;
 mod source;
 mod statistics;
 mod steam;
-mod steam_family;
 mod steam_achievements;
+mod steam_family;
 mod steam_identity;
 mod steam_playtime;
 mod steam_search;
@@ -71,9 +71,16 @@ struct AppState {
 }
 
 fn lock_db(state: &AppState) -> Result<std::sync::MutexGuard<'_, Connection>, String> {
-    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("游迹正在准备更新或恢复，请等待操作完成".into()); }
-    let conn = state.db.lock().map_err(|_| "数据库暂时不可用".to_string())?;
-    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) { return Err("游迹正在准备更新或恢复，请等待操作完成".into()); }
+    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) {
+        return Err("游迹正在准备更新或恢复，请等待操作完成".into());
+    }
+    let conn = state
+        .db
+        .lock()
+        .map_err(|_| "数据库暂时不可用".to_string())?;
+    if state.maintenance.load(std::sync::atomic::Ordering::Acquire) {
+        return Err("游迹正在准备更新或恢复，请等待操作完成".into());
+    }
     Ok(conn)
 }
 
@@ -86,7 +93,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init());
     #[cfg(windows)]
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
-    builder.setup(|app| {
+    builder
+        .setup(|app| {
             let dir = app.path().app_data_dir()?;
             let mut conn = db::open(&dir.join("games.sqlite")).map_err(std::io::Error::other)?;
             cloud::secrets::migrate(&conn).map_err(std::io::Error::other)?;
@@ -94,13 +102,15 @@ pub fn run() {
             backup::startup(&mut conn, &dir, &covers);
             saves::startup(&dir).map_err(std::io::Error::other)?;
             app.manage(saves::ManagerState::default());
-            let restored_appearance = backup::appearance_script(&conn).map_err(std::io::Error::other)?;
+            let restored_appearance =
+                backup::appearance_script(&conn).map_err(std::io::Error::other)?;
             let proxy = network::initialize(&conn, app.handle()).map_err(std::io::Error::other)?;
             app.manage(webview_proxy::WebviewProxy::from(&proxy));
             app.manage(cover_cache::CoverCache::default());
             app.manage(backup::Manager::default());
             app.manage(cloud::Cloud::new().map_err(std::io::Error::other)?);
-            let updates=app_update::initialize(app.handle(),&conn).map_err(std::io::Error::other)?;
+            let updates =
+                app_update::initialize(app.handle(), &conn).map_err(std::io::Error::other)?;
             app.manage(updates);
             achievement_repair::remove_inferred_unlocks(&mut conn)
                 .map_err(std::io::Error::other)?;
@@ -122,7 +132,11 @@ pub fn run() {
                 app.handle(),
                 &app.config().app.windows[0],
             )?;
-            let main = if let Some(script) = restored_appearance { main.initialization_script(script) } else { main };
+            let main = if let Some(script) = restored_appearance {
+                main.initialization_script(script)
+            } else {
+                main
+            };
             webview_proxy::configure(app.handle(), main).build()?;
             if let Err(error) = achievement_overlay::initialize(app.handle()) {
                 eprintln!("成就弹层初始化失败：{error}");
@@ -133,6 +147,7 @@ pub fn run() {
             }
             app_update::start(app.handle().clone());
             cloud::start(app.handle().clone());
+            saves::start(app.handle().clone());
             start_metadata_refresh(app.handle().clone());
             steam_playtime::watch(app.handle().clone());
             runtime_commands::watch(app.handle().clone());
@@ -169,12 +184,36 @@ pub fn run() {
         })
         .on_window_event(desktop_lifecycle::closing)
         .invoke_handler(tauri::generate_handler![
-            cloud::cloud_status, cloud::cloud_challenge, cloud::cloud_verify, cloud::cloud_logout,
-            cloud::cloud_sync, cloud::cloud_devices, cloud::cloud_revoke_device,
-            cloud::cloud_prepare_import, cloud::cloud_commit_import, cloud::cloud_resolve, cloud::cloud_set_archived,
-            saves::saves_list, saves::saves_bind, saves::saves_backup, saves::saves_restore,
-            saves::saves_cloud_profiles, saves::saves_connect, saves::saves_upload, saves::saves_history,
-            saves::saves_download, saves::saves_resolve, saves::saves_delete_cloud,
+            cloud::cloud_status,
+            cloud::cloud_challenge,
+            cloud::cloud_verify,
+            cloud::cloud_logout,
+            cloud::cloud_sync,
+            cloud::cloud_devices,
+            cloud::cloud_revoke_device,
+            cloud::cloud_prepare_import,
+            cloud::cloud_commit_import,
+            cloud::cloud_resolve,
+            cloud::cloud_set_archived,
+            saves::saves_automation_settings,
+            saves::saves_retry,
+            saves::saves_locate,
+            saves::saves_discover,
+            saves::saves_pin,
+            saves::saves_review,
+            saves::saves_restore_review,
+            saves::saves_preflight,
+            saves::saves_list,
+            saves::saves_bind,
+            saves::saves_backup,
+            saves::saves_restore,
+            saves::saves_cloud_profiles,
+            saves::saves_connect,
+            saves::saves_upload,
+            saves::saves_history,
+            saves::saves_download,
+            saves::saves_resolve,
+            saves::saves_delete_cloud,
             app_update::get_app_update_status,
             app_update::check_app_update,
             app_update::download_app_update,
@@ -191,7 +230,6 @@ pub fn run() {
             organization::reorder_library_collections,
             organization::set_game_organization,
             organization::batch_update_game_organization,
-
             backup::export_backup,
             backup::inspect_backup,
             backup::preview_backup_paths,
@@ -256,7 +294,13 @@ pub fn run() {
                 xbox_local::stop_all();
             }
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                if app.state::<AppState>().maintenance.load(std::sync::atomic::Ordering::Acquire) { return; }
+                if app
+                    .state::<AppState>()
+                    .maintenance
+                    .load(std::sync::atomic::Ordering::Acquire)
+                {
+                    return;
+                }
                 if let Err(error) = runtime_persistence::checkpoint(app, true) {
                     api.prevent_exit();
                     desktop_lifecycle::show(app);

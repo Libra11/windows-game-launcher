@@ -140,7 +140,7 @@ fn stop_probes(probes: &Mutex<HashMap<String, Probe>>, timeout: std::time::Durat
         }
         if !active { return Ok(()); }
         if std::time::Instant::now() >= deadline {
-            return Err("成就捕获停止超时，本次更新未安装，请稍后重试".into());
+            return Err("成就捕获停止超时，本次操作未执行，请稍后重试".into());
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }

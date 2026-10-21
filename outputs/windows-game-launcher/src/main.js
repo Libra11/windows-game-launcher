@@ -1,3 +1,4 @@
+import { checkSaveBeforeLaunch } from './ui/save-automation.js';
 import { createAppUpdateController } from './lib/app-update-controller.js';
 import { updateAvailable } from './lib/app-update.js';
 import { createOrganizationController } from './lib/organization-controller.js';
@@ -94,6 +95,7 @@ async function launch(game) {
   current.runtime = {state:'starting',message:'正在发送启动请求',elapsedSeconds:0};
   patchRuntime(app,state.games);
   try {
+    if(!await checkSaveBeforeLaunch(game)){await refresh(true);return;}
     const runtime = await run('launch_game',{gameId:game.id});
     (actions.game(game.id) || current).runtime = runtime;
     toast(runtime.state === 'running' ? `${game.title} 已在运行` : `已发送 ${game.title} 的启动请求`); await refresh(true);

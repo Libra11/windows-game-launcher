@@ -11,6 +11,7 @@ zip = { version = "9", default-features = false, features = ["deflate"] }
 tempfile = "3"
 
 [dev-dependencies]
+chrono = "0.4"
 rusqlite = { version = "0.40", features = ["bundled"] }
 uuid = { version = "1", features = ["v4"] }
 serde = { version = "1", features = ["derive"] }

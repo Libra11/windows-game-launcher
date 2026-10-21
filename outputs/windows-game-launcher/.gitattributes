@@ -1,0 +1,2 @@
+# SQLx embeds byte checksums; keep migrations identical on Windows and Linux.
+server/migrations/*.sql text eol=lf

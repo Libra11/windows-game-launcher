@@ -131,6 +131,14 @@ python3 "work/cloud-deploy/oss_control.py"                   # 桶级安全设�
 - 配置副本：`server/deploy/nginx-site.conf`（与实际文件一致）；`nginx-heyuan.conf` 为本轮早期的临时片段，已被实际站点文件取代。
 - 遗留改进：客户端把非 JSON 响应一律报成「云端响应格式错误」，应改为带上 HTTP 状态码与来源，便于下次直接定位；列入 0.2.16。
 
+## 2026-10-21 20:46 存档自动化服务已更新
+
+- 已完成迁移 0005 并更新 API/worker，API healthy；Postgres 保持原容器和数据卷。实际镜像 ID `684dadfc483b92910c142dbec0feed59b53dfeeb7cf22344b5665c68d4dc9620`，标签 `libra-diary:local` 与 `libra-diary:save-auto-20261021`。
+- 更新前备份 `/opt/apps/libra-diary/backups/save-auto-20261021T124258Z`；包含 `database.dump`（pg_restore -l 已验证）、配置和旧镜像标签 `image.txt`。回滚应用可恢复该标签，新增数据库列保持兼容；不要直接回灌旧数据库覆盖后续数据。
+- 网络构建改为本地校验官方下载的 Rust 1.99.1 Linux 组件与 Cargo vendor，再传至独立目录 `build-save-auto-20261021` 离线编译，运行镜像复用原 Debian 镜像。最终二进制 SHA256 `6efa78478d837e5d62700969f5239828c9015d4b58a9203ccba02eca43cd444d`。
+- 首次迁移因 CRLF/LF 导致 VersionMismatch(1)，当时立即恢复旧镜像标签且没有更新服务。核实四个旧 SQL 的 LF SHA384 与生产记录全部相同后规范为 LF，重新构建通过；源码 `.gitattributes` 已固定 SQL 换行。不得通过修改 `_sqlx_migrations` 校验值绕过检查。
+- 独立测试账号完成实际客户端归档 ZIP → OSS 上传 → worker 校验 → 幂等重试 → pin/prune 保护 → 下载哈希一致 → Windows 实际恢复代码闭环。测试设备已撤销，测试版本保留供审计；未改真实用户存档。证据 `work/deploy-save-automation/live-result.json`。自动退出调度仅有此前单元测试，双设备和完整 UI 游戏退出闭环仍待实机验证。
+
 ## 凭据位置（不要打印内容）
 
 - 本机 `outputs/windows-game-launcher/server/deploy/.env`：完整部署配置，0600、Git 忽略。

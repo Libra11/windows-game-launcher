@@ -1,0 +1,24 @@
+/* Save dialogs use the same palette and select component as the library. */
+.save-bind-modal { width:min(660px,calc(100vw - 32px)); }
+.save-bind-form { gap:20px; }
+.save-form-section { display:grid; gap:12px; min-width:0; }
+.save-form-section + .save-form-section { border-top:1px solid var(--line); padding-top:18px; }
+.save-form-section h3,.save-discovery h3 { margin:0; font-size:14px; font-weight:600; }
+.save-inline-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.save-inline-actions .secondary,.save-discovery>.secondary { padding:8px 12px; font-size:11px; justify-self:start; }
+.save-option { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:12px; line-height:1.6; color:var(--text); }
+.save-option input[type="checkbox"] { appearance:auto; width:16px; height:16px; margin:0; padding:0; flex:0 0 16px; accent-color:var(--accent); }
+.save-option:has(input:disabled) { opacity:.55; cursor:default; }
+.save-cloud-details { display:grid; gap:12px; }
+.save-cloud-details[hidden],.save-inline-actions button[hidden] { display:none; }
+.save-cloud-advanced { font-size:11px; color:var(--muted); }
+.save-cloud-advanced summary { cursor:pointer; width:fit-content; }
+.save-status { font-size:11px; line-height:1.7; color:var(--muted); overflow-wrap:anywhere; }
+.save-status:empty,.save-cloud-candidates:empty,.save-inline-actions:has(>[hidden]:only-child) { display:none; }
+.save-discovery { gap:10px; }
+.save-discovery>p { font-size:11px; color:var(--muted); line-height:1.7; }
+.save-candidate { display:grid; gap:8px; padding:14px; border:1px solid var(--line); border-radius:9px; background:var(--input); min-width:0; }
+.save-candidate strong { font-size:12px; overflow-wrap:anywhere; }
+.save-candidate p { margin:0; font-size:11px; color:var(--muted); line-height:1.6; }
+.save-candidate button { justify-self:start; padding:7px 12px; font-size:11px; }
+.save-bind-form>.primary { margin-top:4px; }

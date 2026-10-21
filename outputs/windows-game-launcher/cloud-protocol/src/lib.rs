@@ -3,10 +3,10 @@ pub mod merge;
 pub mod resources;
 pub mod saves;
 
+pub use resources::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
-pub use resources::*;
 
 pub const VERSION: u32 = 1;
 pub const MAX_OPERATIONS: usize = 100;
@@ -26,11 +26,20 @@ pub struct Operation {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum Action { Set, Delete }
+pub enum Action {
+    Set,
+    Delete,
+}
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum Outcome { Applied, Noop, Conflict, Rejected, DependencyPending }
+pub enum Outcome {
+    Applied,
+    Noop,
+    Conflict,
+    Rejected,
+    DependencyPending,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -57,34 +66,53 @@ pub struct OperationResult {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct PushRequest { pub protocol_version: u32, pub operations: Vec<Operation> }
+pub struct PushRequest {
+    pub protocol_version: u32,
+    pub operations: Vec<Operation>,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Change { pub sequence: i64, pub resource: Resource }
+pub struct Change {
+    pub sequence: i64,
+    pub resource: Resource,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangesPage {
-    pub changes: Vec<Change>, pub next_cursor: i64, pub high_watermark: i64, pub has_more: bool,
+    pub changes: Vec<Change>,
+    pub next_cursor: i64,
+    pub high_watermark: i64,
+    pub has_more: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SnapshotPage {
-    pub snapshot_id: Uuid, pub high_watermark: i64, pub resources: Vec<Resource>,
-    pub next_offset: usize, pub has_more: bool,
+    pub snapshot_id: Uuid,
+    pub high_watermark: i64,
+    pub resources: Vec<Resource>,
+    pub next_offset: usize,
+    pub has_more: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionTokens {
-    pub user_id: Uuid, pub device_id: Uuid, pub access_token: String, pub refresh_token: String,
+    pub user_id: Uuid,
+    pub device_id: Uuid,
+    pub access_token: String,
+    pub refresh_token: String,
 }
 
+pub mod save_policy;
 pub fn digest(value: &impl Serialize) -> Result<String, String> {
     use sha2::{Digest, Sha256};
     // serde_json 默认有序映射，先转换 Value 使结构体字段顺序不影响摘要。
     let value = serde_json::to_value(value).map_err(|e| e.to_string())?;
-    Ok(format!("{:x}", Sha256::digest(serde_json::to_vec(&value).map_err(|e| e.to_string())?)))
+    Ok(format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(&value).map_err(|e| e.to_string())?)
+    ))
 }

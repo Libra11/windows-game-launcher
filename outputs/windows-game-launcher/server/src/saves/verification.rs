@@ -39,7 +39,7 @@ pub(super) async fn verify(
     }
     let key = job.object_key.clone();
     // 已校验内容先查重，避免每个相同快照都产生完整 OSS 副本。
-    let duplicate:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM save_objects WHERE user_id=$1 AND archive_hash=$2 AND manifest_hash=$3 AND bytes=$4)")
+    let duplicate:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM save_objects WHERE user_id=$1 AND archive_hash=$2 AND manifest_hash=$3 AND bytes=$4 AND available)")
         .bind(job.user_id).bind(&hash).bind(&manifest_hash).bind(request.bytes as i64).fetch_one(&app.pool).await?;
     let published = !duplicate;
     if published {
@@ -75,7 +75,7 @@ pub(super) async fn verify(
         &request.parent_ids,
     )
     .await?;
-    let existing:Option<Uuid>=sqlx::query_scalar("SELECT id FROM save_objects WHERE user_id=$1 AND archive_hash=$2 AND manifest_hash=$3 AND bytes=$4 LIMIT 1")
+    let existing:Option<Uuid>=sqlx::query_scalar("SELECT id FROM save_objects WHERE user_id=$1 AND archive_hash=$2 AND manifest_hash=$3 AND bytes=$4 AND available LIMIT 1")
         .bind(job.user_id).bind(&hash).bind(&manifest_hash).bind(request.bytes as i64).fetch_optional(&mut *tx).await?;
     let object_id = if let Some(existing) = existing {
         if !published {

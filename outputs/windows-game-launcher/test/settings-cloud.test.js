@@ -20,6 +20,7 @@ class Node {
   setAttribute(key,value){this[key]=value;}
   querySelectorAll(tag){return this.children.flatMap(c=>[...(c.tag===tag?[c]:[]),...c.querySelectorAll(tag)]);}
   remove(){}
+  addEventListener(){}
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 test('登录与导入须显式操作，官方冲突不提供保留旧快照',async()=>{
@@ -106,10 +107,11 @@ test('存档入队不能显示为校验完成，查询后才确认云端可用',
     },
     modal:(_title,_subtitle,node)=>{content=node;return node;},
     closeModal:async()=>{},field:()=>{},submit:()=>{},chooseFile:()=>{},preview:false,
+    checkbox:()=>{},automationSettings:()=>{},taskSummary:()=>"",restoreWithReview:async()=>true,listen:async()=>()=>{},
   };
   try{
     const source=(await readFile(new URL('../src/ui/detail-saves.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
-    const module=await import('data:text/javascript;base64,'+Buffer.from('const {el,button,command,modal,closeModal,field,submit,chooseFile,preview}=globalThis.savesUiTest;\n'+source).toString('base64'));
+    const module=await import('data:text/javascript;base64,'+Buffer.from('const {el,button,command,modal,closeModal,field,submit,chooseFile,preview,checkbox,automationSettings,taskSummary,restoreWithReview,listen}=globalThis.savesUiTest;\n'+source).toString('base64'));
     module.savesButton({id:'game',title:'游戏'}).click();await flush();
     const upload=()=>content.querySelectorAll('button').find(b=>b.textContent==='上传 / 查询状态');
     await upload().click();await flush();

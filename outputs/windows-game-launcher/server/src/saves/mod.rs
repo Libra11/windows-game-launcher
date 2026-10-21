@@ -1,6 +1,7 @@
 // 存档元数据仅在完整验证后发布；所有配额/分支变更按用户串行提交。
 mod history;
 mod jobs;
+mod policy;
 #[cfg(test)]
 mod tests;
 mod uploads;
@@ -24,6 +25,9 @@ use uuid::Uuid;
 pub fn routes() -> Router<App> {
     Router::new()
         .route("/v1/save-profiles", post(create_profile).get(list_profiles))
+        .route("/v1/save-profiles/{id}/settings", post(policy::settings))
+        .route("/v1/save-profiles/{id}/prune", post(policy::prune))
+        .route("/v1/save-snapshots/{id}/pin", post(policy::pin))
         .route("/v1/save-uploads", post(create_upload))
         .route("/v1/save-uploads/{id}/complete", post(complete_upload))
         .route("/v1/save-uploads/{id}", get(upload_status))
@@ -76,7 +80,7 @@ async fn profile(
 fn profile_json(row: &sqlx::postgres::PgRow) -> Value {
     json!({"id":row.get::<Uuid,_>("id"),"gameId":row.get::<Uuid,_>("game_id"),
         "name":row.get::<String,_>("name"),"revision":row.get::<i64,_>("revision"),
-        "selectedSnapshotId":row.get::<Option<Uuid>,_>("selected_snapshot_id")})
+        "directoryRule":row.get::<Option<Value>,_>("directory_rule"),"autoRetention":row.get::<bool,_>("auto_retention"),"selectedSnapshotId":row.get::<Option<Uuid>,_>("selected_snapshot_id")})
 }
 async fn parents(
     tx: &mut Transaction<'_, Postgres>,
@@ -117,14 +121,14 @@ pub(super) fn advances(selected: Option<Uuid>, revision: i64, base: i64, parents
         }
 }
 async fn snapshot(tx: &mut Transaction<'_, Postgres>, user: Uuid, id: Uuid) -> Result<Value> {
-    let row=sqlx::query("SELECT s.*,o.bytes,o.archive_hash,o.manifest_hash,o.manifest,d.name AS device_name FROM save_snapshots s JOIN save_objects o ON o.user_id=s.user_id AND o.id=s.object_id JOIN devices d ON d.user_id=s.user_id AND d.id=s.device_id WHERE s.user_id=$1 AND s.id=$2")
+    let row=sqlx::query("SELECT s.*,o.available,o.bytes,o.archive_hash,o.manifest_hash,o.manifest,d.name AS device_name FROM save_snapshots s JOIN save_objects o ON o.user_id=s.user_id AND o.id=s.object_id JOIN devices d ON d.user_id=s.user_id AND d.id=s.device_id WHERE s.user_id=$1 AND s.id=$2")
         .bind(user).bind(id).fetch_optional(&mut **tx).await?.ok_or_else(missing)?;
     let parents:Vec<Uuid>=sqlx::query_scalar("SELECT parent_id FROM save_snapshot_parents WHERE user_id=$1 AND snapshot_id=$2 ORDER BY parent_id")
         .bind(user).bind(id).fetch_all(&mut **tx).await?;
     Ok(
         json!({"id":id,"profileId":row.get::<Uuid,_>("profile_id"),"deviceId":row.get::<Uuid,_>("device_id"),
         "deviceName":row.get::<String,_>("device_name"),"parentIds":parents,
-        "bytes":row.get::<i64,_>("bytes"),"archiveHash":row.get::<String,_>("archive_hash"),
+        "available":row.get::<bool,_>("available"),"pinned":row.get::<bool,_>("pinned"),"bytes":row.get::<i64,_>("bytes"),"archiveHash":row.get::<String,_>("archive_hash"),
         "manifestHash":row.get::<String,_>("manifest_hash"),"manifest":row.get::<Value,_>("manifest"),
         "serverCreatedAt":row.get::<chrono::DateTime<chrono::Utc>,_>("created_at")}),
     )

@@ -13,8 +13,8 @@ async function login(response) {
     AbortController,setTimeout:()=>1,clearTimeout(){},setInterval:()=>2,clearInterval(){},
   };
   runInNewContext(script,context);
-  // 仅等待固定数量微任务，不启动真实网络或计时器。
-  for(let index=0;index<5;index++)await Promise.resolve();
+  // 等待 VM 与主上下文的 Promise 链全部排空，不依赖 Node 版本的微任务步数。
+  await new Promise(resolve=>setImmediate(resolve));
   return location.href;
 }
 

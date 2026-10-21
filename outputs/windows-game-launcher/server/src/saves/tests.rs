@@ -126,7 +126,10 @@ async fn postgres_private_upload_quota_forks_and_gc() {
         http: reqwest::Client::new(),
         config: Arc::new(crate::config::Config {
             token_key: "test-only-long-enough-key-123456789012345".into(),
-            mail: crate::mail::MailConfig::Http { url: "https://invalid.test".into(), token: "test".into() },
+            mail: crate::mail::MailConfig::Http {
+                url: "https://invalid.test".into(),
+                token: "test".into(),
+            },
             bind: "127.0.0.1:0".into(),
         }),
     };
@@ -669,4 +672,95 @@ async fn postgres_private_upload_quota_forks_and_gc() {
 async fn reserved(pool: &sqlx::PgPool, user: Uuid) -> i64 {
     sqlx::query_scalar("SELECT COALESCE((SELECT sum(bytes) FROM save_objects WHERE user_id=$1),0)::bigint + COALESCE((SELECT sum(bytes) FROM save_object_gc WHERE user_id=$1),0)::bigint")
         .bind(user).fetch_one(pool).await.unwrap()
+}
+
+#[tokio::test]
+async fn postgres_retention_keeps_graph_pins_pending_and_accounts_for_delayed_gc() {
+    let Ok(url) = std::env::var("YOUJI_TEST_DATABASE_URL") else {
+        eprintln!("需要隔离 Postgres");
+        return;
+    };
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    sqlx::migrate!().run(&pool).await.unwrap();
+    let who = identity(&pool).await;
+    let profile = Uuid::new_v4();
+    sqlx::query("INSERT INTO save_profiles(user_id,id,game_id,name,auto_retention) VALUES($1,$2,$3,'retention',true)").bind(who.user_id).bind(profile).bind(Uuid::new_v4()).execute(&pool).await.unwrap();
+    let mut ids = Vec::new();
+    for i in 0..15 {
+        let id = Uuid::new_v4();
+        let object = Uuid::new_v4();
+        sqlx::query("INSERT INTO save_objects VALUES($1,$2,$3,$4,$4,100,'{}',true)")
+            .bind(who.user_id)
+            .bind(object)
+            .bind(format!("objects/test/{object}"))
+            .bind("a".repeat(64))
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO save_snapshots(user_id,id,profile_id,device_id,object_id,created_at,pinned) VALUES($1,$2,$3,$4,$5,date_trunc('day',now())+interval '1 second'*$6,$7)").bind(who.user_id).bind(id).bind(profile).bind(who.device_id).bind(object).bind(i as f64).bind(i==0).execute(&pool).await.unwrap();
+        if let Some(parent) = ids.last() {
+            sqlx::query("INSERT INTO save_snapshot_parents VALUES($1,$2,$3,$4)")
+                .bind(who.user_id)
+                .bind(profile)
+                .bind(id)
+                .bind(parent)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        ids.push(id);
+    }
+    sqlx::query("UPDATE save_profiles SET selected_snapshot_id=$3 WHERE user_id=$1 AND id=$2")
+        .bind(who.user_id)
+        .bind(profile)
+        .bind(ids[14])
+        .execute(&pool)
+        .await
+        .unwrap();
+    let upload = Uuid::new_v4();
+    sqlx::query("INSERT INTO save_uploads(user_id,id,profile_id,device_id,snapshot_id,request,bytes,staging_key,object_key) VALUES($1,$2,$3,$4,$5,$6,100,$7,$8)").bind(who.user_id).bind(upload).bind(profile).bind(who.device_id).bind(Uuid::new_v4()).bind(json!({"parentIds":[ids[1]]})).bind(format!("staging/{upload}")).bind(format!("objects/{upload}")).execute(&pool).await.unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    assert_eq!(ok(policy::prune_locked(&mut tx, who.user_id).await), 3);
+    assert_eq!(ok(uploads::quota_used(&mut tx, who.user_id).await), 1500);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM save_snapshots WHERE user_id=$1")
+            .bind(who.user_id)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap(),
+        15
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM save_snapshot_parents WHERE user_id=$1")
+            .bind(who.user_id)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap(),
+        14
+    );
+    assert_eq!(ok(policy::prune_locked(&mut tx, who.user_id).await), 0);
+    let removed = ok(snapshot(&mut tx, who.user_id, ids[2]).await);
+    assert_eq!(removed["available"], false);
+    tx.commit().await.unwrap();
+    let app = App {
+        pool: pool.clone(),
+        storage: Some(Arc::new(crate::storage::Storage::test(
+            "http://127.0.0.1:1".into(),
+            16384,
+        ))),
+        http: reqwest::Client::new(),
+        config: Arc::new(crate::config::Config {
+            token_key: "test-only-long-enough-key-123456789012345".into(),
+            mail: crate::mail::MailConfig::Http {
+                url: "https://invalid.test".into(),
+                token: "test".into(),
+            },
+            bind: "127.0.0.1:0".into(),
+        }),
+    };
+    let error = download(State(app), who, axum::extract::Path(ids[2]))
+        .await
+        .err()
+        .expect("已清理版本不得签发下载地址");
+    assert!(error.1.contains("已清理"));
 }

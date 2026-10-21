@@ -12,7 +12,7 @@ pub(crate) async fn launch_game(
 }
 fn launch(app: &tauri::AppHandle, game_id: &str) -> Result<runtime::RuntimeInfo, String> {
     let state = app.state::<AppState>();
-    let _gate=crate::maintenance::lock_operation(&state.operation_gate,&state.maintenance)?;
+    let _gate = crate::maintenance::lock_operation(&state.operation_gate, &state.maintenance)?;
     let game = db::game(&*lock_db(&state)?, game_id)?.ok_or("游戏不存在")?;
     crate::steam_family::require_available(&game)?;
     if matches!(
@@ -84,7 +84,11 @@ fn reserve_launch(
 pub(crate) fn cancel_launch_wait(app: tauri::AppHandle, game_id: String) -> Result<(), String> {
     let state = app.state::<AppState>();
     let _gate = crate::maintenance::lock_operation(&state.operation_gate, &state.maintenance)?;
-    state.runtime.lock().map_err(|_| "运行状态暂时不可用")?.cancel_wait(&game_id)?;
+    state
+        .runtime
+        .lock()
+        .map_err(|_| "运行状态暂时不可用")?
+        .cancel_wait(&game_id)?;
     let _ = app.emit("library-changed", &game_id);
     Ok(())
 }
@@ -123,7 +127,10 @@ pub(crate) fn watch(app: tauri::AppHandle) {
         let mut save_error_reported = false;
         loop {
             let state = app.state::<AppState>();
-            if state.maintenance.load(std::sync::atomic::Ordering::Acquire){std::thread::sleep(std::time::Duration::from_millis(250));continue;}
+            if state.maintenance.load(std::sync::atomic::Ordering::Acquire) {
+                std::thread::sleep(std::time::Duration::from_millis(250));
+                continue;
+            }
             let updates = match crate::runtime_persistence::checkpoint(&app, false) {
                 Ok(updates) => {
                     save_error_reported = false;
@@ -140,6 +147,7 @@ pub(crate) fn watch(app: tauri::AppHandle) {
             };
             for update in updates {
                 if update.finished && !update.failed {
+                    crate::saves::game_finished(&app, &update.game_id);
                     let is_steam = lock_db(&state)
                         .and_then(|conn| db::game(&conn, &update.game_id))
                         .ok()
