@@ -122,6 +122,15 @@ python3 "work/cloud-deploy/oss_control.py"                   # 桶级安全设�
 - API/worker 默认不输出运行日志（`docker compose logs` 为 0 行），排障需查数据库状态或临时提高日志级别；不要为此修改生产配置。
 - 验收脚本会创建真实数据，只对专用验收账号运行；真实账号只能做登录验证。
 
+## 2026-10-21 晚：预览导入 413 事故与修复
+
+- 现象：新用户（首个真实外部账号）能登录，但点「预览资料导入」提示「云端响应格式错误」，重试多次都失败，云端只留下 6 个空快照。
+- 根因：本站 TLS 前端是**系统 nginx**（`/etc/nginx/conf.d/libra-diary.conf`），容器 Caddy 未启用；该站点当时保留 `client_max_body_size 1m`，而导入预览会一次性上传整个资料库（含成就定义缓存）。超过 1 MB 时 nginx 返回 413 HTML 页面，客户端按 JSON 解析失败，于是显示「云端响应格式错误」。
+- 证据：`/var/log/nginx/libra-diary-access.log` 中 `POST /v1/imports/prepare` 连续 413（UA `GameCollection/0.2.1`）；抬高限制后 2 MB、8 MB 请求均返回 JSON。
+- 修复：站点 `client_max_body_size` 改为 `64m`，`proxy_read_timeout` 放宽到 `120s`；`nginx -t` 通过后 `nginx -s reload`。回滚备份在服务器 `/root/libra-diary.conf.bak-*`。
+- 配置副本：`server/deploy/nginx-site.conf`（与实际文件一致）；`nginx-heyuan.conf` 为本轮早期的临时片段，已被实际站点文件取代。
+- 遗留改进：客户端把非 JSON 响应一律报成「云端响应格式错误」，应改为带上 HTTP 状态码与来源，便于下次直接定位；列入 0.2.16。
+
 ## 凭据位置（不要打印内容）
 
 - 本机 `outputs/windows-game-launcher/server/deploy/.env`：完整部署配置，0600、Git 忽略。

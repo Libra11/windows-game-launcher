@@ -40,7 +40,9 @@ SMTP 本地秘密配置在本目录的 .env.smtp，权限 0600，Git 已忽略�
 
 ## 本站 HTTPS
 
-独立配置为 `/etc/nginx/conf.d/libra-diary.conf`，模板见 `nginx-heyuan.conf`。HTTP-01 目录为 `/opt/apps/libra-diary/acme`；项目父目录须可被 Nginx 遍历，秘密 `.env` 单独保持 0600。证书位于 `/etc/letsencrypt/live/game.penlibra.xin/`，续期沿用已有 `certbot-renew.timer`，本站 deploy-hook 为 `nginx -t && systemctl reload nginx`。不得启用 Caddy。
+独立配置为 `/etc/nginx/conf.d/libra-diary.conf`，模板见 `nginx-site.conf`。HTTP-01 目录为 `/opt/apps/libra-diary/acme`；项目父目录须可被 Nginx 遍历，秘密 `.env` 单独保持 0600。证书位于 `/etc/letsencrypt/live/game.penlibra.xin/`，续期沿用已有 `certbot-renew.timer`，本站 deploy-hook 为 `nginx -t && systemctl reload nginx`。不得启用 Caddy。
+
+`client_max_body_size` 必须为 `64m`：导入预览会把整个资料库（含成就定义缓存）一次性 POST 到 `/v1/imports/prepare`。保留 1m 会让大库用户收到 nginx 413 HTML，客户端显示「云端响应格式错误」（2026-10-21 真实发生过）。`proxy_read_timeout` 同步放宽到 120s。访问日志在 `/var/log/nginx/libra-diary-access.log`，排查客户端问题时先看它。
 
 仅验证本站续期：
 

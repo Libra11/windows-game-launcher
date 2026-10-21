@@ -11,6 +11,8 @@
 - 换桶后在 `libra-game` 重跑完整存档闭环（`smoke-result-1775ed44…json`）全部通过，对象在 `games/objects/…`、匿名 403，验收设备再次撤销。
 - 换桶（2026-10-21 晚）：用户确认原 `libra-diary` 桶里的 62 个 `client-releases/` DMG 属于其 Knora-One 客户端发布。已新建专用桶 `libra-game`（cn-beijing，private + 阻止公开访问 + AES256 默认加密），本机与服务器 `.env` 改为该桶并重建 api/worker，桶级安全自检与 `/health` 通过；旧桶删除本项目 3 个测试对象、关闭本轮添加的桶级策略，恢复到部署前状态，62 个发布文件完好。不要再往 `libra-diary` 写本项目数据。
 - 剩余：Windows 实机双设备验收、桌面安装包；本机为 macOS，不能替代客户端验证。
+- 预览导入 413 修复（2026-10-21 晚）：首个真实外部账号能登录，但「预览资料导入」报「云端响应格式错误」。根因是本站 TLS 前端系统 nginx 的 `client_max_body_size 1m`，而预览会一次上传整个资料库（含定义缓存），被 nginx 以 413 HTML 拒绝。已改为 `64m`、`proxy_read_timeout 120s`，`nginx -t` 与 reload 通过，2MB/8MB 请求已返回 JSON；配置副本为 `server/deploy/nginx-site.conf`，事故记录在 DEPLOYMENT-HANDOFF.md。
+- 0.2.15 已发布：GitHub Release `v0.2.15`（含云端账号与手动存档），产物 `youji_0.2.15_x64-setup.exe`；客户端把非 JSON 响应统一报成格式错误的问题列入 0.2.16。
 
 ## 2026-10-21 game 子域与独立阿里云邮件
 
