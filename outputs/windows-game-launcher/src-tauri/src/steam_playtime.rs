@@ -196,6 +196,7 @@ async fn refresh_owned(app: &tauri::AppHandle) -> Result<(), String> {
     if key.is_empty() || steamid.is_empty() {
         return Ok(());
     }
+    let capture=crate::cloud::official::playtime_begin(app,&steamid).await?;
     let result = steam::owned_games(&key, &steamid).await;
     {
         let state = app.state::<AppState>();
@@ -204,8 +205,12 @@ async fn refresh_owned(app: &tauri::AppHandle) -> Result<(), String> {
         if db::setting(&conn, "steam_id")? != steamid {
             return Ok(());
         }
+        crate::cloud::official::account_guard(&conn,"steam",&steamid)?;
         match &result {
-            Ok(games) => save_owned(&conn, &steamid, games)?,
+            Ok(games) => crate::cloud::hooks::atomic(&conn,||{
+                save_owned(&conn,&steamid,games)?;
+                crate::cloud::official::playtime_save(&conn,capture.as_ref(),games)
+            })?,
             Err(error) => {
                 let mut snapshot = read(&conn, &steamid)?;
                 snapshot.error = error.clone();

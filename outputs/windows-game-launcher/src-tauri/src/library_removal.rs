@@ -19,6 +19,12 @@ pub(crate) fn remove_local_game(app: tauri::AppHandle, game_id: String) -> Resul
     ) {
         return Err("游戏正在启动或运行，请退出游戏后再移除".into());
     }
+    if tx.query_row("SELECT EXISTS(SELECT 1 FROM account_binding)", [], |r|r.get::<_,bool>(0)).map_err(|e|e.to_string())? {
+        tx.execute("INSERT INTO cloud_archives VALUES(?1,1) ON CONFLICT(game_id) DO UPDATE SET archived=1", [&game_id]).map_err(|e|e.to_string())?;
+        tx.commit().map_err(|e|e.to_string())?;
+        let _=app.emit("library-changed",&game_id);
+        return Ok(());
+    }
     crate::organization::store::clear_game(&tx,&game_id)?;
     for table in [ "unlocks", "game_activity", "play_sessions", "daily_playtime", "statistics_unlock_events"] {
         tx.execute(&format!("DELETE FROM {table} WHERE game_id=?1"), [&game_id])

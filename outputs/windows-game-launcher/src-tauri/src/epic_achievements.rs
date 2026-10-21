@@ -225,6 +225,9 @@ async fn fetch(session: &epic_auth::Session, namespace: &str) -> Result<Snapshot
     Ok(snapshot)
 }
 fn save(conn: &mut rusqlite::Connection, game: &Game, snapshot: &Snapshot) -> Result<(), String> {
+    save_cloud(conn,game,snapshot,None)
+}
+fn save_cloud(conn:&mut rusqlite::Connection,game:&Game,snapshot:&Snapshot,capture:Option<&crate::cloud::official::Capture>)->Result<(),String>{
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     let current = db::game(&tx, &game.id)?.ok_or("游戏已被移除")?;
     let old: Value = serde_json::from_str(&game.metadata_json).map_err(|_| "Epic 游戏身份无效")?;
@@ -243,6 +246,7 @@ fn save(conn: &mut rusqlite::Connection, game: &Game, snapshot: &Snapshot) -> Re
             rusqlite::params![key,item.api_name,item.name,item.description,item.icon,item.hidden]).map_err(|e| e.to_string())?;
     }
     if snapshot.player_error.is_none() {
+        crate::cloud::official::save(&tx,capture,&snapshot.unlocks)?;
         tx.execute(
             "DELETE FROM unlocks WHERE game_id=?1 AND source='epic'",
             [&game.id],
@@ -250,6 +254,9 @@ fn save(conn: &mut rusqlite::Connection, game: &Game, snapshot: &Snapshot) -> Re
         for (id, time) in &snapshot.unlocks {
             tx.execute("INSERT INTO unlocks(game_id,api_name,source,unlocked_at,evidence) VALUES(?1,?2,'epic',?3,'Epic 官方成就') ON CONFLICT(game_id,api_name) DO UPDATE SET source='epic',unlocked_at=excluded.unlocked_at,evidence=excluded.evidence", rusqlite::params![game.id,id,time]).map_err(|e| e.to_string())?;
         }
+    }
+    if snapshot.player_error.is_none() && tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name='achievement_facts')",[],|r|r.get::<_,bool>(0)).map_err(|e|e.to_string())?{
+        crate::cloud::official::record_facts(&tx,&game.id,&key,"epic",&snapshot.unlocks)?;
     }
     metadata["epicAchievementDetails"] = snapshot.details.clone();
     metadata["epicAchievementSyncError"] = serde_json::json!(snapshot.player_error);
@@ -284,6 +291,7 @@ fn save(conn: &mut rusqlite::Connection, game: &Game, snapshot: &Snapshot) -> Re
         "",
     )?;
     crate::statistics::store::official_changes(&tx, &current, &previous)?;
+    crate::cloud::hooks::definitions(&tx,&game.id)?;
     tx.commit().map_err(|e| e.to_string())
 }
 pub(crate) async fn sync(app: &tauri::AppHandle, game: &Game) -> Result<String, String> {
@@ -295,18 +303,23 @@ pub(crate) async fn sync(app: &tauri::AppHandle, game: &Game) -> Result<String, 
     }
     let _guard = epic_auth::AUTH_LOCK.lock().await;
     let session = epic_auth::session(app, false).await?;
+    let capture=crate::cloud::official::capture(app,game,"epic",&session.account_id).await?;
     let snapshot = match fetch(&session, namespace).await {
         Ok(snapshot) => snapshot,
         Err(Error::Unauthorized) => {
-            let session = epic_auth::session(app, true).await?;
-            fetch(&session, namespace).await.map_err(|e| match e {
+            let refreshed = epic_auth::session(app, true).await?;
+            if refreshed.account_id!=session.account_id{return Err("Epic 刷新期间账号发生变化，请重新获取".into());}
+            crate::cloud::official::account_guard(&*lock_db(&app.state::<AppState>())?,"epic",&refreshed.account_id)?;
+            fetch(&refreshed, namespace).await.map_err(|e| match e {
                 Error::Unauthorized => "Epic 授权已失效，请重新登录".into(),
                 Error::Message(message) => message,
             })?
         }
         Err(Error::Message(message)) => return Err(message),
     };
-    save(&mut *lock_db(&app.state::<AppState>())?, game, &snapshot)?;
+    {let state=app.state::<AppState>();let mut conn=lock_db(&state)?;
+    crate::cloud::official::account_guard(&conn,"epic",&session.account_id)?;
+    save_cloud(&mut conn, game, &snapshot,capture.as_ref())?;}
     Ok(if snapshot.definitions.is_empty() {
         "此游戏暂无 Epic 成就".into()
     } else if let Some(error) = &snapshot.player_error {

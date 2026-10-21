@@ -1,0 +1,120 @@
+name: ${COMPOSE_PROJECT_NAME:-youji-cloud}
+
+x-app: &app
+  image: ${YOUJI_IMAGE:-youji-cloud:local}
+  build:
+    context: ../..
+    dockerfile: server/Dockerfile
+  init: true
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  stop_grace_period: 60s
+  depends_on:
+    postgres:
+      condition: service_healthy
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-environment: &environment
+  DATABASE_URL: ${DATABASE_URL:?请配置容器内数据库连接串}
+  YOUJI_TOKEN_KEY: ${YOUJI_TOKEN_KEY:?请配置随机服务端密钥}
+  YOUJI_MAIL_TRANSPORT: ${YOUJI_MAIL_TRANSPORT:-smtp}
+  YOUJI_MAIL_URL: ${YOUJI_MAIL_URL:-}
+  YOUJI_MAIL_TOKEN: ${YOUJI_MAIL_TOKEN:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-465}
+  SMTP_SECURE: ${SMTP_SECURE:-true}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASS: ${SMTP_PASS:-}
+  SMTP_FROM: ${SMTP_FROM:-}
+  YOUJI_BIND: 0.0.0.0:8090
+  OSS_ENDPOINT: ${OSS_ENDPOINT:?请配置OSS公共地域根地址}
+  OSS_INTERNAL_ENDPOINT: ${OSS_INTERNAL_ENDPOINT:-}
+  OSS_PREFIX: ${OSS_PREFIX:-games}
+  OSS_BUCKET: ${OSS_BUCKET:?请配置私有OSS桶}
+  OSS_REGION: ${OSS_REGION:?请配置OSS地域}
+  OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:?请配置OSS访问凭据}
+  OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:?请配置OSS访问凭据}
+  OSS_SECURITY_TOKEN: ${OSS_SECURITY_TOKEN:-}
+  USER_QUOTA_BYTES: ${USER_QUOTA_BYTES:-10737418240}
+
+services:
+  postgres:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-youji}
+      POSTGRES_USER: ${POSTGRES_USER:-youji}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请配置数据库密码}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    # 不发布数据库端口，仅允许 Compose 网络访问。
+
+  api:
+    <<: *app
+    environment: *environment
+    ports:
+      - "127.0.0.1:${YOUJI_API_PORT:-8090}:8090"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "3", "http://127.0.0.1:8090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    <<: *app
+    command: ["worker"]
+    environment:
+      <<: *environment
+      YOUJI_SAVE_WORKERS: ${YOUJI_SAVE_WORKERS:-2}
+      YOUJI_SAVE_WORK_DIR: /var/lib/youji-worker
+    volumes:
+      - worker-temp:/var/lib/youji-worker
+    # 队列、租约和任务状态在 Postgres；不借用 API 的 HTTP 健康检查。
+
+  migrate:
+    <<: *app
+    profiles: [tools]
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?请配置容器内数据库连接串}
+    # API 和 worker 不依赖此服务，迁移只由管理员显式执行。
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: [proxy]
+    restart: unless-stopped
+    environment:
+      YOUJI_DOMAIN: ${YOUJI_DOMAIN:-cloud.example.invalid}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@example.invalid}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  postgres-data:
+  worker-temp:
+  caddy-data:
+  caddy-config:

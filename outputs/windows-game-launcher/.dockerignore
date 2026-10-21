@@ -1,0 +1,26 @@
+# 构建上下文为实际源码根目录，只允许三个服务端 crate 的构建输入。
+**
+!server/
+!server/Dockerfile
+!server/Cargo.toml
+!server/Cargo.lock
+!server/src/
+!server/src/**
+!server/migrations/
+!server/migrations/*.sql
+!cloud-protocol/
+!cloud-protocol/Cargo.toml
+!cloud-protocol/src/
+!cloud-protocol/src/**
+!save-archive/
+!save-archive/Cargo.toml
+!save-archive/src/
+!save-archive/src/**
+# 即使误放到源码子目录，也不发送环境文件和常见密钥文件。
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.sqlite*
+**/target/

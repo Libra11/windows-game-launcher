@@ -1,3 +1,4 @@
+import { savesButton } from './detail-saves.js';
 import { el, button, icon, artwork, metadata, sourceName, sourceIcon } from '../lib/dom.js';
 import { achievementList } from './detail-achievements.js';
 import { launchButton, cancelLaunchButton, installButton, favoriteButton, activitySummary } from './game-controls.js';
@@ -19,6 +20,7 @@ export function detailView(game, achievements, filter, actions) {
   buttons.append(launchButton(game,actions), cancelLaunchButton(game,actions));
   if (game.source === 'epic') buttons.append(installButton(game,actions));
   buttons.append(favoriteButton(game,actions));
+  buttons.append(savesButton(game));
   buttons.append(button('整理', 'secondary', () => actions.organize(game), 'folder'));
   buttons.append(button('更新资料', 'secondary', () => actions.sync(game), 'refresh'));
   buttons.append(button(game.source === 'local' ? '编辑游戏' : '启动检测设置', 'secondary', () => actions.edit(game), 'settings'));

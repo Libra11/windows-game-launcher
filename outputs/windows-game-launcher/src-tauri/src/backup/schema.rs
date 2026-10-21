@@ -15,12 +15,16 @@ pub const TABLES: &[Table] = &[
     Table { name:"play_sessions", columns:&["id","game_id","started_at","ended_at","seconds"] },
     Table { name:"daily_playtime", columns:&["session_id","game_id","date","seconds"] },
     Table { name:"statistics_unlock_events", columns:&["game_id","namespace","api_name","recorded_at","date"] },
+    Table { name:"sync_game_links", columns:&["local_id","cloud_id"] },
+    Table { name:"achievement_facts", columns:&["game_id","namespace","api_name","source","unlocked_at","present"] },
+    Table { name:"historical_playtime_baselines", columns:&["game_id","seconds"] },
+    Table { name:"cloud_archives", columns:&["game_id","archived"] },
 ];
 pub const BEHAVIOR: &[&str] = &["minimize_on_launch","close_to_tray","achievement_notifications","achievement_overlay_options","check_updates_on_startup"];
 
 pub fn portable_setting(key: &str) -> bool {
     ["steam_id","statistics_started_at"].contains(&key) || [
-        "achievement_platform:", "statistics_official_baseline:",
+        "achievement_platform:", "cloud_achievement_namespace:", "statistics_official_baseline:",
         "steam_playtime:", "steam_family_playtime:", "cover_cache:",
     ].iter().any(|prefix| key.starts_with(prefix))
 }
@@ -51,9 +55,9 @@ pub fn validate(data: &Dataset, preferences: &Preferences) -> Result<(), String>
             }) { return Err(format!("备份 {} 数据格式无效", table.name)); }
             for (index, column) in table.columns.iter().enumerate() {
                 let value = &row[index];
-                if ["seconds","played_seconds","favorite","hidden","position"].contains(column) {
+                if ["seconds","played_seconds","favorite","hidden","position","present","archived"].contains(column) {
                     let number = value.as_i64().filter(|value| *value >= 0).ok_or("备份计数或时长无效")?;
-                    if ["favorite","hidden"].contains(column) && number > 1 { return Err("备份开关数值无效".into()); }
+                    if ["favorite","hidden","present","archived"].contains(column) && number > 1 { return Err("备份开关数值无效".into()); }
                 } else if !(value.is_string() || (*column == "unlocked_at" && value.is_null())) {
                     return Err("备份记录字段类型无效".into());
                 }
@@ -67,7 +71,8 @@ pub fn validate(data: &Dataset, preferences: &Preferences) -> Result<(), String>
                 }
             }
             let key: Vec<_> = match table.name {
-                "games" | "game_activity" | "play_sessions" | "library_tags" | "library_collections" => vec![row[0].clone()],
+                "games" | "game_activity" | "play_sessions" | "library_tags" | "library_collections" | "sync_game_links" | "historical_playtime_baselines" | "cloud_archives" => vec![row[0].clone()],
+                "achievement_facts" => row[..4].to_vec(),
                 "achievements" | "unlocks" | "daily_playtime" | "game_tags" | "game_collections" => vec![row[0].clone(),row[1 + usize::from(table.name == "daily_playtime")].clone()],
                 _ => vec![row[0].clone(),row[1].clone(),row[2].clone()],
             };
@@ -109,13 +114,25 @@ pub fn validate(data: &Dataset, preferences: &Preferences) -> Result<(), String>
         let id = row[0].as_str().ok_or("游玩会话无效")?;
         if sessions.insert(id, row[1].as_str().unwrap_or("")).is_some() { return Err("备份游玩会话重复".into()); }
     }
-    for name in ["unlocks","game_activity","play_sessions","daily_playtime","statistics_unlock_events"] {
+    for name in ["unlocks","game_activity","play_sessions","daily_playtime","statistics_unlock_events","sync_game_links","achievement_facts","historical_playtime_baselines","cloud_archives"] {
         for row in &data.tables[name] {
             let index = if ["play_sessions","daily_playtime"].contains(&name) { 1 } else { 0 };
             if !row[index].as_str().is_some_and(|id| ids.contains(id)) { return Err("备份记录引用了不存在的游戏".into()); }
             if name == "daily_playtime" && sessions.get(row[0].as_str().unwrap_or("")) != Some(&row[1].as_str().unwrap_or("")) {
                 return Err("每日统计与游玩会话不一致".into());
             }
+        }
+    }
+    let mut cloud_ids=HashSet::new();
+    for row in &data.tables["sync_game_links"] {
+        let id=row[1].as_str().ok_or("云游戏身份无效")?;
+        uuid::Uuid::parse_str(id).map_err(|_|"云游戏身份无效")?;
+        if !cloud_ids.insert(id) {return Err("多个本地条目不能指向同一云游戏身份".into());}
+    }
+    for row in &data.tables["achievement_facts"] {
+        if row[1].as_str().unwrap_or("").is_empty() || row[2].as_str().unwrap_or("").is_empty()
+            || !["manual","local","xbox-local","steam","epic"].contains(&row[3].as_str().unwrap_or("")) {
+            return Err("成就事实来源或命名空间无效".into());
         }
     }
     for (key, text) in &data.settings {

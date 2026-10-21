@@ -130,6 +130,7 @@ pub fn checkpoint(
     )
     .map_err(|e| e.to_string())?;
     crate::statistics::store::save_days(&tx, session_id, &game_id, days)?;
+    crate::cloud::export::checkpoint(&tx, session_id)?;
     tx.commit().map_err(|e| e.to_string())
 }
 

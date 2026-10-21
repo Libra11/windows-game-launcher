@@ -1,6 +1,6 @@
 [package]
 name = "local_achievement_launcher"
-version = "0.2.14"
+version = "0.2.15"
 description = "Windows game launcher with local achievements"
 edition = "2021"
 
@@ -12,6 +12,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+youji-cloud-protocol = { path = "../cloud-protocol" }
+youji-save-archive = { path = "../save-archive", features = ["http"] }
 tauri = { version = "2", features = ["tray-icon", "macos-private-api", "protocol-asset"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-notification = "2"
@@ -35,6 +37,7 @@ roxmltree = "0.20"
 scraper = "0.24"
 
 [target."cfg(windows)".dependencies]
+keyring = { version = "3", features = ["windows-native"] }
 tauri-plugin-updater = "=2.13.2"
 # 更新插件使用 reqwest 0.13，单独启用自定义 SOCKS5 代理。
 updater-http = { package = "reqwest", version = "0.13", default-features = false, features = ["socks"] }

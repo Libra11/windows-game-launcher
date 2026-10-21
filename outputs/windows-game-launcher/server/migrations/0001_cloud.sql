@@ -1,0 +1,14 @@
+CREATE TABLE users(id uuid PRIMARY KEY, email text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE invites(email text PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE login_challenges(id uuid PRIMARY KEY, email text NOT NULL, digest text NOT NULL, expires_at timestamptz NOT NULL, attempts integer NOT NULL DEFAULT 0, consumed boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX login_challenges_email ON login_challenges(email,created_at);
+CREATE TABLE devices(user_id uuid NOT NULL REFERENCES users, id uuid NOT NULL, name text NOT NULL, revoked boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id,id));
+CREATE TABLE auth_sessions(id uuid PRIMARY KEY, user_id uuid NOT NULL, device_id uuid NOT NULL, access_digest text NOT NULL UNIQUE, access_expires timestamptz NOT NULL, refresh_digest text NOT NULL UNIQUE, refresh_expires timestamptz NOT NULL, revoked boolean NOT NULL DEFAULT false, FOREIGN KEY(user_id,device_id) REFERENCES devices(user_id,id));
+CREATE TABLE used_refresh_tokens(digest text PRIMARY KEY, session_id uuid NOT NULL REFERENCES auth_sessions);
+CREATE TABLE user_sync_state(user_id uuid PRIMARY KEY REFERENCES users, sequence bigint NOT NULL DEFAULT 0, initialized boolean NOT NULL DEFAULT false);
+CREATE TABLE sync_resources(user_id uuid NOT NULL REFERENCES users, kind text NOT NULL, id text NOT NULL, revision bigint NOT NULL CHECK(revision>0), deleted boolean NOT NULL DEFAULT false, payload jsonb NOT NULL, device_id uuid NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id,kind,id), FOREIGN KEY(user_id,device_id) REFERENCES devices(user_id,id));
+CREATE UNIQUE INDEX game_source_identity ON sync_resources(user_id,(payload->>'source'),(payload->>'sourceIdentity')) WHERE kind='game';
+CREATE TABLE sync_operations(user_id uuid NOT NULL REFERENCES users, id uuid NOT NULL, digest text NOT NULL, result jsonb NOT NULL, PRIMARY KEY(user_id,id));
+CREATE TABLE sync_changes(user_id uuid NOT NULL REFERENCES users, sequence bigint NOT NULL, resource jsonb NOT NULL, PRIMARY KEY(user_id,sequence));
+CREATE TABLE sync_snapshots(user_id uuid NOT NULL REFERENCES users, id uuid NOT NULL, sequence bigint NOT NULL, resources jsonb NOT NULL, expires_at timestamptz NOT NULL, PRIMARY KEY(user_id,id));
+CREATE TABLE import_jobs(user_id uuid NOT NULL REFERENCES users,id uuid NOT NULL, device_id uuid NOT NULL, sequence bigint NOT NULL, digest text NOT NULL, plan jsonb NOT NULL, result jsonb, expires_at timestamptz NOT NULL, PRIMARY KEY(user_id,id));

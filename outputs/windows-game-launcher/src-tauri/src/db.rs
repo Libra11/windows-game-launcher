@@ -30,6 +30,7 @@ pub fn open(path: &Path) -> Result<Connection, String> {
     ).map_err(|e| e.to_string())?;
     crate::activity::initialize(&conn)?;
     crate::organization::store::initialize(&conn)?;
+    crate::cloud::schema::initialize(&conn)?;
     if setting(&conn, "statistics_started_at")?.is_empty() {
         set_setting(&conn, "statistics_started_at", &chrono::Local::now().to_rfc3339())?;
     }
@@ -80,6 +81,12 @@ pub fn game(conn: &Connection, id: &str) -> Result<Option<Game>, String> {
 }
 
 pub fn upsert_game(conn: &Connection, game: &Game) -> Result<(), String> {
+    crate::cloud::hooks::atomic(conn, || {
+        upsert_game_row(conn,game)?;
+        crate::cloud::hooks::game(conn,game)
+    })
+}
+fn upsert_game_row(conn: &Connection, game: &Game) -> Result<(), String> {
     conn.execute(
         "INSERT INTO games (id,source,appid,title,exe_path,launch_uri,custom_unlock_path,metadata_json)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8)
@@ -200,6 +207,7 @@ pub fn save_definitions(
         params![source, game_id],
     )
     .map_err(|e| e.to_string())?;
+    crate::cloud::hooks::definitions(&tx,game_id)?;
     tx.commit().map_err(|e| e.to_string())
 }
 
@@ -269,6 +277,12 @@ pub fn add_unlock(
     unlocked_at: &str,
     evidence: &str,
 ) -> Result<bool, String> {
+    crate::cloud::hooks::atomic(conn, || {
+        crate::cloud::hooks::unlock(conn,game_id,api_name,source,unlocked_at,true)?;
+        add_unlock_row(conn,game_id,api_name,source,unlocked_at,evidence)
+    })
+}
+fn add_unlock_row(conn:&Connection,game_id:&str,api_name:&str,source:&str,unlocked_at:&str,evidence:&str)->Result<bool,String>{
     if source == "local" || source == "xbox-local" {
         let promoted = conn
             .execute(
@@ -292,6 +306,9 @@ pub fn add_unlock(
 }
 
 pub fn toggle_manual(conn: &Connection, game_id: &str, api_name: &str) -> Result<(), String> {
+    crate::cloud::hooks::atomic(conn, || toggle_manual_row(conn,game_id,api_name))
+}
+fn toggle_manual_row(conn:&Connection,game_id:&str,api_name:&str)->Result<(),String>{
     let existing: Option<String> = conn
         .query_row(
             "SELECT source FROM unlocks WHERE game_id=?1 AND api_name=?2",
@@ -302,6 +319,7 @@ pub fn toggle_manual(conn: &Connection, game_id: &str, api_name: &str) -> Result
         .map_err(|e| e.to_string())?;
     match existing.as_deref() {
         Some("manual") => {
+            crate::cloud::hooks::unlock(conn,game_id,api_name,"manual","",false)?;
             conn.execute(
                 "DELETE FROM unlocks WHERE game_id=?1 AND api_name=?2",
                 params![game_id, api_name],
@@ -329,6 +347,11 @@ pub fn replace_steam_unlocks(
     items: &[(String, String)],
 ) -> Result<(), String> {
     // 调用方使用事务，将官方快照与新增解锁统计一起提交。
+    if conn.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name='achievement_facts')",[],|r|r.get::<_,bool>(0)).map_err(|e|e.to_string())? {
+        let game=game(conn,game_id)?.ok_or("游戏不存在")?;
+        let namespace=crate::achievement_platform::namespace(conn,&game)?;
+        return crate::cloud::official::record_facts(conn,game_id,&namespace,"steam",items);
+    }
     conn.execute(
         "DELETE FROM unlocks WHERE game_id=?1 AND source='steam'",
         [game_id],
@@ -342,19 +365,34 @@ pub fn replace_steam_unlocks(
 }
 
 pub fn setting(conn: &Connection, key: &str) -> Result<String, String> {
-    Ok(conn
+    let value=conn
         .query_row("SELECT value FROM settings WHERE key=?1", [key], |row| {
             row.get(0)
         })
         .optional()
         .map_err(|e| e.to_string())?
-        .unwrap_or_default())
+        .unwrap_or_default();
+    #[cfg(all(windows,not(test)))]
+    if crate::cloud::secrets::sensitive(key){return crate::cloud::secrets::decode(key,value);}
+    Ok(value)
 }
 
 pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<(), String> {
-    conn.execute("INSERT INTO settings(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-        params![key, value]).map_err(|e| e.to_string())?;
-    Ok(())
+    #[cfg(all(windows,not(test)))]
+    let protected=if crate::cloud::secrets::sensitive(key){
+        let previous:Option<String>=conn.query_row("SELECT value FROM settings WHERE key=?1",[key],|r|r.get(0)).optional().map_err(|e|e.to_string())?;
+        match previous{
+            Some(raw) if raw.starts_with("credential:") && crate::cloud::secrets::decode(key,raw.clone())?==value=>Some(raw),
+            _=>Some(crate::cloud::secrets::encode(key,value)?),
+        }
+    }else{None};
+    #[cfg(all(windows,not(test)))]
+    let value=protected.as_deref().unwrap_or(value);
+    crate::cloud::hooks::atomic(conn,||{
+        conn.execute("INSERT INTO settings(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            params![key, value]).map_err(|e| e.to_string())?;
+        Ok(())
+    })
 }
 
 #[cfg(test)]

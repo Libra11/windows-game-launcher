@@ -17,6 +17,7 @@ pub fn replace(conn: &mut Connection, data: &Dataset, preferences: &Preferences,
     let proxy = db::setting(conn, "network_proxy")?;
     let tx = conn.transaction().map_err(|error| error.to_string())?;
     let result = (|| {
+    crate::cloud::reset_for_restore(&tx)?;
     // 标识和列名来自固定白名单，绝不执行备份中提供的 SQL 或数据库 schema。
     for table in schema::TABLES.iter().rev() { tx.execute(&format!("DELETE FROM {}", table.name), []).map_err(|error| error.to_string())?; }
     tx.execute("DELETE FROM settings", []).map_err(|error| error.to_string())?;

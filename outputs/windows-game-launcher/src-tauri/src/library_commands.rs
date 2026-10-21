@@ -15,10 +15,12 @@ pub(crate) fn list_games(
 ) -> Result<Vec<activity::LibraryGame>, String> {
     let (games, mut activities, steam_time, connected) = {
         let conn = lock_db(&state)?;
+        let mut archived_query=conn.prepare("SELECT game_id FROM cloud_archives WHERE archived=1").map_err(|e|e.to_string())?;
+        let archived=archived_query.query_map([],|r|r.get::<_,String>(0)).map_err(|e|e.to_string())?.collect::<Result<HashSet<_>,_>>().map_err(|e|e.to_string())?;
         let steamid = db::setting(&conn, "steam_id")?;
         let connected = !steamid.is_empty() && !db::setting(&conn, "steam_api_key")?.is_empty();
         (
-            db::games(&conn)?.into_iter().map(|mut game| {
+            db::games(&conn)?.into_iter().filter(|g|!archived.contains(&g.id)).map(|mut game| {
                 crate::cover_cache::decorate(&conn, &app, &mut game);
                 game
             }).collect::<Vec<_>>(),
@@ -223,10 +225,15 @@ pub(crate) async fn import_steam(app: tauri::AppHandle) -> Result<usize, String>
     if key.is_empty() || steamid.is_empty() {
         return Err("请先在设置中填写 Steam Web API Key 和 SteamID64".into());
     }
+    let capture=crate::cloud::official::playtime_begin(&app,&steamid).await?;
     let games = steam::owned_games(&key, &steamid).await?;
     let conn = lock_db(&state)?;
+    crate::cloud::official::account_guard(&conn,"steam",&steamid)?;
     let mut added = 0;
-    steam_playtime::save_owned(&conn, &steamid, &games)?;
+    crate::cloud::hooks::atomic(&conn,||{
+        steam_playtime::save_owned(&conn,&steamid,&games)?;
+        crate::cloud::official::playtime_save(&conn,capture.as_ref(),&games)
+    })?;
     for game in games {
         if db::game(&conn, &game.id)?.is_none() {
             db::upsert_game(&conn, &game)?;

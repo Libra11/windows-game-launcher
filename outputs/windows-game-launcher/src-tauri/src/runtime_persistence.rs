@@ -3,6 +3,11 @@ use rusqlite::OptionalExtension;
 use std::collections::HashSet;
 use tauri::Manager;
 
+pub(crate) fn recoverable(conn:&rusqlite::Connection,id:&str)->Result<bool,String>{
+    conn.query_row("SELECT NOT EXISTS(SELECT 1 FROM sync_shadow WHERE kind='play_session' AND id=?1 AND json_extract(resource,'$.payload.historical')=1)
+      AND NOT EXISTS(SELECT 1 FROM cloud_session_owners WHERE session_id=?1 AND device_id<>(SELECT device_id FROM account_binding))",[id],|r|r.get(0)).map_err(|e|e.to_string())
+}
+
 pub(crate) fn restore(app: &tauri::AppHandle) -> Result<(), String> {
     let state = app.state::<AppState>();
     let mut tracker = state.runtime.lock().map_err(|_| "运行状态不可用")?;
@@ -18,9 +23,10 @@ pub(crate) fn restore(app: &tauri::AppHandle) -> Result<(), String> {
         let Some(game) = db::game(&conn, &record.game_id)? else {
             continue;
         };
+        if !recoverable(&conn,&record.session_id)?{continue;}
         let seconds: Option<i64> = conn
             .query_row(
-                "SELECT seconds FROM play_sessions WHERE id=?1 AND game_id=?2 AND ended_at=''",
+                "SELECT seconds FROM play_sessions WHERE id=?1 AND game_id=?2 AND ended_at='' AND NOT EXISTS(SELECT 1 FROM cloud_session_owners o WHERE o.session_id=play_sessions.id AND o.device_id<>(SELECT device_id FROM account_binding))",
                 rusqlite::params![record.session_id, record.game_id],
                 |row| row.get(0),
             )
@@ -36,7 +42,7 @@ pub(crate) fn restore(app: &tauri::AppHandle) -> Result<(), String> {
     }
     let open: Vec<String> = {
         let mut stmt = conn
-            .prepare("SELECT id FROM play_sessions WHERE ended_at=''")
+            .prepare("SELECT id FROM play_sessions WHERE ended_at='' AND NOT EXISTS(SELECT 1 FROM cloud_session_owners o WHERE o.session_id=play_sessions.id AND o.device_id<>(SELECT device_id FROM account_binding))")
             .map_err(|error| error.to_string())?;
         let rows = stmt
             .query_map([], |row| row.get(0))
@@ -45,7 +51,7 @@ pub(crate) fn restore(app: &tauri::AppHandle) -> Result<(), String> {
             .map_err(|error| error.to_string())?
     };
     for id in open {
-        if !restored.contains(&id) {
+        if !restored.contains(&id) && recoverable(&conn,&id)? {
             // 不补算启动器停止或异常退出期间无法确认的时间。
             conn.execute(
                 "UPDATE play_sessions SET ended_at=?1 WHERE id=?2",

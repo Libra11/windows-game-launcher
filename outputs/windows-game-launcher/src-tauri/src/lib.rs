@@ -8,6 +8,7 @@ mod backup;
 mod cover_cache;
 mod cover_download;
 mod db;
+pub mod cloud;
 mod desktop_lifecycle;
 mod detection;
 mod epic;
@@ -33,6 +34,7 @@ mod runtime_environment;
 mod runtime_persistence;
 mod runtime_record;
 mod scanner;
+mod saves;
 mod source;
 mod statistics;
 mod steam;
@@ -87,17 +89,22 @@ pub fn run() {
     builder.setup(|app| {
             let dir = app.path().app_data_dir()?;
             let mut conn = db::open(&dir.join("games.sqlite")).map_err(std::io::Error::other)?;
+            cloud::secrets::migrate(&conn).map_err(std::io::Error::other)?;
             let covers = app.path().app_cache_dir()?.join("covers");
             backup::startup(&mut conn, &dir, &covers);
+            saves::startup(&dir).map_err(std::io::Error::other)?;
+            app.manage(saves::ManagerState::default());
             let restored_appearance = backup::appearance_script(&conn).map_err(std::io::Error::other)?;
             let proxy = network::initialize(&conn, app.handle()).map_err(std::io::Error::other)?;
             app.manage(webview_proxy::WebviewProxy::from(&proxy));
             app.manage(cover_cache::CoverCache::default());
             app.manage(backup::Manager::default());
+            app.manage(cloud::Cloud::new().map_err(std::io::Error::other)?);
             let updates=app_update::initialize(app.handle(),&conn).map_err(std::io::Error::other)?;
             app.manage(updates);
             achievement_repair::remove_inferred_unlocks(&mut conn)
                 .map_err(std::io::Error::other)?;
+            cloud::official::seed_facts(&conn).map_err(std::io::Error::other)?;
             app.manage(AppState {
                 maintenance: Default::default(),
                 operation_gate: Mutex::new(()),
@@ -125,6 +132,7 @@ pub fn run() {
                 eprintln!("托盘初始化失败：{error}");
             }
             app_update::start(app.handle().clone());
+            cloud::start(app.handle().clone());
             start_metadata_refresh(app.handle().clone());
             steam_playtime::watch(app.handle().clone());
             runtime_commands::watch(app.handle().clone());
@@ -161,6 +169,12 @@ pub fn run() {
         })
         .on_window_event(desktop_lifecycle::closing)
         .invoke_handler(tauri::generate_handler![
+            cloud::cloud_status, cloud::cloud_challenge, cloud::cloud_verify, cloud::cloud_logout,
+            cloud::cloud_sync, cloud::cloud_devices, cloud::cloud_revoke_device,
+            cloud::cloud_prepare_import, cloud::cloud_commit_import, cloud::cloud_resolve, cloud::cloud_set_archived,
+            saves::saves_list, saves::saves_bind, saves::saves_backup, saves::saves_restore,
+            saves::saves_cloud_profiles, saves::saves_connect, saves::saves_upload, saves::saves_history,
+            saves::saves_download, saves::saves_resolve, saves::saves_delete_cloud,
             app_update::get_app_update_status,
             app_update::check_app_update,
             app_update::download_app_update,

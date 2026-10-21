@@ -57,12 +57,15 @@ pub(crate) fn record_unlock(conn: &Connection, event: &UnlockEvent) -> Result<()
     };
     let namespace = achievement_platform::namespace(conn, &game)?;
     let now = chrono::Local::now();
-    conn.execute(
+    crate::cloud::hooks::atomic(conn,||{
+    let inserted=conn.execute(
         "INSERT OR IGNORE INTO statistics_unlock_events(game_id,namespace,api_name,recorded_at,date)
          VALUES(?1,?2,?3,?4,?5)",
         params![event.game_id, namespace, event.api_name, now.to_rfc3339(), now.date_naive().to_string()],
     ).map_err(|e| e.to_string())?;
+    if inserted>0{crate::cloud::hooks::event(conn,&game.id,&namespace,&event.api_name,&now.to_rfc3339(),&now.date_naive().to_string())?;}
     Ok(())
+    })
 }
 
 // 官方接口不走本地通知路径。首次成功快照建立基线，后续只记录新增且发生于启用之后的解锁。
@@ -109,6 +112,9 @@ pub(crate) fn save_steam_snapshot(
     game: &Game,
     items: &[(String, String)],
 ) -> Result<(), String> {
+    save_steam_snapshot_cloud(conn,game,items,None)
+}
+pub(crate) fn save_steam_snapshot_cloud(conn:&mut Connection,game:&Game,items:&[(String,String)],capture:Option<&crate::cloud::official::Capture>)->Result<(),String>{
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     let current = db::game(&tx, &game.id)?.ok_or("游戏不存在")?;
     if current.source != "steam" || current.appid != game.appid {
@@ -116,6 +122,7 @@ pub(crate) fn save_steam_snapshot(
     }
     let previous = db::achievements(&tx, &game.id)?;
     db::replace_steam_unlocks(&tx, &game.id, items)?;
+    crate::cloud::official::save(&tx,capture,items)?;
     official_changes(&tx, &current, &previous)?;
     tx.commit().map_err(|e| e.to_string())
 }

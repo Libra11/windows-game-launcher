@@ -6,6 +6,7 @@ pub const MAX_TOTAL: u64 = 10 * 1024 * 1024 * 1024;
 pub const MAX_DATA: u64 = 256 * 1024 * 1024;
 pub const MAX_COVER: u64 = 20 * 1024 * 1024;
 pub const MAX_ENTRIES: usize = 100_000;
+pub const FORMAT_VERSION: u32 = 3;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

@@ -178,6 +178,10 @@ pub(crate) fn for_game(conn: &Connection, game: &Game) -> Result<Profile, String
 }
 
 pub(crate) fn namespace(conn: &Connection, game: &Game) -> Result<String, String> {
+    if let Some(value)=crate::cloud::hooks::namespace(conn,&game.id)? {return Ok(value);}
+    namespace_local(conn,game)
+}
+pub(crate) fn namespace_local(conn:&Connection,game:&Game)->Result<String,String>{
     let p = for_game(conn, game)?;
     Ok(match p.platform.as_str() {
         "xbox" => format!("xbox:{}", p.title_id),
@@ -226,11 +230,10 @@ pub(crate) fn save(
         crate::xbox::public::validate_url(public_source.trim())?;
         p.public_source = public_source.trim().into();
     }
-    db::set_setting(
-        conn,
-        &format!("achievement_platform:{}", game.id),
-        &serde_json::to_string(&p).map_err(|e| e.to_string())?,
-    )
+    crate::cloud::hooks::atomic(conn,||{
+        db::set_setting(conn,&format!("achievement_platform:{}",game.id),&serde_json::to_string(&p).map_err(|e|e.to_string())?)?;
+        crate::cloud::hooks::reference(conn,game)
+    })
 }
 
 #[tauri::command]

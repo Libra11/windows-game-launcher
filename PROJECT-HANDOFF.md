@@ -1,5 +1,53 @@
 # 项目交接状态
 
+## 2026-10-21 河源部署完成并通过真实验收（libra-diary 已上线）
+
+- 最新完整步骤、结果与遗留数据见 [DEPLOYMENT-HANDOFF.md](outputs/windows-game-launcher/server/deploy/DEPLOYMENT-HANDOFF.md)。以下较早同日条目是历史记录，不能覆盖本段。
+- 服务器已完成 `docker load`（镜像 `f45042be…` amd64）、迁移 0001–0004（19 张业务表，owner libra_diary）、`up -d --no-build api worker`；`https://game.penlibra.xin/health` 与回环 18090 均返回 200，api healthy，worker 以 UID 10001、并发 2 运行。`migrate` 需带 `--profile tools`。
+- 真实账号 libra085925@gmail.com：邮件验证码登录、设备列表、refresh 全部通过；该账号 `user_sync_state.initialized=false`、`sequence=0`，0 档案/快照/上传，**首次导入基线未被消耗**。
+- 存档闭环用用户提供的独立验收账号 97220040@qq.com：创建游戏/档案 → OSS PUT → complete 202 → worker 首次 completed → 下载 ZIP/清单/文件 SHA-256 全部一致；对象位于 `games/objects/…` 与 `games/staging/…`（现桶为 `libra-game`），匿名 403。损坏归档与缺失对象两种负例均由 worker 判定 failed，无可下载快照。
+- 两个验收设备已撤销（`devices.revoked=t`、`auth_sessions.revoked=t`）；没有操作其他设备。未调用真实存档恢复、未改桌面资料库路径、未提交或推送 Git。
+- 旧五个 Nginx 站点 sha256 全部 OK，旧容器仍保持部署前停止状态，仅本项目三个容器运行。
+- 换桶后在 `libra-game` 重跑完整存档闭环（`smoke-result-1775ed44…json`）全部通过，对象在 `games/objects/…`、匿名 403，验收设备再次撤销。
+- 换桶（2026-10-21 晚）：用户确认原 `libra-diary` 桶里的 62 个 `client-releases/` DMG 属于其 Knora-One 客户端发布。已新建专用桶 `libra-game`（cn-beijing，private + 阻止公开访问 + AES256 默认加密），本机与服务器 `.env` 改为该桶并重建 api/worker，桶级安全自检与 `/health` 通过；旧桶删除本项目 3 个测试对象、关闭本轮添加的桶级策略，恢复到部署前状态，62 个发布文件完好。不要再往 `libra-diary` 写本项目数据。
+- 剩余：Windows 实机双设备验收、桌面安装包；本机为 macOS，不能替代客户端验证。
+
+## 2026-10-21 game 子域与独立阿里云邮件
+
+- 用户确认 libra-diary 是 OSS 桶名，指定 game.penlibra.xin，强调各项目独立、仅参考 libra-space 操作方法。已读取其运维方法并使用当前云账号管理能力创建本项目资源；没有复制或使用原项目 SMTP 凭据，没有改动其他项目服务。
+- 查明河源 ECS i-f8z4cfpxgbgf6kbcvpok / 47.121.140.196；Cloud Assistant 只执行主机与端口只读检查。已有 Nginx/Certbot。为 game.penlibra.xin 创建 A 记录，并撤销本轮先创建的 diary 记录；未修改现有其他 DNS 记录。
+- 独立邮件子域 mail.game.penlibra.xin（DomainId 576073），新建 MX/SPF/DKIM/DMARC，全部验证通过；独立 noreply@mail.game.penlibra.xin（MailAddressId 527694）及 SMTP 密码。SMTP TLS 认证和 NOOP 成功，没有发送邮件。密码仅保存在忽略的 server/deploy/.env.smtp（0600），不在文档中。
+- 新增 SMTP/HTTP 双模式邮件模块，SMTP 使用隐式 TLS 或强制 STARTTLS、20 秒总超时、固定脱敏错误；HTTP 适配器仍可用。YOUJI_MAIL_TRANSPORT 必须指定。Compose 示例默认 smtp，河源示例填写独立发件地址和 game 域名。
+- 用户明确不要 CPU/内存限制和单 worker 特殊配置，已移除本轮 heyuan.compose.yaml，恢复默认 worker 并发 2。只保留独立项目、数据库、网络、卷、部署目录、运行时凭据；同物理机资源与阿里云账号级额度仍共享。
+- 本轮完整 server 测试 24 项通过（真实隔离 Postgres，无数据库测试跳过），Compose 静态校验通过。独立邮件单元测试涵盖 TLS 不降级、配置、超时和消息构造。当前测试数据库随后已停止。
+- 尚未构建/发布容器，未部署 API/DB/worker，未创建远端 /opt/apps/libra-diary，未修改 Nginx，未签发 game HTTPS 证书，未使用真实 OSS 操作存档。后续说明见 server/deploy/HEYUAN.md。没有提交、推送或生成 Windows 安装包。
+
+## 2026-10-21 河源部署准备与 OSS 子目录
+
+- 用户提供 OSS 配置信息并指定参考 libra-space 的服务器操作流程；未将聊天中的凭据写入源码或文档。
+- 参考项目使用 Cloud Assistant 发布，但默认 ECS 在北京、ACR 在河源；尚不能据此确定用户指定的河源 ECS。待确认河源实例 ID/IP、libra-diary 是否为桶名、域名及验证码邮件方式。
+- 存储层新增 OSS_PREFIX，生产默认 libra-diary，拒绝空目录及穿越；所有对象操作统一添加前缀，桶控制查询不加前缀。前缀上线后不能直接修改。新增 heyuan.env.example，项目名 libra-diary，远端建议 /opt/apps/libra-diary；跨地域 OSS 暂用北京公网 HTTPS。
+- 本轮 6 项存储测试、Compose 静态校验及 diff 检查通过；未连接或修改远端，也未查询真实 OSS。
+
+## 2026-10-21 OSS 原生存储、后台校验与 Compose（未部署）
+
+- 服务端存储替换为 OSS 原生 V4，拆分配置、签名、安全检查与测试；公共签名地址和服务端内网 endpoint 分离。检查私有 ACL、阻止公开访问、非公开策略和 SSE，支持 AES256/KMS，静态 STS 不自动刷新。配置与最小权限见 `outputs/windows-game-launcher/server/OSS.md`。
+- 存档 complete 接口只持久化入队并返回 202；独立 `worker` 进程使用 Postgres 租约、续租、最多三次尝试与独立对象键校验并发布。新增任务状态查询；桌面「上传 / 查询状态」区分排队和校验成功，父快照发布前暂停后续上传。协议见 `server/SAVE-JOBS.md`。
+- 修复心跳等待自身最终事务导致卡死的风险；阻塞 ZIP 校验持有并发许可与临时目录直至真正结束。配额包含正式对象、暂存及失败尝试预留，物理回收成功后才释放；去重命中不再上传完整副本。新增迁移 0003、0004，仅应用于隔离测试库，部署仍需管理员显式执行。
+- 新增多阶段 Dockerfile、构建输入白名单、API/Postgres/worker Compose、显式迁移 profile、可选 Caddy、占位环境文件。API 默认只映射宿主机回环地址，数据库不发布端口。入口为 `outputs/windows-game-launcher/server/deploy/README.md`。
+- 最终本地验证：服务端 17 项通过（显式隔离 Postgres，含官方 OSS SDK 三组签名向量、安全失败、并发领取、租约失效、幂等、配额及分叉）；桌面存档 7 项、云界面 3 项通过；前端生产构建、全部 Compose profiles 静态校验、`git diff --check` 通过。服务端最终完整测试与 doctest 命令退出 0。
+- 未连接用户服务器或真实 OSS、未构建容器镜像、未部署、未生成 Windows 安装包、未提交或推送。Linux 镜像运行、RAM/邮件、真实 OSS 和 Windows 双设备仍需环境验收。测试仅使用临时文件与本机隔离库；本轮启动的测试 Postgres 已停止，测试目录保留。
+
+## 2026-10-21 云账号、元数据同步与手动存档备份（源码已实现，待 Windows 联调）
+
+- 实际源码新增独立 `server/`（axum/Postgres/私有 S3）、`cloud-protocol/`（明确 DTO、修订与会话合并）和 `save-archive/`（共享归档边界）。桌面接入 `cloud/`、`saves/`、云账号设置与游戏存档界面。服务端配置、邀请及隔离测试入口见 `outputs/windows-game-launcher/server/README.md`。
+- 同步采用本地原子 outbox、shadow、操作幂等、按用户提交顺序的游标与一致性快照。首次导入经过摘要、云端版本和冲突预览；账号、设备、游戏及平台身份分别校验。本机路径、平台凭据、原始证据不上传。官方状态与自动／手动事实分离，累计时长以历史基线加唯一会话重算。
+- 手动存档先生成本地可恢复快照，再由用户点击上传；云端发布前校验归档与清单、计入配额并保留分叉。恢复使用安全快照、同卷目录切换和持久恢复日志，测试只操作临时目录。当前备份／恢复沿用全局维护守卫，会阻止所有游戏启动；未增加自动存档或规则扫描。
+- 应用备份升级 v3，保留共享游戏映射、成就事实、历史基线与归档状态，排除凭据、设备注册、outbox、游标与恢复任务。增加展示命名空间白名单，不把云端关联转为本机捕获授权。旧备份版本明确拒绝。
+- 本轮使用隔离 SQLite、临时 Postgres 和模拟 S3 验证；不是 Windows 双设备或真实对象存储验收。真实邮件、S3 SigV4、Windows 凭据管理器、重解析点及文件锁仍需目标环境联调。全套前端测试中 Steam 登录回调与发布脚本有三项失败，对应文件未被本轮修改。
+- 最终验证：桌面 Rust `--lib` 176 通过、5 忽略；服务端 12 通过（显式设置隔离测试数据库，数据库用例没有跳过）；协议 9 通过；存档归档／恢复 14 通过；前端生产构建和新增 2 项 UI 测试通过；`git diff --check` 通过。修正了会话恢复导入、历史逐日数据保留、导入分类与可变状态冲突、初始字段投影、平台账号离线隔离及验证码重发限流。
+- 未提交、推送、切换分支、生成安装包、部署、修改真实用户数据库或恢复真实存档。现有已构建程序不包含这些源码变更。
+
 ## 2026-10-14 更新版本至 0.2.13 并提交
 
 - 用户要求更新版本并提交，同时询问 PR 分支安排。统一五个版本文件中的六个字段至 0.2.13，新增 release-notes/0.2.13.md，包含 Steam 官方完整成就描述、普通图标文件名、缓存保护及此前已提交的编辑缩略图修复；没有升级依赖。

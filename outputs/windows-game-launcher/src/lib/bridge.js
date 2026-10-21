@@ -49,6 +49,7 @@ export async function command(name, args = {}) {
     return invoke(name, args);
   }
   if (name === 'get_statistics' || name === 'list_statistics_sessions') return statisticsPreview(name,args);
+  if (name === 'cloud_status') return {phase:'unsupported',loggedIn:false,pending:0,conflicts:[],baseUrl:'',error:'浏览器预览不保存登录凭据或上传资料。'};
   if (name === 'get_achievement_overlay_options') return {position:'bottom-right',duration:5,sound:'chime'};
   if (name === 'save_achievement_overlay_options') return;
   if (name === 'list_games') return demoGames;

@@ -1,0 +1,8 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$YOUJI_DOMAIN} {
+	# 不启用访问日志，避免记录预签名 URL 等敏感查询参数。
+	reverse_proxy api:8090
+}

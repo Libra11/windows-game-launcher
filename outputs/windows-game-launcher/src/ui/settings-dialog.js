@@ -1,3 +1,4 @@
+import { settingsCloud } from './settings-cloud.js';
 import { settingsUpdates } from './settings-updates.js';
 import { updateAvailable } from '../lib/app-update.js';
 import { el, button, icon } from '../lib/dom.js';
@@ -12,6 +13,7 @@ import './settings.css';
 const categories=[
   ['appearance','外观与字体','sun','主题与字体回退'],
   ['connections','游戏库与账号','library','账号连接与导入'],
+  ['cloud','游迹云同步','network','账号、设备与同步冲突'],
   ['notifications','成就提示','trophy','位置、声音与通知'],
   ['general','后台与运行','settings','启动与退出行为'],
   ['network','网络与代理','network','连接方式与代理设置'],
@@ -58,7 +60,7 @@ export function createSettingsPage(actions) {
       const networkPart=settingsNetwork(network,actions,saved);
       const notifications=await settingsNotifications(settings,actions,save,options,saved);
       const general=settingsGeneral(settings,actions,save);
-      const built=[appearance,connections,notifications,general,networkPart,settingsData(actions),settingsUpdates(settings,actions,save)];
+      const built=[appearance,connections,settingsCloud(actions),notifications,general,networkPart,settingsData(actions),settingsUpdates(settings,actions,save)];
       if(disposed){built.forEach(part=>part.dispose());return;}
       parts=built;
       parts.forEach((part,index)=>{

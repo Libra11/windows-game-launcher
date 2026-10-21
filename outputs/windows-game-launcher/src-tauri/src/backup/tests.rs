@@ -31,6 +31,7 @@ fn source() -> rusqlite::Connection {
     let game = crate::model::Game { id:"local-one".into(),source:"local".into(),appid:"480".into(),title:"中文游戏".into(),
         exe_path:r"E:\Games\中文游戏\game.exe".into(),custom_unlock_path:r"E:\Games\中文游戏\record.ini".into(),metadata_json:"{}".into(),..Default::default() };
     db::upsert_game(&conn,&game).unwrap();
+    crate::achievement_platform::save(&conn,&game,"steam","",true).unwrap();
     let tag=crate::organization::store::create(&mut conn,false,"待玩").unwrap();
     let first=crate::organization::store::create(&mut conn,true,"周末").unwrap();
     let second=crate::organization::store::create(&mut conn,true,"冒险").unwrap();
@@ -73,7 +74,7 @@ fn archive_roundtrip_restores_history_and_proxy_without_logins_or_runtime() {
     let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
     let path=temp.path().join("portable.youji-backup");
     let manifest=archive::write(&path,data,prefs,&covers,"0.2.5".into(),|_,_,_|Ok(())).unwrap();
-    assert_eq!(manifest.counts.covers,1);assert_eq!(manifest.format_version,2);
+    assert_eq!(manifest.counts.covers,1);assert_eq!(manifest.format_version,FORMAT_VERSION);
     assert_eq!(manifest.counts.tags,1);assert_eq!(manifest.counts.collections,2);
     let loaded=archive::read(&path).unwrap();
     let mut target=db::open(std::path::Path::new(":memory:")).unwrap();
@@ -168,4 +169,33 @@ fn v1_archive_is_explicitly_rejected() {
 fn update_installation_gate_refuses_an_active_backup_operation() {
     let manager=super::Manager::default();let operation=manager.operation.lock().unwrap();
     assert!(manager.prevent_operations().is_err());drop(operation);assert!(manager.prevent_operations().is_ok());
+}
+
+#[test]
+fn backup_preserves_shared_identity_but_never_replays_device_queue() {
+    let mut original=source();
+    let cloud_id=uuid::Uuid::new_v4().to_string();
+    db::set_setting(&original,"cloud_achievement_namespace:local-one","480").unwrap();
+    original.execute("INSERT INTO sync_game_links VALUES('local-one',?1)",[&cloud_id]).unwrap();
+    original.execute("INSERT INTO historical_playtime_baselines VALUES('local-one',3600)",[]).unwrap();
+    original.execute("INSERT INTO cloud_archives VALUES('local-one',1)",[]).unwrap();
+    original.execute("INSERT INTO achievement_facts VALUES('local-one','480','FIRST','manual',NULL,0)",[]).unwrap();
+    original.execute("INSERT INTO account_binding VALUES(1,'original-user','original-device','original-library')",[]).unwrap();
+    db::set_setting(&original,"cloud_login_user","PRIVATE_SENTINEL_CLOUD_USER").unwrap();
+    original.execute("INSERT INTO sync_outbox(operation_id,kind,id,payload,base_revision) VALUES('private-operation','favorite',?1,'{\"value\":true}',0)",[&cloud_id]).unwrap();
+    let (data,prefs)=export::capture(&mut original,appearance(),TIME).unwrap();
+    let encoded=serde_json::to_string(&data).unwrap();
+    for forbidden in ["original-user","original-device","original-library","private-operation","PRIVATE_SENTINEL_CLOUD_USER"] {assert!(!encoded.contains(forbidden));}
+    assert_eq!(data.tables["sync_game_links"][0][1],cloud_id);
+    let mut target=db::open(std::path::Path::new(":memory:")).unwrap();
+    target.execute("INSERT INTO account_binding VALUES(1,'target-user','target-device','target-library')",[]).unwrap();
+    target.execute("INSERT INTO sync_outbox(operation_id,kind,id,payload,base_revision) VALUES('target-operation','favorite','id','{}',0)",[]).unwrap();
+    restore::replace(&mut target,&data,&prefs,"test-cloud-restore").unwrap();
+    for table in ["account_binding","sync_outbox","sync_shadow","sync_conflicts","cloud_session_owners"] {
+        assert_eq!(target.query_row(&format!("SELECT COUNT(*) FROM {table}"),[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    }
+    assert_eq!(target.query_row("SELECT cloud_id FROM sync_game_links",[],|r|r.get::<_,String>(0)).unwrap(),cloud_id);
+    assert_eq!(target.query_row("SELECT present FROM achievement_facts",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    assert_eq!(db::setting(&target,"cloud_login_user").unwrap(),"");
+    assert_eq!(db::setting(&target,"cloud_achievement_namespace:local-one").unwrap(),"480");
 }

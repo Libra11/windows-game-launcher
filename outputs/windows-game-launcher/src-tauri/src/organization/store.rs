@@ -48,6 +48,7 @@ pub fn create(conn:&mut Connection,collection:bool,value:&str)->Result<String,St
         let position=last.checked_add(1).ok_or("收藏夹顺序超出范围，请重新排序")?;
         tx.execute("INSERT INTO library_collections VALUES(?1,?2,?3)",params![id,value,position]).map_err(|e|e.to_string())?;
     } else {tx.execute("INSERT INTO library_tags VALUES(?1,?2)",params![id,value]).map_err(|e|e.to_string())?;}
+    if collection{crate::cloud::hooks::collection_order(&tx)?;}
     tx.commit().map_err(|e|e.to_string())?;Ok(id)
 }
 pub fn rename(conn:&mut Connection,collection:bool,id:&str,value:&str)->Result<(),String> {
@@ -60,6 +61,7 @@ pub fn remove(conn:&mut Connection,collection:bool,id:&str)->Result<(),String> {
     let tx=conn.transaction().map_err(|e|e.to_string())?;let (relation,column)=membership(collection);
     if tx.execute(&format!("DELETE FROM {} WHERE id=?1",table(collection)),[id]).map_err(|e|e.to_string())?==0 {return Err("分类已不存在".into());}
     tx.execute(&format!("DELETE FROM {relation} WHERE {column}=?1"),[id]).map_err(|e|e.to_string())?;
+    if collection{crate::cloud::hooks::collection_order(&tx)?;}
     tx.commit().map_err(|e|e.to_string())
 }
 pub fn reorder(conn:&mut Connection,ids:&[String])->Result<(),String> {
@@ -68,6 +70,7 @@ pub fn reorder(conn:&mut Connection,ids:&[String])->Result<(),String> {
     let wanted:HashSet<_>=ids.iter().collect();
     if wanted.len()!=ids.len() || existing.len()!=ids.len() || existing.iter().any(|id|!wanted.contains(id)) {return Err("收藏夹已变化，请重新排序".into());}
     for (position,id) in ids.iter().enumerate() {tx.execute("UPDATE library_collections SET position=?1 WHERE id=?2",params![position as i64,id]).map_err(|e|e.to_string())?;}
+    crate::cloud::hooks::order(&tx,ids)?;
     tx.commit().map_err(|e|e.to_string())
 }
 fn require(conn:&Connection,table:&str,ids:&[String])->Result<(),String> {

@@ -127,8 +127,11 @@ pub(crate) async fn sync_game_internal(
             updates.push("Steam 成就信息（暂无成就）");
         }
     } else if game.source == "steam" && !key.is_empty() && !steamid.is_empty() {
+        let capture=crate::cloud::official::capture(app,&game,"steam",&steamid).await?;
         let unlocks = steam::player_unlocks(&game.appid, &key, &steamid).await?;
-        crate::statistics::store::save_steam_snapshot(&mut *lock_db(&state)?, &game, &unlocks)?;
+        {let mut conn=lock_db(&state)?;
+        crate::cloud::official::account_guard(&conn,"steam",&steamid)?;
+        crate::statistics::store::save_steam_snapshot_cloud(&mut conn, &game, &unlocks,capture.as_ref())?;}
         db::update_scan(
             &*lock_db(&state)?,
             &game.id,
