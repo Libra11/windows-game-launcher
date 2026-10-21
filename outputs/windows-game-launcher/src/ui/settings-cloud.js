@@ -2,6 +2,8 @@ import { resourceLabel, describeCloudValue, parseCloudValue } from './cloud-pres
 import { el, button } from '../lib/dom.js';
 import { field } from './form-fields.js';
 import { settingsSection } from './settings-components.js';
+import { canPollCloud } from '../lib/cloud-polling.js';
+import { importSummary, importGamePlan } from './cloud-import-summary.js';
 
 export const cloudPhaseLabel = phase => ({
   unbound:'待预览并绑定资料库', login_required:'需要登录', pending:'有待上传的修改',
@@ -17,12 +19,14 @@ export function settingsCloud(actions) {
   const name=field('设备名称','我的电脑','例如：掌机');
   const code=field('邮箱验证码','','8 位数字');code.input.autocomplete='one-time-code';
   const tools=el('div','settings-tools'),details=el('div'),preview=el('div'),conflicts=el('div'),devices=el('div');
-  let disposed=false,busy=false,challengeId='',bound=false;
-  async function run(job) {
+  const importNotice=el('p','settings-description cloud-import-notice');
+  importNotice.setAttribute('role','status');importNotice.setAttribute('aria-live','polite');
+  let disposed=false,busy=false,challengeId='',bound=false,loggedIn=false,detailsSnapshot='';
+  async function run(job,background=false) {
     if(busy||disposed)return;busy=true;
-    element.querySelectorAll('button').forEach(b=>b.disabled=true);
+    if(!background)element.querySelectorAll('button').forEach(b=>b.disabled=true);
     try{await job();}catch(error){if(!disposed)status.textContent=String(error);}
-    finally{busy=false;if(!disposed)element.querySelectorAll('button').forEach(b=>b.disabled=false);}
+    finally{busy=false;if(!disposed&&!background)element.querySelectorAll('button').forEach(b=>b.disabled=false);}
   }
   const send=button('发送验证码','secondary',()=>run(async()=>{
     const response=await actions.run('cloud_challenge',{baseUrl:url.input.value,email:email.input.value});
@@ -34,29 +38,55 @@ export function settingsCloud(actions) {
     code.input.value='';await refresh();
   }));
   let mappings=[],resolutions=[];
+  function runImport(message,job) {
+    return run(async()=>{
+      importNotice.textContent=message;preview.setAttribute('aria-busy','true');
+      try{await job();}
+      catch(error){
+        if(!disposed)importNotice.textContent=`操作未完成：${String(error)}。请根据提示处理；不要重复确认导入。`;
+        throw error;
+      }finally{if(!disposed)preview.setAttribute('aria-busy','false');}
+    });
+  }
   async function prepareImport(){
     const value=await actions.run('cloud_prepare_import',{mappings,resolutions});
     if(disposed)return;
     mappings=value.effectiveMappings||mappings;
-    preview.replaceChildren(el('h3','','导入预览'),el('p','settings-description',`共 ${value.resourceCount} 项资源。确认后绑定此账号；路径和凭据不会上传。`));
-    for(const warning of value.warnings||[])preview.append(el('p','settings-description',String(warning)));
+    preview.replaceChildren(el('h3','','导入预览'),el('p','settings-description','以下是本机参与同步的数据。确认后绑定此账号；游戏文件、存档文件、本机路径和登录凭据不会随此次资料导入上传。'));
+    const summary=el('div','cloud-import-summary');
+    for(const [label,count,unit] of importSummary(value)){
+      const item=el('div','cloud-import-stat');item.append(el('strong','',String(count)),el('span','',`${unit} · ${label}`));summary.append(item);
+    }
+    preview.append(summary,el('p','settings-description','数量按数据类别统计；同一款游戏会包含名称、关联、收藏与归档状态等多条同步记录，不代表新增多款游戏。'));
+    const automatic=el('details','cloud-import-automatic'),automaticRows=el('div','cloud-import-games');
+    let automaticCount=0,choiceCount=0;
+    const attention=el('section','cloud-import-attention');
+    for(const warning of new Set(value.warnings||[]))preview.append(el('p','settings-description',String(warning)));
     for(const game of value.localGames||[]){
       const row=el('label','field');row.append(el('span','',game.title));
-      const selected=(value.mappings||[]).find(m=>m.localId===game.id);
-      if(game.source!=='local'){
-        row.append(el('span','settings-description','按平台身份关联：'+(selected?.cloudId||'新增条目')));
+      const plan=importGamePlan(value,game);
+      if(!plan.needsChoice){
+        const platform=({steam:'Steam',epic:'Epic',local:'本地游戏'})[game.source]||'游戏';
+        row.append(el('span','settings-description',`${platform} · ${plan.existing?'关联云端已有游戏':'新增到云端'}`));
+        automaticCount++;automaticRows.append(row);
       }else{
+        choiceCount++;
+        row.append(el('small','settings-description','云端有成就资料兼容的本地游戏。若为同一款，请选择关联；否则保留为独立游戏。'));
         const select=el('select');select.setAttribute('aria-label',game.title+' 的云端关联');
-        const auto=el('option','','按身份自动关联或新增');auto.value='';select.append(auto);
-        for(const candidate of (value.cloudGames||[]).filter(g=>g.source==='local')){
-          const option=el('option','',candidate.title+' · '+candidate.namespace);
-          option.value=candidate.id;option.disabled=candidate.namespace!==game.namespace;select.append(option);
+        const auto=el('option','','保留为独立游戏（不手动关联）');auto.value='';select.append(auto);
+        for(const candidate of plan.candidates){
+          const option=el('option','',candidate.title);
+          option.value=candidate.id;select.append(option);
         }
         select.value=mappings.find(m=>m.localId===game.id)?.cloudId||'';
         select.onchange=()=>{mappings=mappings.filter(m=>m.localId!==game.id);if(select.value)mappings.push({localId:game.id,cloudId:select.value});confirm.hidden=true;};
-        row.append(select,el('small','settings-description','当前成就命名空间：'+game.namespace));
-      }preview.append(row);
+        row.append(select);attention.append(row);
+      }
     }
+    const conflictCount=value.unresolvedCount||0;
+    preview.append(el('h3','',conflictCount?`需要处理 · ${conflictCount} 项冲突`:'没有待处理的冲突'));
+    if(choiceCount)preview.append(el('p','settings-description',`${choiceCount} 款本地游戏可核对关联；不会自动合并。`),attention);
+    if(!choiceCount&&!conflictCount)preview.append(el('p','settings-description','游戏关联已自动安排，可以确认导入。'));
     for(const conflict of value.conflicts||[]){
       const row=el('section','settings-service');row.append(el('h3','',resourceLabel(conflict.kind)+'：需要选择'),
         el('p','',conflict.reason),el('p','', '本机：'+describeCloudValue(conflict.kind,conflict.local)),
@@ -73,12 +103,25 @@ export function settingsCloud(actions) {
       row.append(select);if((conflict.choices||[]).includes('map'))row.append(target);
       if((conflict.choices||[]).includes('rename'))row.append(rename);preview.append(row);
     }
-    const confirm=button('确认绑定并导入' ,'primary',()=>run(async()=>{await actions.run('cloud_commit_import');preview.replaceChildren();await refresh();}));
+    if(automaticCount){automatic.append(el('summary','',`自动处理的游戏 · ${automaticCount} 款（查看明细）`),automaticRows);preview.append(automatic);}
+    const confirm=button('确认绑定并导入' ,'primary',()=>runImport('正在确认并导入云端，随后会下载合并结果，请稍候…',async()=>{
+      confirm.textContent='正在导入…';
+      try{
+        await actions.run('cloud_commit_import');
+        if(disposed)return;
+        preview.replaceChildren();importNotice.textContent='导入已完成，资料库已绑定当前云账号。';
+        try{await refresh();}catch(error){importNotice.textContent=`导入已完成，但状态刷新失败：${String(error)}`;}
+      }catch(error){
+        if(String(error).includes('本地数据已变化'))confirm.hidden=true;
+        throw error;
+      }finally{confirm.textContent='确认绑定并导入';}
+    }));
     confirm.hidden=(value.unresolvedCount||0)>0;
     if(confirm.hidden)preview.append(el('p','settings-description','请解决全部冲突并重新预览，尚未提交任何资料。'));
-    preview.append(button('按所选关联重新预览' ,'secondary',()=>run(prepareImport)),confirm);
+    preview.append(button('按所选关联重新预览' ,'secondary',()=>runImport('正在重新生成导入预览…',prepareImport)),confirm);
+    importNotice.textContent=confirm.hidden?'预览已更新，请处理冲突后重新预览。':'预览已就绪，请核对后确认导入。';
   }
-  const prepare=button('预览资料导入','secondary',()=>run(prepareImport));
+  const prepare=button('预览资料导入','secondary',()=>runImport('正在读取本机资料并生成云端预览…',prepareImport));
   const sync=button('立即同步','secondary',()=>run(async()=>{status.textContent='正在同步…';await actions.run('cloud_sync');await refresh();}));
   const logout=button('退出登录','secondary',()=>run(async()=>{await actions.run('cloud_logout');await refresh();}));
   const list=button('查看设备','secondary',()=>run(async()=>{
@@ -93,15 +136,20 @@ export function settingsCloud(actions) {
   }));
   tools.append(send,login,prepare,sync,list,logout);
   form.append(url.wrapper,email.wrapper,name.wrapper,code.wrapper,tools);
-  element.append(status,form,details,preview,conflicts,devices);
+  element.append(status,form,details,preview,importNotice,conflicts,devices);
   async function refresh() {
     const data=await actions.run('cloud_status');if(disposed)return;
     bound=!!data.boundUserId;
+    loggedIn=!!data.loggedIn;
     if(!url.input.value)url.input.value=data.baseUrl||'';
     url.input.disabled=bound;
-    status.textContent=cloudPhaseLabel(data.phase)+(data.error?'：'+data.error:'');
-    details.replaceChildren(el('p','settings-description',`待上传：${data.pending||0}；上次成功：${data.lastSuccess||'尚未同步'}`));
+    const message=cloudPhaseLabel(data.phase)+(data.error?'：'+data.error:'');
+    if(status.textContent!==message)status.textContent=message;
     prepare.hidden=bound||!data.loggedIn;sync.hidden=!bound;logout.hidden=!data.loggedIn;
+    const snapshot=JSON.stringify([data.pending,data.lastSuccess,data.games,data.conflicts]);
+    if(snapshot===detailsSnapshot)return;
+    detailsSnapshot=snapshot;
+    details.replaceChildren(el('p','settings-description',`待上传：${data.pending||0}；上次成功：${data.lastSuccess||'尚未同步'}`));
     const library=el('section','settings-service');library.append(el('h3','','游戏归档'));
     const active=(data.games||[]).filter(g=>!g.archived),archived=(data.games||[]).filter(g=>g.archived);
     const select=el('select');select.setAttribute('aria-label','选择要归档的游戏');
@@ -131,6 +179,6 @@ export function settingsCloud(actions) {
     }
   }
   run(refresh);
-  const timer=setInterval(()=>{if(!busy&&!disposed)run(refresh);},5000);
+  const timer=setInterval(()=>{if(!busy&&!disposed&&canPollCloud(element,loggedIn))run(refresh,true);},5000);
   return {element,dispose(){disposed=true;clearInterval(timer);}};
 }

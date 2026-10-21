@@ -50,6 +50,14 @@
 .settings-credentials { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
 .settings-service [type="submit"] { justify-self:start; width:auto; min-width:130px; }
 .settings-page .connection-card { padding:0; border:0; border-radius:0; background:none; }
+.cloud-import-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:12px; margin:20px 0; }
+.cloud-import-stat { display:flex; flex-direction:column; gap:8px; padding:16px; border:1px solid var(--line); border-radius:8px; }
+.cloud-import-stat strong { font-size:24px; font-weight:550; color:var(--text); }
+.cloud-import-stat span { font-size:12px; color:var(--muted); }
+.cloud-import-attention { display:grid; gap:18px; padding:18px; margin:16px 0; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; }
+.cloud-import-automatic { margin:20px 0; border-top:1px solid var(--line); padding-top:16px; }
+.cloud-import-automatic summary { cursor:pointer; color:var(--muted); font-size:13px; }
+.cloud-import-games { display:grid; gap:14px; margin-top:16px; max-height:360px; overflow:auto; }
 .settings-page .connection-card>.icon { width:18px; height:18px; }
 .settings-page .connection-card>div { font-size:16px; font-weight:550; }
 .settings-notification-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }

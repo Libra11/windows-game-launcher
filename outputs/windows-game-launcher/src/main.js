@@ -313,7 +313,7 @@ if(!preview)command('get_backup_restore_status').then(async notice=>{
   if(!notice.acknowledged)toast(notice.message+(notice.missingPaths?` 尚有 ${notice.missingPaths} 款游戏需要定位。`:''),!notice.success);
   await command('ack_backup_restore',{restoreId:notice.id,appearanceApplied:window.__youjiRestoredPreferencesId===notice.id});
 }).catch(()=>{});
-setInterval(() => { if (!document.hidden && !document.querySelector('dialog[open]')) refresh(true).catch(() => {}); }, 5000);
+setInterval(() => { if (state.page !== 'settings' && !document.hidden && !document.querySelector('dialog[open]')) refresh(true).catch(() => {}); }, 5000);
 $('#content').append(el('div', 'loading-state', '正在打开你的收藏…'));
 appUpdates.subscribe(status=>$('#navigation [data-page="settings"]')?.classList.toggle('update-available',updateAvailable(status)));
 appUpdates.start().catch(()=>{});

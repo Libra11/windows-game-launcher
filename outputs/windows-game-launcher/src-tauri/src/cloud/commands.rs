@@ -65,7 +65,7 @@ pub async fn cloud_prepare_import(app:tauri::AppHandle,mappings:Option<Vec<Value
     let cloud=app.state::<Cloud>();let _gate=cloud.sync_gate.lock().await;
     let session=cloud.session.lock().await.as_ref().map(|s|(s.user_id.to_string(),s.device_id.to_string())).ok_or("请先登录")?;
     let resources={let state=app.state::<crate::AppState>();let c=crate::lock_db(&state)?;super::export::resources(&c,&session.1)?};
-    let digest=youji_cloud_protocol::digest(&resources)?;
+    let digest=super::export::import_digest(&resources)?;
     for resource in &resources{if serde_json::to_vec(resource).map_err(err)?.len()>1024*1024{return Err("单条导入资源超过 1 MiB，未上传任何资料；请减少该条定义缓存后重试".into());}}
     let local_games:Vec<Value>=resources.iter().filter(|r|r["resourceType"]=="game").map(|r|json!({"id":r["resourceId"],"title":r["payload"]["displayTitle"],"source":r["payload"]["source"],"namespace":r["payload"]["achievementReference"]})).collect();
     let snap=request(&app,"POST","/v1/sync/snapshots",Some(json!({}))).await?;
@@ -84,10 +84,17 @@ pub async fn cloud_prepare_import(app:tauri::AppHandle,mappings:Option<Vec<Value
         let mut q=c.prepare("SELECT local_id,cloud_id FROM sync_game_links").map_err(err)?;
         let rows=q.query_map([],|r|Ok(json!({"localId":r.get::<_,String>(0)?,"cloudId":r.get::<_,String>(1)?}))).map_err(err)?.collect::<Result<Vec<_>,_>>().map_err(err)?;rows};
     let effective=super::library::restore_mappings(&local_games,&cloud_games,&saved,mappings.unwrap_or_default());
+    let mut resource_counts=std::collections::BTreeMap::<String,usize>::new();
+    for resource in &resources {
+        if let Some(kind)=resource["resourceType"].as_str() {
+            *resource_counts.entry(kind.to_string()).or_default()+=1;
+        }
+    }
     let body=json!({"resources":resources,"localDigest":digest,"mappings":effective,"resolutions":resolutions.unwrap_or_default()});
     if serde_json::to_vec(&body).map_err(err)?.len()>64*1024*1024{return Err("导入资料超过 64 MiB，未上传任何资料；请精简定义缓存后重试".into());}
     let mut result=request(&app,"POST","/v1/imports/prepare",Some(body)).await?;
     result["effectiveMappings"]=json!(effective);
+    result["resourceCounts"]=json!(resource_counts);
     result["localGames"]=json!(local_games);result["cloudGames"]=json!(cloud_games);
     *cloud.import_preview.lock().await=Some(result.clone());Ok(result)
 }
@@ -101,7 +108,7 @@ pub async fn cloud_commit_import(app:tauri::AppHandle)->Result<(),String>{
         if crate::db::games(&c)?.iter().any(|game|matches!(runtime.info(&game.id).state.as_str(),"starting"|"running")){
             return Err("请先退出游戏并保存计时检查点，再提交导入".into());
         }
-        youji_cloud_protocol::digest(&super::export::resources(&c,&device)?)?
+        super::export::import_digest(&super::export::resources(&c,&device)?)?
     };
     if preview["localDigest"].as_str()!=Some(&digest){return Err("本地数据已变化，请重新预览".into());}
     let id=preview["importId"].as_str().ok_or("导入标识缺失")?;
@@ -110,7 +117,7 @@ pub async fn cloud_commit_import(app:tauri::AppHandle)->Result<(),String>{
     {let state=app.state::<crate::AppState>();let mut c=crate::lock_db(&state)?;
         store::transaction(&mut c,|tx|{
             // 网络期间的本地更改不能被快照覆盖。
-            if youji_cloud_protocol::digest(&super::export::resources(tx,&device)?)?!=digest{return Err("云端已接收导入，但本地期间发生修改，请重新预览以合并".into());}
+            if super::export::import_digest(&super::export::resources(tx,&device)?)?!=digest{return Err("云端已接收导入，但本地期间发生修改，请重新预览以合并".into());}
             super::library::remap_categories(tx,result["categoryMappings"].as_array().map(Vec::as_slice).unwrap_or(&[]))?;
             for m in mappings{tx.execute("INSERT INTO sync_game_links VALUES(?1,?2) ON CONFLICT(local_id) DO UPDATE SET cloud_id=excluded.cloud_id",params![m["localId"].as_str().ok_or("本地映射缺失")?,m["cloudId"].as_str().ok_or("云端映射缺失")?]).map_err(err)?;}
             tx.execute("INSERT INTO account_binding VALUES(1,?1,?2,?3) ON CONFLICT(singleton) DO UPDATE SET device_id=excluded.device_id",params![user,device,uuid::Uuid::new_v4().to_string()]).map_err(err)?;

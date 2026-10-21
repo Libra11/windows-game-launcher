@@ -8,7 +8,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 use tauri::Manager;
 
-#[tauri::command]
+// 文件探测、凭据读取和数据库等待不能阻塞窗口消息线程。
+#[tauri::command(async)]
 pub(crate) fn list_games(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,

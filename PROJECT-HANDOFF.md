@@ -1,4 +1,49 @@
 # 项目交接状态
+## 2026-10-21 19:45 真实资料库首次云导入验收成功
+
+- 用户自行重新预览并确认后，本轮只读查询已部署 PostgreSQL：真实账号 initialized=true、sequence=2623，5 次预览中 1 次已提交；正式 sync_resources 共 2623 条，含 261 游戏、97 自动成就、56 游玩记录、15 收藏夹、351 分类归属、181 成就资料、261 历史时长、81 官方时长、12 成就统计事件及 2 平台账号。服务端写入时间北京时间 19:44:31。
+- 外部 WMI 读取真实安装库：bound=1、game_links=261、shadow=2623、games=261、pending=0、conflicts=0，last_success 北京时间 19:44:40。首次导入与本机回拉同步均已完成；首次历史导入基线已使用，后续不能再沿用旧文档“尚未初始化”的结论。
+- 本轮没有再次提交导入、修改服务器或用户资料。此次验证为资料同步，不代表游戏文件或存档文件已上传。
+## 2026-10-21 导入仍失效的实际根因：重复扫描改写自动成就时间
+
+- 上次只排除 Steam checkedAt 并未解决用户这次报错。只读核对河源目标 iZf8z4cfpxgbgf6kbcvpokZ、libra-diary-postgres-1：真实账号 4 个 import_jobs、0 个已提交、initialized=false、sequence=0、sync_resources 空。本轮服务器仅只读 SELECT；本机新增专用 SSH known_hosts（首次信任）。
+- 下载最后一次导入计划到忽略的诊断目录，与真实本机只读导出反向还原映射后比较：50 条 automatic_unlock.unlockedAt 从预览时刻变为扫描时刻；测试导出 cfg(test) 未解码 Epic 平台凭据导致缺 1 个平台账号，不是业务差异。临时诊断 Rust 测试已移除，私人导出/计划不提交。
+- scanner 每 3 秒扫描，无原始时间时传入 now。db::add_unlock 先调用云 hooks 更新 achievement_facts，而旧 unlocks INSERT OR IGNORE 保留原时间，造成两表不一致及预览必然失效。现同游戏/成就/来源复用 unlocks 已存时间，保留手动晋升自动语义，不忽略真实成就变更。
+- 26 项 cloud 测试、5 项 db 测试通过（测试产物仍需同款 manifest）；新增未绑定/已绑定重复扫描摘要与 outbox 稳定、新成就改变摘要、手动晋升时间测试。Windows release 构建通过。
+- 用户退出后替换主 EXE，SHA256 0B00097A0A9C55FC57072A21CF8F3B4FD27D915A6AC234EF0B20A75AFBF01B4A；旧版备份 work/diagnostics/startup-20261021/program-before-scan-fix.exe。外部 WMI 启动 PID 38244，真实 UI 261 游戏/15 收藏夹；跨 10 秒多轮扫描 achievement_facts 1179 条保持完全一致，与同来源 unlocks 时间不匹配数 0，数据库 quick_check ok。
+- 尚未代用户提交导入；需用户重新预览确认后再核对云端完成情况。无安装包、Git 提交或推送。
+## 2026-10-21 云导入误判失效与提交反馈修复
+
+- 实际 Steam 时长缓存与备份相比仅 checkedAt 更新，游戏时长相同；旧导入摘要包含查询时间，后台刷新可让预览失效。新增 import_digest 仅忽略 official_playtime.checkedAt 并按资源身份排序，prepare、提交前及提交后事务核对统一使用；真实名称/时长/资源增减仍会拒绝旧预览。上传内容保持完整。
+- 导入/重新预览持续显示进度、失败和成功结果；提交中按钮显示“正在导入…”并防止重复点击。数据变化错误隐藏失效确认按钮，需重新预览；后台状态刷新不清除操作提示。
+- 5 项相关前端测试通过；摘要回归测试通过（本地 Rust 测试 EXE 同前需嵌入应用 Common-Controls manifest）；Windows release 构建通过。
+- 用户退出确认后，仅替换本机主 EXE；SHA256 F6F55C107E82604F6B3625C2886A6C545FE843EF460C2338669F53904CD9FA85。上版备份 work/diagnostics/startup-20261021/program-before-import-feedback.exe。外部 WMI 启动及原生窗口验证真实游戏库 261 款、15 收藏夹正常显示；未代用户确认导入，实际云端提交结果待用户重做预览并确认。无安装包、Git 提交或推送。
+
+## 2026-10-21 云导入预览按业务数量汇总
+
+- 桌面 prepare 从本机导出资源计算 resourceCounts，界面按游戏、成就记录、游玩记录、收藏夹、标签、分类归属、成就资料、历史/官方时长、成就统计事件、平台账号显示数量；口径为本机参与同步的数据，不是服务端最终新增量。
+- 自动游戏安排默认折叠，只显示名称/平台/新增或关联状态，隐藏 UUID 和成就命名空间；有兼容候选但尚未关联的本地游戏突出提示核对。保留冲突显式处理、修改后重新预览和最后确认导入；重复提醒去重。
+- 5 项相关前端测试及前端/Windows release 构建通过。已获用户退出确认后替换 D:/Program Files/youji 主 EXE，SHA256 BA1194BA44FE13AD3774691AED8F6FED568F7A07DFE252BBA9883AB22B60C748；上版备份 work/diagnostics/startup-20261021/program-before-import-preview.exe。版本仍 0.2.15，无安装包、Git 提交或推送。
+- 使用外部 WMI 重新启动真实用户环境；本轮没有触发实际云端预览、确认绑定或导入。用户重新点预览即可查看新界面；相关说明追加至源码 README。
+
+
+## 2026-10-21 输入卡顿修复与 Windows 配置迁入
+
+- 设置页不再每 5 秒拉取完整游戏库；list_games 使用 Tauri 异步命令分发，避免文件检查、凭据读取和 SQLite 等待阻塞窗口线程。云状态仅在已登录、可见且未编辑时轮询，相同数据保留游戏选择/冲突节点；后台轮询不再禁用全部按钮。
+- 4 项相关前端测试通过（含未登录/隐藏/输入中暂停及相同列表节点/选择保留），前端和 Windows release 构建成功。已替换本机 EXE，SHA256 `9308A32D795E07695F4C8CB8AAC9EB48E993D359F69AA5AC6BC989E1D77B2F11`。真实库外部启动正常，261 款游戏显示；本轮未量化真实输入延迟，需用户继续确认实际输入体验。
+- 替换前备份 `work/diagnostics/startup-20261021/installed-backup-20261021-192054`（261 游戏、quick_check ok），上版 EXE 为同目录 `program-before-input-fix.exe`。未清空数据、未生成安装包、未提交或推送。
+- 用户提供的 libra-config..tgz SHA256 与 6668ee1c…c7c1 一致；验证 27 个普通文件路径后恢复到本项目，旧同名文件备份于 `work/migrate/before-import-20261021-191835`。部署 .env/.env.smtp 与两把私钥设当前用户独占 ACL，均已被 Git 忽略。必需配置齐全、专用桶 libra-game、前缀 games；两把私钥本地解析及公私钥配对通过。
+- 修正 OSS 脚本按自身位置定位配置及显式 UTF-8 读取；掌机遗留公钥与导入私钥不匹配，已备份并重新生成本机 .pub，未修改远端授权。Python 和掌机 PowerShell 静态语法检查通过，没有执行远端脚本。cloud_ops.py 依赖另一项目 Mac 环境，仅存档；细节见 work/migrate/README-WINDOWS.md。本轮没有连接服务器/OSS/掌机、部署或发送验证码。
+
+
+## 2026-10-21 本机 0.2.15 启动闪退修复并替换验证
+
+- 用户授权构建修复版、替换本机程序、保留所有数据并验证启动。实际安装目录 `D:/Program Files/youji`，真实用户库 261 款游戏；Codex Store 子进程被 AppData 虚拟化到旧的 88 款副本，不能用直接 Start-Process 的结果判断真实安装版。
+- 通过外部 WMI 创建进程复现：setup 中平台凭据迁移报“保存登录凭据失败”并 panic。Epic 会话 5553 字节，原 1536 字节分片经 Base64 + keyring UTF-16 后为 4096 字节，超过 Windows 凭据 2560 字节上限。`cloud/secrets.rs` 改为 960 字节分片；读回格式不变，不清空登录信息。
+- 前端及 Windows release --no-bundle 构建通过。长凭据、UTF-8 跨片及边界回归测试通过；测试 EXE 初次因缺少 Common-Controls v6 manifest 出现 0xc0000139，给本地测试产物嵌入应用同款 manifest 后通过，正式 EXE 自带该 manifest。
+- 原程序及真实 Roaming 数据备份：`work/diagnostics/startup-20261021/installed-backup-20261021-190606/`，含 SQLite 在线一致备份。诊断文件含私有数据，不提交或公开。仅替换安装主 EXE，SHA256 `B3BCE4EDB7A601095122EE589F9DDA1E2A08DDF5216CD998AE2381041B7535E7`；版本仍为 0.2.15，未生成安装包、提交或推送。
+- 修复版外部启动正常、stderr 无启动错误；原生窗口截图和可访问性验证 261 游戏/15 收藏夹。SQLite quick_check ok，261 游戏、13915 成就定义、1179 解锁数量与备份一致；原 Epic 凭据与迁移后 Windows 凭据解码值相等（未输出内容）。任务栏快捷方式外部调用可调出真实库窗口。
+- 构建缓存 `D:/codex-build/youji-startup-fix/`；构建、外部启动、只读校验脚本在上述诊断目录。后续仍须使用外部 WMI 环境核对真实用户数据，避免直接从 Codex 启动正式版。
 
 ## 2026-10-21 河源部署完成并通过真实验收（libra-diary 已上线）
 

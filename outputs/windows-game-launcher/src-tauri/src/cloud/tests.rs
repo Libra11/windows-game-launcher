@@ -17,6 +17,38 @@ fn resource(kind:K,id:&str,payload:serde_json::Value,revision:i64)->Resource{
     Resource{resource_type:kind,resource_id:id.into(),payload,revision,deleted:false,device_id:uuid::Uuid::new_v4(),updated_at:"2026-10-21T00:00:00Z".into()}
 }
 #[test]
+fn repeated_scans_preserve_import_digest_and_do_not_enqueue_again(){
+    for bound in [false,true] {
+        let(_dir,c,local,_cloud)=setup();
+        if !bound {c.execute("DELETE FROM account_binding",[]).unwrap();}
+        let first="2026-10-21T10:00:00Z";
+        let later="2026-10-21T10:00:30Z";
+        for source in ["local","xbox-local"] {
+            assert!(crate::db::add_unlock(&c,&local,source,source,first,"scan").unwrap());
+        }
+        let before=export::import_digest(&export::resources(&c,"device").unwrap()).unwrap();
+        let pending=store::pending(&c).unwrap();
+        for source in ["local","xbox-local"] {
+            assert!(!crate::db::add_unlock(&c,&local,source,source,later,"scan").unwrap());
+            let time:String=c.query_row("SELECT unlocked_at FROM achievement_facts WHERE game_id=?1 AND api_name=?2",params![local,source],|r|r.get(0)).unwrap();
+            assert_eq!(time,first);
+        }
+        assert_eq!(before,export::import_digest(&export::resources(&c,"device").unwrap()).unwrap());
+        assert_eq!(serde_json::to_value(pending).unwrap(),serde_json::to_value(store::pending(&c).unwrap()).unwrap());
+        assert!(crate::db::add_unlock(&c,&local,"new","local",later,"scan").unwrap());
+        assert_ne!(before,export::import_digest(&export::resources(&c,"device").unwrap()).unwrap());
+    }
+}
+#[test]
+fn automatic_promotion_keeps_its_own_first_time(){
+    let(_dir,c,local,_cloud)=setup();
+    crate::db::add_unlock(&c,&local,"a","manual","2026-10-21T09:00:00Z","").unwrap();
+    crate::db::add_unlock(&c,&local,"a","local","2026-10-21T10:00:00Z","scan").unwrap();
+    crate::db::add_unlock(&c,&local,"a","local","2026-10-21T11:00:00Z","scan").unwrap();
+    let time:String=c.query_row("SELECT unlocked_at FROM achievement_facts WHERE game_id=?1 AND api_name='a' AND source='local'",[local],|r|r.get(0)).unwrap();
+    assert_eq!(time,"2026-10-21T10:00:00Z");
+}
+#[test]
 fn atomic_outbox_failure_rolls_back_favorite_and_game(){
     let(_dir,c,local,_cloud)=setup();
     c.execute_batch("CREATE TRIGGER fail_outbox BEFORE INSERT ON sync_outbox BEGIN SELECT RAISE(ABORT,'test failure'); END;").unwrap();

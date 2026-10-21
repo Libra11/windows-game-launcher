@@ -278,7 +278,13 @@ pub fn add_unlock(
     evidence: &str,
 ) -> Result<bool, String> {
     crate::cloud::hooks::atomic(conn, || {
-        crate::cloud::hooks::unlock(conn,game_id,api_name,source,unlocked_at,true)?;
+        // 扫描器对无时间记录使用当前时间；重复发现不能改写已保存的解锁时间。
+        // 与 INSERT OR IGNORE 一致，同来源保留原时间；手动晋升自动仍使用新来源时间。
+        let saved_time:Option<String>=conn.query_row(
+            "SELECT unlocked_at FROM unlocks WHERE game_id=?1 AND api_name=?2 AND source=?3",
+            params![game_id,api_name,source],|row|row.get(0),
+        ).optional().map_err(|e|e.to_string())?;
+        crate::cloud::hooks::unlock(conn,game_id,api_name,source,saved_time.as_deref().unwrap_or(unlocked_at),true)?;
         add_unlock_row(conn,game_id,api_name,source,unlocked_at,evidence)
     })
 }

@@ -3,6 +3,38 @@ use rusqlite::{Connection,params,OptionalExtension};
 use serde_json::{json,Value};
 use super::store::err;
 
+// 导入确认核对业务内容；后台仅刷新查询时间不应使用户的选择失效。
+pub fn import_digest(resources: &[Value]) -> Result<String,String> {
+    let mut resources=resources.to_vec();
+    for resource in &mut resources {
+        if resource["resourceType"]=="official_playtime" {
+            if let Some(payload)=resource["payload"].as_object_mut(){payload.remove("checkedAt");}
+        }
+    }
+    resources.sort_by(|a,b| {
+        (a["resourceType"].as_str(),a["resourceId"].as_str())
+            .cmp(&(b["resourceType"].as_str(),b["resourceId"].as_str()))
+    });
+    youji_cloud_protocol::digest(&resources)
+}
+
+#[cfg(test)]
+mod import_digest_tests {
+
+    use super::*;
+    #[test]
+    fn background_timestamp_and_resource_order_do_not_invalidate_preview() {
+        let a=vec![json!({"resourceType":"official_playtime","resourceId":"g","payload":{"seconds":60,"checkedAt":"old"}}),json!({"resourceType":"title","resourceId":"g","payload":{"value":"游戏"}})];
+        let mut b=a.clone();b[0]["payload"]["checkedAt"]=json!("new");b.reverse();
+        assert_eq!(import_digest(&a).unwrap(),import_digest(&b).unwrap());
+        b[1]["payload"]["seconds"]=json!(61);
+        assert_ne!(import_digest(&a).unwrap(),import_digest(&b).unwrap());
+        b=a.clone();b[1]["payload"]["value"]=json!("新名称");
+        assert_ne!(import_digest(&a).unwrap(),import_digest(&b).unwrap());
+        b=a.clone();b.pop();assert_ne!(import_digest(&a).unwrap(),import_digest(&b).unwrap());
+    }
+}
+
 pub fn resources(c:&Connection,device:&str)->Result<Vec<Value>,String>{
     let mut out=Vec::new();
     let mut push=|kind:&str,id:String,payload:Value|out.push(json!({"resourceType":kind,"resourceId":id,"payload":payload}));
