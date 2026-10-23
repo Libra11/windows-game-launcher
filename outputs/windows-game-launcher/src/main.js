@@ -153,7 +153,7 @@ const actions = { run, toast,
     if(category)settingsPage.openCategory(category);
     render();window.scrollTo(0,0);
   },
-  statistics:()=>{selectionVersion++; state.page='statistics'; state.selectedId=''; render(); statistics.refresh(true);},
+  statistics:()=>{selectionVersion++; state.page='statistics'; state.selectedId=''; render(); statistics.refresh();},
   onlineSearch:async()=>{
     if(state.bigScreen)await bigMode.exit();
     selectionVersion++;state.page='online-search';state.selectedId='';

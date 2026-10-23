@@ -330,3 +330,31 @@ fn epic_events_match_epic_definitions_and_do_not_mix_with_steam() {
         0
     );
 }
+
+#[test]
+fn aggregate_counts_match_details_with_cloud_namespace_and_shared_definitions() {
+    let dir = tempfile::tempdir().unwrap();
+    let conn = db::open(&dir.path().join("games.sqlite")).unwrap();
+    let first = game(&conn, "1", "steam", "Steam Web API");
+    game(&conn, "2", "steam", "Steam Web API");
+    for id in ["1", "2"] {
+        db::set_setting(&conn, &format!("cloud_achievement_namespace:{id}"), "shared").unwrap();
+    }
+    let mut shared = first.clone();
+    shared.appid = "shared".into();
+    definitions(&conn, &shared, 3);
+    // 不同游戏共用定义，孤立解锁与另一游戏的记录不应混入。
+    conn.execute_batch(
+        "INSERT INTO unlocks VALUES('1','0','manual','',''),('1','1','steam','2026-10-22T00:00:00Z',''),
+         ('1','orphan','manual','',''),('2','2','steam','2026-10-22T00:00:00Z','');"
+    ).unwrap();
+    let stats = aggregation::snapshot(&conn, &query("all")).unwrap();
+    for game in &stats.games {
+        let details = db::achievements(&conn, &game.game_id).unwrap();
+        assert_eq!(game.total_achievements, details.len());
+        assert_eq!(game.unlocked, details.iter().filter(|a| a.unlocked_at.is_some()).count());
+        assert_eq!(game.manual_unlocked, details.iter().filter(|a| a.unlock_source.as_deref()==Some("manual")).count());
+    }
+    assert_eq!(stats.summary.unlocked, 3);
+    assert_eq!(stats.summary.manual_unlocked, 1);
+}
