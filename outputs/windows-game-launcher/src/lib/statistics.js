@@ -31,7 +31,7 @@ export function createStatisticsController({command, render, visible, now = Date
     offset:0, month:'', metric:'seconds', inspectDate:'', rankBasis:'period', rankExpanded:false, achievementExpanded:false, scroll:0, returnFocus:'' };
   let generation = 0, pending = null, again = false, dirty = false, lastFetched = -Infinity;
   function refresh(force = false) {
-    if (!visible() && !force) return Promise.resolve();
+    if (!visible()) return Promise.resolve();
     if (dirty && visible()) { dirty=false; render(); }
     if (pending) { if (force) again = true; return pending; }
     if (!force && now() - lastFetched < 5000) return Promise.resolve();
@@ -52,8 +52,8 @@ export function createStatisticsController({command, render, visible, now = Date
       if (version !== generation) return;
       state.error = String(error); if (visible()) render();
     }).finally(()=>{
-      pending = null; state.loading = false; lastFetched = now();
-      if (again) { again = false; refresh(true); }
+      pending = null; state.loading = false; lastFetched = version === generation ? now() : -Infinity;
+      if (again) { again = false; if (visible()) refresh(true); }
     });
     return pending;
   }

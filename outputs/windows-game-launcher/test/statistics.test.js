@@ -62,3 +62,44 @@ test('示例平台筛选不改变同一游戏的累计和完成度',()=>{
   const steam=preview('get_statistics',{query:{source:'steam',period:'30'}}).games;
   for(const item of steam)assert.deepEqual(item,all.find(game=>game.gameId===item.gameId));
 });
+
+test('离开页面后丢弃排队刷新，迟到结果不重绘其他页面',async()=>{
+  let visible=true,resolveData,calls=0,renders=0;
+  const payload=new Promise(resolve=>{resolveData=resolve;});
+  const controller=createStatisticsController({visible:()=>visible,render:()=>renders++,command:name=>{
+    calls++;return name==='get_statistics'?payload:Promise.resolve({items:[],total:0});
+  }});
+  const request=controller.refresh();
+  controller.refresh(true);
+  visible=false;
+  const before=renders;
+  resolveData(data());await request;await turn();
+  await controller.refresh(true);
+  assert.equal(calls,2);assert.equal(renders,before);
+  visible=true;await controller.refresh();
+  assert.equal(calls,2);assert.equal(renders,before+1);
+});
+
+test('切换筛选后离开，返回时立即读取新筛选而不受旧请求节流',async()=>{
+  let visible=true,resolveData;
+  const requests=[],payload=new Promise(resolve=>{resolveData=resolve;});
+  const controller=createStatisticsController({visible:()=>visible,now:()=>0,render:()=>{},command:(name,args)=>{
+    requests.push({name,...args});
+    return Promise.resolve(name==='get_statistics'?(args.query.source==='all'?payload:data(args.query.source)):{items:[],total:0});
+  }});
+  const request=controller.refresh();controller.filter('source','steam');visible=false;
+  resolveData(data());await request;await turn();
+  assert.equal(requests.length,2);assert.equal(controller.state.data,null);
+  visible=true;await controller.refresh();
+  assert.equal(requests.length,4);assert.equal(controller.state.data.summary.source,'steam');
+});
+
+test('统计未变化时不重绘，快速返回复用五秒内数据',async()=>{
+  let clock=0,calls=0,renders=0;
+  const controller=createStatisticsController({visible:()=>true,now:()=>clock,render:()=>renders++,command:async name=>{
+    calls++;return name==='get_statistics'?{...data(),generatedAt:String(clock)}:{items:[],total:0};
+  }});
+  await controller.refresh();const before=renders;
+  await controller.refresh();assert.equal(calls,2);
+  clock=5000;await controller.refresh();assert.equal(calls,4);assert.equal(renders,before);
+});

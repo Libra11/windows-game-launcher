@@ -189,22 +189,23 @@ pub(super) fn snapshot(conn: &Connection, query: &Query) -> Result<Snapshot, Str
     let mut namespaces = HashMap::new();
     let mut eligible_total = 0;
     let mut eligible_unlocked = 0;
+    // 统计只需要数量，不加载、排序每项成就的说明和图片，也不重复解析平台关联。
+    let mut counts = conn.prepare_cached(
+        "SELECT COUNT(*),COUNT(u.unlocked_at),COUNT(CASE WHEN u.source='manual' THEN 1 END)
+         FROM achievements a LEFT JOIN unlocks u ON u.game_id=?1 AND u.api_name=a.api_name
+         WHERE a.appid=?2"
+    ).map_err(|e| e.to_string())?;
     for game in &selected {
         let local_seconds = activities
             .get(&game.id)
             .map(|a| a.played_seconds)
             .unwrap_or(0);
         let time = steam_playtime::info(game, local_seconds, &steam, connected);
-        let achievements = db::achievements(conn, &game.id)?;
-        let total = achievements.len();
-        let unlocked = achievements
-            .iter()
-            .filter(|a| a.unlocked_at.is_some())
-            .count();
-        let manual = achievements
-            .iter()
-            .filter(|a| a.unlock_source.as_deref() == Some("manual"))
-            .count();
+        let namespace = achievement_platform::namespace(conn, game)?;
+        let (total, unlocked, manual): (usize, usize, usize) = counts
+            .query_row(rusqlite::params![game.id, namespace], |row| {
+                Ok((row.get::<_, i64>(0)? as usize, row.get::<_, i64>(1)? as usize, row.get::<_, i64>(2)? as usize))
+            }).map_err(|e| e.to_string())?;
         let definition_state = if game.schema_source.contains("暂无成就") {
             "none"
         } else if ["本地记录（仅已解锁）", "Xbox 本地事件（仅已确认）"]
@@ -251,10 +252,7 @@ pub(super) fn snapshot(conn: &Connection, query: &Query) -> Result<Snapshot, Str
             summary.steam_cached |= time.state == "cached";
             summary.steam_checked_at = time.checked_at.clone();
         }
-        namespaces.insert(
-            game.id.clone(),
-            achievement_platform::namespace(conn, game)?,
-        );
+        namespaces.insert(game.id.clone(), namespace);
         games.push(GameStats {
             game_id: game.id.clone(),
             title: game.title.clone(),

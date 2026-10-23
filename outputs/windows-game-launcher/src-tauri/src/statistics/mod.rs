@@ -1,25 +1,27 @@
 mod aggregation;
 mod model;
+mod reader;
 pub(crate) mod store;
 #[cfg(test)]
 mod tests;
-use crate::{lock_db, AppState};
 use model::{Query, SessionPage, Snapshot};
 
-#[tauri::command]
+#[tauri::command(async)]
 pub(crate) fn get_statistics(
-    state: tauri::State<'_, AppState>,
+    app: tauri::AppHandle,
     query: Query,
 ) -> Result<Snapshot, String> {
-    aggregation::snapshot(&*lock_db(&state)?, &query)
+    aggregation::validate(&query)?;
+    reader::read(&app, |conn| aggregation::snapshot(conn, &query))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub(crate) fn list_statistics_sessions(
-    state: tauri::State<'_, AppState>,
+    app: tauri::AppHandle,
     query: Query,
     offset: usize,
     limit: usize,
 ) -> Result<SessionPage, String> {
-    aggregation::session_page(&*lock_db(&state)?, &query, offset, limit)
+    aggregation::validate(&query)?;
+    reader::read(&app, |conn| aggregation::session_page(conn, &query, offset, limit))
 }
