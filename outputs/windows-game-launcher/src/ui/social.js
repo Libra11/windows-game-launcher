@@ -6,7 +6,10 @@ const avatars={'builtin:leaf':'🌿','builtin:moon':'🌙','builtin:star':'⭐'}
 export function statusText(p,connected=true){if(!connected)return '连接异常 · 状态暂不可用';if(!p?.online)return '离线';return p.games?.length?`正在玩 ${p.games[0].title}${p.games.length>1?` 等 ${p.games.length} 款游戏`:''}`:'在线';}
 export function hours(seconds){return seconds==null?'未公开':`${(Number(seconds)/3600).toFixed(1)} 小时`;}
 export function createSocialPage({command,settings,toast,onNavigate=()=>{}},initial='friends'){
- const element=el('div','social-page');let disposed=false,version=0,me,mode=initial,owner,offset=0,busy=false,editing=false,connected=false;let localGames=new Map();const cloudCovers=new Map();
+ const element=el('div','social-page');let disposed=false,version=0,me,mode=initial,owner,offset=0,busy=false,editing=false,connected=false,lastView='';let localGames=new Map();const cloudCovers=new Map(),coverNodes=new Map();
+ let coverRequests=0;const coverQueue=[];
+ function pumpCovers(){while(!disposed&&coverRequests<4&&coverQueue.length){const job=coverQueue.shift();coverRequests++;job().finally(()=>{coverRequests--;pumpCovers();});}}
+ function fetchCover(key,args){if(!cloudCovers.has(key)){const task=new Promise(resolve=>{coverQueue.push(async()=>{try{resolve(await call('cover',args));}catch{cloudCovers.delete(key);resolve(null);}});});cloudCovers.set(key,task);pumpCovers();}return cloudCovers.get(key);}
  const call=(action,args={})=>command('social_call',{action,...args});
  const error=e=>toast(String(e),true);
  function action(label,fn,style='secondary'){return button(label,style,async()=>{try{await fn();}catch(e){error(e);}});}
@@ -60,12 +63,18 @@ export function createSocialPage({command,settings,toast,onNavigate=()=>{}},init
  async function detail(key){const v=await call('space',{id:owner||me.id,game:key});if(!v.game){await load();throw Error('游戏资料已隐藏或不可访问');}const g=v.game;const body=el('div','social-achievements');body.append(el('p','social-muted',`本地记录 ${hours(g.localSeconds)} · 平台官方 ${hours(g.officialSeconds)}（分别展示，不相加）`));
  if(g.achievements==null)body.append(el('p','','成就未公开'));else if(!g.achievements.length)body.append(el('p','','暂无同步的成就资料'));else for(const a of g.achievements){const row=el('article','social-achievement');const art=el('div','social-achievement-icon');art.append(icon('trophy'));if(a.icon&&/^https:\/\//.test(a.icon)){const img=el('img');img.alt='';img.loading='lazy';img.src=a.icon;img.onerror=()=>art.replaceChildren(icon('trophy'));art.replaceChildren(img);}const copy=el('div');row.append(art,copy);copy.append(el('h3','',a.name),el('p','social-muted',a.description),el('p','',a.unlocked?`已解锁 · ${{manual:'手动标记',automatic:'本地检测',official:'平台官方'}[a.source]||'未知来源'}`:'尚未解锁'));body.append(row);}const dialog=modal(g.title,'来自已同步的游戏资料',body);dialog.classList.add('social-detail-modal');}
  function cover(g,compact=false){
+  const nodeKey=JSON.stringify([mode,owner||me.id,g.key,g.coverRevision,g.cover,g.title,compact]);
   const frame=el('div',compact?'social-recent-cover':'social-cover');
-  const media=el('div','social-cover-media');frame.append(media);let localLoaded=false;
-  const fallback=()=>{if(localLoaded)return;const empty=el('div','social-cover-placeholder');empty.append(icon('game'));if(!compact)empty.append(el('span','',g.title));media.replaceChildren(empty);};
-  if(mode==='mine'&&localGames.has(g.key)){command('get_cached_cover',{gameId:localGames.get(g.key).id,wide:false}).then(path=>{if(!path||disposed||!frame.isConnected)return;const img=el('img');img.alt='';img.onload=()=>{if(disposed)return;localLoaded=true;media.replaceChildren(img);};img.src=localCoverUrl(path);}).catch(()=>{});}
-  if(g.coverRevision){const cacheKey=`${owner||me.id}:${g.key}:${g.coverRevision}`;if(!cloudCovers.has(cacheKey))cloudCovers.set(cacheKey,call('cover',{id:owner||me.id,game:g.key}).catch(()=>{cloudCovers.delete(cacheKey);return null;}));cloudCovers.get(cacheKey).then(v=>{if(!v||disposed||localLoaded||!media.isConnected||!/^data:image\/jpeg;base64,/.test(v.data))return;const img=el('img');img.alt='';img.onload=()=>{if(!localLoaded&&!disposed)media.replaceChildren(img);};img.src=v.data;});}
-  fallback();if(g.cover){const img=el('img');img.alt='';img.loading='lazy';img.src=g.cover;img.onerror=fallback;media.replaceChildren(img);}return frame;
+  if(coverNodes.has(nodeKey)){frame.append(coverNodes.get(nodeKey));return frame;}
+  const media=el('div','social-cover-media');frame.append(media);let priority=0;
+  const empty=el('div','social-cover-placeholder');empty.append(icon('game'));if(!compact)empty.append(el('span','',g.title));media.append(empty);
+  // Only successfully decoded images can replace a lower-priority source.
+  function show(src,rank){if(disposed||rank<=priority)return;const img=el('img');img.alt='';img.decoding='async';img.onload=()=>{if(disposed||rank<=priority)return;priority=rank;media.replaceChildren(img);};img.src=src;}
+  if(g.cover)show(g.cover,1);
+  if(mode==='mine'&&localGames.has(g.key)){command('get_cached_cover',{gameId:localGames.get(g.key).id,wide:false}).then(path=>{if(path)show(localCoverUrl(path),3);}).catch(()=>{});}
+  if(g.coverRevision){const cacheKey=`${owner||me.id}:${g.key}:${g.coverRevision}`;fetchCover(cacheKey,{id:owner||me.id,game:g.key}).then(v=>{if(v&&/^data:image\/jpeg;base64,/.test(v.data))show(v.data,2);else if(!disposed){coverNodes.delete(nodeKey);lastView='';}});}
+  coverNodes.set(nodeKey,media);if(coverNodes.size>80)coverNodes.delete(coverNodes.keys().next().value);
+  if(cloudCovers.size>80)cloudCovers.delete(cloudCovers.keys().next().value);return frame;
  }
  function gameCard(g){
   const card=action('',()=>detail(g.key),'social-game');card.setAttribute('aria-label',`查看 ${g.title} 的游戏资料`);
@@ -97,8 +106,24 @@ export function createSocialPage({command,settings,toast,onNavigate=()=>{}},init
   const pager=el('div','social-actions social-pagination');if(offset>0)pager.append(action('上一页',async()=>{offset=Math.max(0,offset-24);await load();}));if(v.games.length)pager.append(el('span','social-muted',`${offset+1}–${offset+v.games.length} / ${v.total}`));if(v.nextOffset!=null)pager.append(action('下一页',async()=>{offset=v.nextOffset;await load();}));library.append(pager);layout.append(library);
   if(v.recent.length){const aside=el('aside','social-recent');aside.append(sectionHeading('最近游玩','近期足迹'));const list=el('div','social-recent-list');for(const g of v.recent){const row=el('div','social-recent-item');row.append(cover(g,true));const copy=el('div');copy.append(el('h3','',g.title),el('time','',new Date(g.lastPlayed).toLocaleDateString(undefined,{month:'short',day:'numeric'})));row.append(copy);list.append(row);}aside.append(list);layout.append(aside);}element.append(layout);
  }
- async function load(){if(disposed||busy)return;busy=true;const n=++version;try{const [profile,local]=await Promise.all([call('me'),command('social_local',{})]);if(disposed||n!==version)return;me=profile;connected=local.status.connected;localGames=new Map(local.games.map(g=>[g.key,g]));const v=mode==='friends'?await call('friends'):await call('space',{id:owner||me.id,offset});if(disposed||n!==version)return;element.replaceChildren();if(mode==='friends')await drawFriends(v,local);else await drawSpace(v);}catch(e){if(!disposed&&n===version){element.replaceChildren();header('好友与空间');element.append(el('p','social-empty',String(e)),action('云账号设置',()=>settings('cloud')),action('重试',load));}}finally{busy=false;}}
- async function open(next,id){if(busy)return;mode=next;owner=id;offset=0;onNavigate(next);await load();}
- const timer=setInterval(()=>{if(!disposed&&!editing&&!document.hidden&&!element.querySelector('input:focus')&&!element.querySelector('input:not([type=checkbox])')?.value&&!document.querySelector('dialog[open]'))load();},10000);
- load();return{element,open,dispose(){disposed=true;version++;clearInterval(timer);}};
+ async function load(){
+  if(disposed||busy)return;busy=true;const n=++version;
+  try{
+   const [profile,local]=await Promise.all([call('me'),command('social_local',{includeGames:mode==='mine'})]);
+   if(disposed||n!==version)return;
+   if(me&&me.id!==profile.id){cloudCovers.clear();coverNodes.clear();lastView='';}
+   me=profile;connected=local.status.connected;localGames=new Map(local.games.map(g=>[g.key,g]));
+   const v=mode==='friends'?await call('friends'):await call('space',{id:owner||me.id,offset});
+   if(disposed||n!==version)return;
+   const signature=JSON.stringify([mode,owner,offset,profile,v,connected,local.status.error,local.notifications,local.dnd,mode==='mine'?local.games:null]);
+   if(signature===lastView)return;
+   element.replaceChildren();
+   if(mode==='friends')await drawFriends(v,local);else await drawSpace(v);
+   lastView=signature;
+  }catch(e){if(!disposed&&n===version){lastView='';cloudCovers.clear();coverNodes.clear();element.replaceChildren();header('好友与空间');element.append(el('p','social-empty',String(e)),action('云账号设置',()=>settings('cloud')),action('重试',load));}}
+  finally{busy=false;}
+ }
+ async function open(next,id){if(busy)return;if(mode!==next||owner!==id){coverNodes.clear();cloudCovers.clear();}lastView='';mode=next;owner=id;offset=0;onNavigate(next);await load();}
+ const timer=setInterval(()=>{if(!disposed&&element.isConnected&&!editing&&!document.hidden&&!element.querySelector('input:focus')&&!element.querySelector('input:not([type=checkbox])')?.value&&!document.querySelector('dialog[open]'))load();},10000);
+ load();return{element,open,dispose(){disposed=true;version++;clearInterval(timer);coverQueue.length=0;cloudCovers.clear();coverNodes.clear();}};
 }

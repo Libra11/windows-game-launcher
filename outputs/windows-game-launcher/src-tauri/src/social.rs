@@ -252,11 +252,11 @@ pub async fn social_call(
         _ => return Err("不支持的社交操作".into()),
     };
     let result = crate::cloud::request(&app, method, &path, body).await?;
-    changed(&app);
+    if method != "GET" { changed(&app); }
     Ok(result)
 }
 #[tauri::command]
-pub fn social_local(app: tauri::AppHandle, settings: Option<Value>) -> Result<Value, String> {
+pub fn social_local(app: tauri::AppHandle, settings: Option<Value>, include_games: Option<bool>) -> Result<Value, String> {
     let state = app.state::<AppState>();
     let c = lock_db(&state)?;
     if let Some(v) = settings {
@@ -269,10 +269,10 @@ pub fn social_local(app: tauri::AppHandle, settings: Option<Value>) -> Result<Va
             }
         }
     }
-    let candidates = db::games(&c)?
+    let candidates = if include_games.unwrap_or(true) { db::games(&c)?
         .iter()
         .map(|g| json!({"key":game_key(&c,g),"title":g.title,"id":g.id}))
-        .collect::<Vec<_>>();
+        .collect::<Vec<_>>() } else { Vec::new() };
     Ok(
         json!({"status":app.state::<Social>().status.lock().map_err(|_|"状态不可用")?.clone(),"notifications":db::setting(&c,"social_notifications")?!="false","dnd":db::setting(&c,"social_dnd")?=="true","games":candidates}),
     )
