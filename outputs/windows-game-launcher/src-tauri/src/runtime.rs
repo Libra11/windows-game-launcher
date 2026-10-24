@@ -72,6 +72,7 @@ impl Default for Tracker {
     }
 }
 impl Tracker {
+    pub(crate) fn social_sessions(&self)->Vec<(Game,String)> { self.sessions.values().filter(|s|s.started.is_some()).map(|s|(s.game.clone(),s.id.clone())).collect() }
     fn refresh_processes(&mut self, steam: bool) {
         let mut kind = ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet);
         if steam {

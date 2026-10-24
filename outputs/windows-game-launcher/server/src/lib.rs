@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod social;
 pub mod config;
 pub mod mail;
 pub mod error;
@@ -19,6 +20,7 @@ pub struct App { pub pool: PgPool, pub config: Arc<config::Config>, pub http: re
 pub fn router(app: App) -> Router {
     Router::new()
         .merge(saves::routes())
+        .merge(social::routes())
         .route("/health",get(|| async { "ok" }))
         .route("/v1/auth/challenges",post(auth::challenge))
         .route("/v1/auth/verify",post(auth::verify))

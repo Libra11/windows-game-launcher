@@ -116,3 +116,5 @@ pub fn digest(value: &impl Serialize) -> Result<String, String> {
         Sha256::digest(serde_json::to_vec(&value).map_err(|e| e.to_string())?)
     ))
 }
+
+pub mod social;

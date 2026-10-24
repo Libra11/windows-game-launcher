@@ -1,3 +1,4 @@
+import { createSocialPage } from './ui/social.js';
 import { checkSaveBeforeLaunch } from './ui/save-automation.js';
 import { createAppUpdateController } from './lib/app-update-controller.js';
 import { updateAvailable } from './lib/app-update.js';
@@ -110,6 +111,7 @@ const gameInstalls = createGameInstallController({
 });
 let refreshTask, refreshAgain = false, forceRefresh = false;
 let settingsPage;
+let socialPage;
 let onlineSearchPage;
 function refresh(silent = false) {
   refreshAgain = true; forceRefresh ||= !silent;
@@ -146,6 +148,12 @@ const actions = { run, toast,
   cancelLaunchWait: async game => { await run('cancel_launch_wait',{gameId:game.id}); await refresh(true); toast('已取消等待'); },
   select, launch, install:gameInstalls.install, exitBigScreen: () => bigMode.exit(),
   get backLabel(){return state.page==='statistics'?'返回统计':state.page==='settings'?'返回设置':'返回游戏库';},
+  social:async(mode='friends')=>{
+    if(state.bigScreen)await bigMode.exit();
+    selectionVersion++;state.page='social';state.socialMode=mode;state.selectedId='';
+    if(socialPage)await socialPage.open(mode);else socialPage=createSocialPage({command,settings:category=>actions.settings(category),toast,onNavigate:next=>{state.socialMode=next;render();}},mode);
+    render();window.scrollTo(0,0);
+  },
   settings:async(category)=>{
     if(state.bigScreen)await bigMode.exit();
     selectionVersion++;state.page='settings';state.selectedId='';
@@ -222,6 +230,7 @@ mountSidebar($('.sidebar'), {
     selectionVersion++;state.page='library';state.selectedId='';render();
   },
   settings: actions.settings, preview,
+  social: actions.social,
   statistics:actions.statistics,
   onlineSearch:actions.onlineSearch,
 });
@@ -243,6 +252,7 @@ function render(preferredFocus) {
   gameContextMenu.reconcile();
   // 后台刷新只更新内容，不能重新获取焦点、打断前台游戏。
   const restoreFocus = document.hasFocus();
+  if(state.page!=='social'&&socialPage){socialPage.dispose();socialPage=null;}
   if(state.page!=='settings'&&settingsPage){settingsPage.dispose();settingsPage=null;}
   const host = $('#big-screen-host');
   host.hidden = !state.bigScreen;
@@ -276,7 +286,7 @@ function render(preferredFocus) {
   const focusKey = content.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
   const statisticsScroll=state.page==='statistics' && !state.selectedId ? window.scrollY : null;
   $('#navigation').querySelectorAll('button').forEach(node => {
-    const category = node.dataset.filter; const active=node.dataset.page ? state.page===node.dataset.page : state.page==='library' && !state.collectionId && category===state.filter;
+    const category = node.dataset.filter; const active=node.dataset.socialMode ? state.page==='social' && node.dataset.socialMode===(state.socialMode==='mine'?'mine':'friends') : node.dataset.page ? state.page===node.dataset.page : state.page==='library' && !state.collectionId && category===state.filter;
     node.classList.toggle('active',active);node.setAttribute('aria-current',active?'page':'false');
     if(category) node.querySelector('.nav-count').textContent = state.games.filter(game => inCategory(game,category)).length;
   });
@@ -285,11 +295,11 @@ function render(preferredFocus) {
   if (!game) state.selectedId = '';
   app.classList.toggle('statistics-active',state.page==='statistics'&&!game);
   app.classList.toggle('settings-active',state.page==='settings'&&!game);
-  $('#page-name').textContent = game ? game.title : state.page==='statistics' ? '游戏统计' : state.page==='settings'?'设置':state.page==='online-search'?'在线搜索':'游戏库';
+  $('#page-name').textContent = game ? game.title : state.page==='social' ? '好友与空间' : state.page==='statistics' ? '游戏统计' : state.page==='settings'?'设置':state.page==='online-search'?'在线搜索':'游戏库';
   $('#page-intro').hidden = !!game || state.page!=='library';
   $('.topbar-actions').hidden=state.page!=='library' && !game;
   content.setAttribute('aria-label',state.page==='settings'&&!game?'设置内容':state.page==='statistics' && !game ? '游戏统计内容' : state.page==='online-search'&&!game?'在线搜索内容':'游戏库内容');
-  const next = retainArtworkView(content,'desktop',!game&&state.page==='library',()=>game?detailView(game,state.achievements,state.achievementFilter,actions):state.page==='settings'?settingsPage.element:state.page==='online-search'?onlineSearchPage.element:state.page==='statistics'?statisticsView(statistics,actions):cachedLibraryView('desktop',state,()=>libraryView(state,actions)));
+  const next = retainArtworkView(content,'desktop',!game&&state.page==='library',()=>game?detailView(game,state.achievements,state.achievementFilter,actions):state.page==='social'?socialPage.element:state.page==='settings'?settingsPage.element:state.page==='online-search'?onlineSearchPage.element:state.page==='statistics'?statisticsView(statistics,actions):cachedLibraryView('desktop',state,()=>libraryView(state,actions)));
   // 设置页保留表单节点，后台游戏库刷新不会覆盖用户正在输入的内容。
   if(content.firstElementChild!==next)content.replaceChildren(next);
   activateArtwork(next);
@@ -315,7 +325,7 @@ if(!preview)command('get_backup_restore_status').then(async notice=>{
   if(!notice.acknowledged)toast(notice.message+(notice.missingPaths?` 尚有 ${notice.missingPaths} 款游戏需要定位。`:''),!notice.success);
   await command('ack_backup_restore',{restoreId:notice.id,appearanceApplied:window.__youjiRestoredPreferencesId===notice.id});
 }).catch(()=>{});
-setInterval(() => { if (state.page !== 'settings' && !document.hidden && !document.querySelector('dialog[open]')) refresh(true).catch(() => {}); }, 5000);
+setInterval(() => { if (!['settings','social'].includes(state.page) && !document.hidden && !document.querySelector('dialog[open]')) refresh(true).catch(() => {}); }, 5000);
 $('#content').append(el('div', 'loading-state', '正在打开你的收藏…'));
 appUpdates.subscribe(status=>$('#navigation [data-page="settings"]')?.classList.toggle('update-available',updateAvailable(status)));
 appUpdates.start().catch(()=>{});

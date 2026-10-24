@@ -6,6 +6,7 @@ mod activity;
 mod app_update;
 mod backup;
 pub mod cloud;
+mod social;
 mod cover_cache;
 mod cover_download;
 mod db;
@@ -147,6 +148,8 @@ pub fn run() {
             }
             app_update::start(app.handle().clone());
             cloud::start(app.handle().clone());
+            app.manage(social::Social::default());
+            social::start(app.handle().clone());
             saves::start(app.handle().clone());
             start_metadata_refresh(app.handle().clone());
             steam_playtime::watch(app.handle().clone());
@@ -184,6 +187,9 @@ pub fn run() {
         })
         .on_window_event(desktop_lifecycle::closing)
         .invoke_handler(tauri::generate_handler![
+            social::social_call,
+            social::social_local,
+            social::social_test_notice,
             cloud::cloud_status,
             cloud::cloud_challenge,
             cloud::cloud_verify,
@@ -291,6 +297,7 @@ pub fn run() {
         .expect("无法启动游迹")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
+                social::leaving(app);
                 xbox_local::stop_all();
             }
             if let tauri::RunEvent::ExitRequested { api, .. } = event {

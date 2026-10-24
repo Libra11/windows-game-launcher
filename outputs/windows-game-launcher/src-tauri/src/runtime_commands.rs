@@ -146,6 +146,7 @@ pub(crate) fn watch(app: tauri::AppHandle) {
                 }
             };
             for update in updates {
+                if update.started_at.is_some() || update.finished { crate::social::changed(&app); }
                 if update.finished && !update.failed {
                     crate::saves::game_finished(&app, &update.game_id);
                     let is_steam = lock_db(&state)

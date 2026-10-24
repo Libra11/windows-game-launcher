@@ -31,6 +31,9 @@ export function mountSidebar(host, actions) {
   const settings = button('设置','nav-item',actions.settings,'settings');settings.dataset.page='settings';settings.title='设置';
   const onlineSearch = button('在线搜索', 'nav-item', actions.onlineSearch, 'search');
   onlineSearch.dataset.page = 'online-search'; onlineSearch.title = '在线搜索 Gamer520';
+  const friends=button('好友','nav-item',()=>actions.social('friends'),'family');friends.dataset.page='social';friends.dataset.socialMode='friends';
+  const space=button('我的空间','nav-item',()=>actions.social('mine'),'game');space.dataset.page='social';space.dataset.socialMode='mine';
+  features.append(friends,space);
   features.append(onlineSearch,statistics,settings);navigation.append(features);
 
   const footer = el('div', 'sidebar-footer');

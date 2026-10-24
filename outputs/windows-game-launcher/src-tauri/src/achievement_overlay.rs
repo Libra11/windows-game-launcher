@@ -48,6 +48,7 @@ pub(crate) struct Notice {
 }
 pub(crate) struct Overlay {
     sender: mpsc::SyncSender<Notice>,
+    social_sender: mpsc::SyncSender<(Notice,String,String)>,
     ready: Arc<AtomicBool>,
 }
 pub(crate) fn options(app: &tauri::AppHandle) -> Result<Options, String> {
@@ -63,9 +64,11 @@ pub(crate) fn options(app: &tauri::AppHandle) -> Result<Options, String> {
 }
 pub(crate) fn initialize(app: &tauri::AppHandle) -> Result<(), String> {
     let (sender, receiver) = mpsc::sync_channel::<Notice>(64);
+    let (social_sender, social_receiver) = mpsc::sync_channel::<(Notice,String,String)>(4);
     let ready = Arc::new(AtomicBool::new(false));
     app.manage(Overlay {
         sender,
+        social_sender,
         ready: ready.clone(),
     });
     let builder = WebviewWindowBuilder::new(
@@ -95,7 +98,15 @@ pub(crate) fn initialize(app: &tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let handle = app.clone();
     std::thread::spawn(move || {
-        for notice in receiver {
+        loop {
+            let (notice, social) = if let Ok(n)=receiver.try_recv(){(n,false)}
+                else if let Ok((n,actor,key))=social_receiver.try_recv(){
+                    let valid=actor.is_empty() || tauri::async_runtime::block_on(async {tokio::time::timeout(Duration::from_secs(3),crate::social::can_notify(&handle,&actor,&key)).await.unwrap_or(false)});
+                    if !valid{continue;} (n,true)
+                }
+                else {match receiver.recv_timeout(Duration::from_millis(200)){Ok(n)=>(n,false),Err(mpsc::RecvTimeoutError::Timeout)=>continue,Err(_)=>break}};
+            if social && !crate::social::notifications(&handle){continue;}
+
             for _ in 0..100 {
                 if ready.load(Ordering::Acquire) {
                     break;
@@ -104,22 +115,22 @@ pub(crate) fn initialize(app: &tauri::AppHandle) -> Result<(), String> {
             }
             if !ready.load(Ordering::Acquire) {
                 eprintln!("成就弹层尚未就绪");
-                fallback(&handle, &notice);
+                if !social {fallback(&handle, &notice);}
                 continue;
             }
             let result = (|| -> Result<(), String> {
-                let opts = options(&handle)?;
+                let opts = if social { Options{position:"bottom-right".into(),duration:5,sound:"off".into()} } else {options(&handle)?};
                 position(&handle, &window, &opts)?;
                 raise(&window)?;
                 window
-                    .emit("achievement-overlay", &notice)
+                    .emit("achievement-overlay", &serde_json::json!({"name":notice.name,"game":notice.game,"icon":notice.icon,"social":social}))
                     .map_err(|e| e.to_string())?;
                 visibility(&window, true)?;
                 sound(&opts.sound);
                 // 重申置顶但不获取焦点，覆盖游戏重新置顶的窗口。
                 for _ in 0..opts.duration * 4 {
                     std::thread::sleep(Duration::from_millis(250));
-                    position(&handle, &window, &options(&handle)?)?;
+                    position(&handle, &window, &opts)?;
                     raise(&window)?;
                 }
                 Ok(())
@@ -128,7 +139,7 @@ pub(crate) fn initialize(app: &tauri::AppHandle) -> Result<(), String> {
             let _ = window.emit("achievement-overlay-hidden", ());
             if let Err(error) = result {
                 eprintln!("成就弹层显示失败：{error}");
-                fallback(&handle, &notice);
+                if !social {fallback(&handle, &notice);}
             }
             std::thread::sleep(Duration::from_millis(200));
         }
@@ -233,4 +244,8 @@ mod tests {
         opts.sound = "unknown".into();
         assert!(opts.validate().is_err());
     }
+}
+
+pub(crate) fn show_social(app:&tauri::AppHandle,actor:String,key:String,name:String,game:String)->Result<(),String>{
+ app.try_state::<Overlay>().ok_or("通知弹层不可用")?.social_sender.try_send((Notice{name,game,icon:String::new()},actor,key)).map_err(|_|"好友通知队列已满".into())
 }

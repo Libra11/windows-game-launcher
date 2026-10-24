@@ -12,7 +12,9 @@ function showNotice(payload) {
   document.querySelector('#name').textContent = payload.name;
   document.querySelector('#game').textContent = payload.game;
   artHost.classList.remove('has-art');
-  artHost.replaceChildren(icon('trophy'));
+  artHost.replaceChildren(icon(payload.social ? 'family' : 'trophy'));
+  const caption = document.querySelector('.unlock-label');
+  if(caption) caption.textContent = payload.social ? '好友动态' : '成就解锁';
   if (/^https?:\/\//.test(payload.icon)) {
     const image = new Image();
     image.alt = '';

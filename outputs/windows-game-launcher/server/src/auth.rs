@@ -112,6 +112,7 @@ pub async fn refresh(State(app):State<App>,Json(input):Json<RefreshRequest>)->Re
     tx.commit().await?;Ok(Json(tokens))
 }
 pub async fn logout(State(app):State<App>,identity:Identity)->Result<Json<Value>> {
+    sqlx::query("DELETE FROM social_presence WHERE user_id=$1 AND device_id=$2").bind(identity.user_id).bind(identity.device_id).execute(&app.pool).await?;
     sqlx::query("UPDATE auth_sessions SET revoked=true WHERE id=$1 AND user_id=$2").bind(identity.session_id).bind(identity.user_id).execute(&app.pool).await?;
     Ok(Json(json!({"ok":true})))
 }
