@@ -1,0 +1,21 @@
+.modal:has(.media-season-match) { width:1100px; max-width:calc(100vw - 48px); }
+.media-season-match { min-width:0; }
+.media-season-scope { display:flex; align-items:center; gap:8px; }
+.media-season-scope input { width:auto; }
+.media-season-candidates { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px; max-height:260px; overflow:auto; }
+.media-season-choice { display:grid; text-align:left; justify-content:stretch; justify-items:start; gap:5px; }
+.media-season-table-wrap { overflow:auto; max-height:48vh; margin:14px 0; }
+.media-season-table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:12px; }
+.media-season-table th,.media-season-table td { padding:12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; overflow-wrap:anywhere; }
+.media-season-table th { position:sticky; top:0; background:var(--panel); z-index:1; }
+.media-season-table th:first-child { width:44%; }
+.media-season-table td input { width:100%; min-width:0; box-sizing:border-box; }
+.media-season-path { display:block; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+.media-season-warning { display:block; color:var(--error-text); margin-top:5px; }
+.media-season-match input[type=number] { width:90px; }
+.media-season-effect,.media-season-conflict { display:grid; gap:6px; padding:12px 0; border-bottom:1px solid var(--line); }
+.media-season-effect select,.media-season-conflict select { width:100%; max-width:100%; }
+
+.media-season-preview,.media-season-review { display:grid; gap:14px; min-width:0; }
+.media-season-match input:not([type=checkbox]),.media-season-match select { padding:9px 10px; border:1px solid var(--line); border-radius:7px; background:var(--input); color:var(--text); font-size:12px; }
+.media-season-table td input:disabled { opacity:.6; }

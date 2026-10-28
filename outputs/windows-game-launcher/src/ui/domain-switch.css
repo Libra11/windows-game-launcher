@@ -1,0 +1,6 @@
+.domain-switch{display:flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;min-height:36px;padding:0 7px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--text-secondary);font-size:12px;font-weight:500;white-space:nowrap}
+.domain-switch>.icon{width:20px;height:20px}
+.domain-switch:hover{border-color:var(--accent-line);color:var(--accent-ink);background:var(--accent-soft)}
+.domain-switch:active:not(:disabled){transform:none}
+.domain-switch:focus-visible{outline:2px solid var(--accent-ink);outline-offset:4px}
+@media(max-width:800px) and (min-width:561px){.domain-switch{width:52px;min-height:42px;flex-direction:column;gap:2px;padding:3px 2px;font-size:10px}}

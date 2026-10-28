@@ -1,0 +1,100 @@
+.media-record-modal .modal-header > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  min-width: 0;
+}
+.media-record-modal .modal-header h2 {
+  font-size: clamp(23px, 3vw, 30px);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.media-record-modal .modal-header p {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.media-record-rating {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.media-record-rating legend {
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.media-record-stars {
+  display: flex;
+  gap: 6px;
+}
+.media-record-star {
+  position: relative;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: var(--muted);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.media-record-star input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.media-record-star .icon {
+  width: 29px;
+  height: 29px;
+  pointer-events: none;
+}
+.media-record-star.filled {
+  color: var(--accent-ink);
+}
+.media-record-star.filled .icon {
+  fill: currentColor;
+}
+.media-record-star:hover {
+  background: var(--surface-hover);
+  color: var(--accent-ink);
+}
+.media-record-star:focus-within {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+.media-record-rating-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+  min-height: 30px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.media-record-rating-clear {
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+.media-record-rating-clear:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.media-record-rating-clear[hidden] {
+  display: none;
+}
+.media-record-form .media-textarea {
+  min-height: 130px;
+}
+.media-douban-preview { display: grid; grid-template-columns: minmax(70px, 110px) minmax(0, 1fr); gap: 16px; }
+.media-douban-preview:empty { display: none; }
+.media-douban-preview .media-art { width: 100%; aspect-ratio: 2 / 3; }
+.media-douban-preview p { white-space: pre-wrap; overflow-wrap: anywhere; }

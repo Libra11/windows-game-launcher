@@ -1,0 +1,335 @@
+{
+  "movies": [
+    {
+      "tmdbId": 157336,
+      "title": "星际穿越",
+      "year": "2014",
+      "overview": "太空探险队队员克服重重困难，成功通过新近发现的虫洞，突破人类太空旅行的极限，进入另一个时空。",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/spQm5r317XPNHK1941ChWmqzkZs.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/w1280/8sNiAPPYU14PUepFNeSNGUTiHW.jpg",
+      "genres": [
+        "冒险",
+        "剧情",
+        "科幻"
+      ],
+      "seasonNumber": null,
+      "episodeNumber": null,
+      "kind": "movie"
+    },
+    {
+      "tmdbId": 1103621,
+      "title": "姥姥的外孙",
+      "year": "2024",
+      "overview": "出身泰国华人家庭的阿安大学辍学后一直没有稳定工作，平日做着游戏直播。一次，他看到堂妹阿梅因悉心照顾病重的爷爷而继承房产，便动起了效仿她的念头。恰逢姥姥被确诊为晚期癌症，阿安索性搬去陪伴照料，希望借此成为最受宠爱的外孙，最终获得姥姥留下的遗产。然而，精明的姥姥并没有那么容易被讨好，两个舅舅也各自有着自己的盘算。原本把照顾姥姥当成一条“致富捷径”的阿安，在陪她买菜、卖粥、看病和共同生活的日子里，逐渐开始真正走进这个老人以及整个家庭的生活……",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/leZ8uhkASvEoXv0KOw5XbhbVQhV.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/w1280/6Ypt0zspYChnZM6JWVOirbUaBx3.jpg",
+      "genres": [
+        "剧情"
+      ],
+      "seasonNumber": null,
+      "episodeNumber": null,
+      "kind": "movie"
+    },
+    {
+      "tmdbId": 10376,
+      "title": "海上钢琴师",
+      "year": "1998",
+      "overview": "1900年，一个被遗弃的婴儿出现在往返欧美的弗吉尼亚号上，被船上的锅炉工丹尼收养，并以新世纪的年份取名为“1900”。丹尼意外去世后，1900继续在船上长大，并逐渐展现出无师自通的惊人钢琴天赋，成为弗吉尼亚号上的钢琴师。他的演奏吸引着来自世界各地的乘客，也让他与小号手麦克斯结下深厚友谊。然而无论船只多少次靠岸，1900始终没有真正踏上陆地，对他而言，这艘船和八十八个琴键就是自己熟悉的整个世界。直到一次偶然的邂逅，让从未离开过大海的他第一次认真考虑走下弗吉尼亚号，面对那个没有边界的陌生世界……",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/bXk1kSDSiVPj06LtpESZK7C8HsL.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/w1280/muSeX7fnNw0pv4zHK7RSwZln6Hk.jpg",
+      "genres": [
+        "剧情",
+        "音乐"
+      ],
+      "seasonNumber": null,
+      "episodeNumber": null,
+      "kind": "movie"
+    },
+    {
+      "tmdbId": 27205,
+      "title": "盗梦空间",
+      "year": "2010",
+      "overview": "道姆·柯布与同事阿瑟和纳什在一次针对日本能源大亨齐藤（渡边谦 饰）的盗梦行动中失败，反被齐藤利用。齐藤威逼利诱因遭通缉而流亡海外的柯布帮他拆分他竞争对手的公司，采取极端措施在其唯一继承人罗伯特·费希尔的深层潜意识中种下放弃家族公司、自立门户的想法。为了重返美国，柯布偷偷求助于岳父迈尔斯，吸收了年轻的梦境设计师艾里阿德妮、梦境演员艾姆斯和药剂师约瑟夫加入行动。在一层层递进的梦境中，柯布不仅要对付费希尔潜意识的本能反抗，还必须直面已逝妻子梅尔的处处破坏，实际情况远比预想危险得多……",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/89W962aAnPS3N3BdKgy2BvUhnCh.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/w1280/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
+      "genres": [
+        "动作",
+        "科幻",
+        "犯罪"
+      ],
+      "seasonNumber": null,
+      "episodeNumber": null,
+      "kind": "movie"
+    },
+    {
+      "tmdbId": 129,
+      "title": "千与千寻",
+      "year": "2001",
+      "overview": "10岁的千寻跟随父母搬家途中，意外穿过一条神秘隧道，闯入了一个属于神灵的奇异世界。父母因为擅自吃下供奉给神灵的食物而被变成猪，惊慌失措的千寻则在神秘少年白龙的帮助下得以留下。为了在这个世界生存并寻找救回父母的方法，她不得不到汤婆婆掌管的“油屋”浴场工作。在形形色色的神灵与不可思议的遭遇中，原本胆小任性的千寻开始学会独自面对困难，而她也必须找到离开这里、带父母重返人类世界的方法……",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/dnwMqbndJpOEhoVqjlMU9U7LFle.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/w1280/m4TUa2ciEWSlk37rOsjiSIvZDXE.jpg",
+      "genres": [
+        "动画",
+        "家庭",
+        "奇幻"
+      ],
+      "seasonNumber": null,
+      "episodeNumber": null,
+      "kind": "movie"
+    },
+    {
+      "tmdbId": 105,
+      "title": "回到未来",
+      "year": "1985",
+      "overview": "马蒂·麦克弗莱，一位典型的八十年代美国青少年，意外被一台由钚动力驱动的德罗宁“时间机器”送回到1955年——这台机器由一位略带疯狂的科学家发明。在这段时常癫狂、总是惊人的穿越之旅中，马蒂必须确保他那正值青春期的未来父母相遇并坠入爱河，他才能顺利返回未来。[官方简介]",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/6fkVKq5LcZ6RJ4EaH84lJELDLJJ.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/w1280/5bzPWQ2dFUl2aZKkp7ILJVVkRed.jpg",
+      "genres": [
+        "冒险",
+        "喜剧",
+        "科幻"
+      ],
+      "seasonNumber": null,
+      "episodeNumber": null,
+      "kind": "movie"
+    },
+    {
+      "tmdbId": 496243,
+      "title": "寄生虫",
+      "year": "2019",
+      "overview": "金基泽一家四口挤在首尔一间狭小的半地下室里，没有稳定工作，只能靠零散的活计勉强维持生活。一天，儿子基宇经朋友介绍，得到前往富裕的朴社长家担任英语家教的机会。进入这个与自己生活截然不同的家庭后，基宇发现了新的机会，并设法将妹妹基婷包装成艺术老师介绍给朴家。随后，一家人通过精心设计，让父亲和母亲也先后进入朴家工作，而朴家始终不知道这四名新雇员其实来自同一个家庭。就在金家逐渐适应这份来之不易的优渥生活时，一个隐藏在朴家豪宅中的秘密突然出现，两个家庭之间看似稳定的关系也开始走向无法预料的方向……",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/nwTQE4vWe6NoFSEgxGu4hO9J4Tv.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/w1280/TU9NIjwzjoKPwQHoHshkFcQUCG.jpg",
+      "genres": [
+        "喜剧",
+        "惊悚",
+        "剧情"
+      ],
+      "seasonNumber": null,
+      "episodeNumber": null,
+      "kind": "movie"
+    },
+    {
+      "tmdbId": 10681,
+      "title": "机器人总动员",
+      "year": "2008",
+      "overview": "公元2805年，地球因严重的环境污染和堆积如山的垃圾早已不再适合人类居住，人类乘坐巨型飞船离开家园，只留下大批垃圾清理机器人继续工作。数百年过去，大多数机器人陆续损坏，只有一台名叫瓦力（WALL·E）的机器人仍然日复一日地清理着这颗荒废的星球。漫长的孤独生活让瓦力逐渐拥有了自己的个性，他喜欢收集人类遗留下来的各种小物件，观看古老的歌舞电影，身边还有一只蟑螂作伴。直到某天，一艘飞船突然降临地球，带来了一台名叫伊芙的先进探测机器人。伊芙肩负着寻找植物生命的任务，而瓦力则被这位陌生的访客深深吸引。两个机器人之间的相遇，也让瓦力平静而重复的生活发生了改变，并将他带向一场意想不到的太空冒险……",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/eVcHArmmMXajXaqVBH4dhUWfwmS.jpg",
+      "backdropUrl": "https://image.tmdb.org/t/p/w1280/nYs4ZwnJBK4AgljhvzwNz7fpr3E.jpg",
+      "genres": [
+        "动画",
+        "家庭",
+        "科幻"
+      ],
+      "seasonNumber": null,
+      "episodeNumber": null,
+      "kind": "movie"
+    }
+  ],
+  "series": {
+    "tmdbId": 95480,
+    "title": "流人",
+    "year": "2022",
+    "overview": "该剧根据米克·赫伦的同名系列小说改编，故事围绕着军情五处内一个不正常的特务组，以及他们讨人厌的老板：臭名满天下的杰克逊·兰姆。他们在真假难辨的间谍世界中努力着，以保卫英国免受邪恶势力的侵害。",
+    "posterUrl": "https://image.tmdb.org/t/p/w500/xPrBhPFundGRzXRZiRknxieycdQ.jpg",
+    "backdropUrl": "https://image.tmdb.org/t/p/w1280/gPQppUnLx9vqPDLz3WwZ2HJsNbt.jpg",
+    "genres": [
+      "犯罪",
+      "剧情",
+      "悬疑"
+    ],
+    "seasonNumber": null,
+    "episodeNumber": null,
+    "kind": "series"
+  },
+  "seasons": [
+    {
+      "tmdbId": 135858,
+      "title": "第 1 季",
+      "year": "2022",
+      "overview": "英国军情五处特工里弗·卡特赖特因训练任务搞砸、当众出丑，被发配到专门收容情报部门失意人员的斯劳馆。这里的人被叫作 “流人”，他们要干枯燥文书活，还要忍受上司杰克逊·兰姆，兰姆就盼着他们熬不住辞职。平静被打破，流人卷入了军情五处总部 “园区” 的一场危险圈套。",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/kQqtUQFKi0O7FoDLXBjg7iwpLSl.jpg",
+      "backdropUrl": "",
+      "genres": [],
+      "seasonNumber": 1,
+      "episodeNumber": null,
+      "kind": "season",
+      "episodes": [
+        {
+          "tmdbId": 1984483,
+          "title": "失败会传染",
+          "year": "2022",
+          "overview": "瑞弗卡特怀特被逐出军情五处后被发配到了一个比炼狱更糟糕的地方：失败间谍的回收站，斯劳部门。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/hLDT28rK6YwWHwuIQAgEHfgMjEw.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 1,
+          "episodeNumber": 1,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3485337,
+          "title": "工作小酌",
+          "year": "2022",
+          "overview": "瑞弗和希多联手行动。枪支走火造成了可怕的后果。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/lAYmAPrr8WFUknwVvc2vVSliBtO.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 1,
+          "episodeNumber": 2,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3485338,
+          "title": "谍报技术欠佳",
+          "year": "2022",
+          "overview": "斯劳部门里竟然也能诞生秘密恋情，但当一次危险的遭遇闹出人命后，形势急转直下。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/7JU302Tf3afLyn0m6ENQwkzhWzw.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 1,
+          "episodeNumber": 3,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3485339,
+          "title": "探视时间",
+          "year": "2022",
+          "overview": "泰维纳派特工去追捕兰姆和斯劳部门里的成员。瑞弗掌握着拯救这伙人的秘密。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/iwD7NKfSLK7wbl9Psrkl1JryHnh.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 1,
+          "episodeNumber": 4,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3485340,
+          "title": "一败涂地",
+          "year": "2022",
+          "overview": "斯劳部门的人为了躲避军情五处的追捕不得不销声匿迹。兰姆和瑞弗前往总部打算智取泰维纳。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/r1h2s5XoPnYObXa4fLQBMzPQ7ws.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 1,
+          "episodeNumber": 5,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3485342,
+          "title": "荒唐闹剧",
+          "year": "2022",
+          "overview": "泰维纳和斯劳部门的人尝试以各种手段找到绑匪和哈桑。何发现了有关希多的惊人秘密。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/kvavIgDPCRiKHDbFHhjiuGjiwE2.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 1,
+          "episodeNumber": 6,
+          "kind": "episode"
+        }
+      ]
+    },
+    {
+      "tmdbId": 310117,
+      "title": "第 2 季",
+      "year": "2022",
+      "overview": "尘封已久的冷战秘闻浮出水面，伦敦街头或将血流成河。与俄方反派的联络演变为致命灾难，这群倒霉的英雄必须克服各自的性格缺陷，提升谍报本领，争分夺秒阻止一场毁灭性大祸。",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/yUEnkUu6v7IgIz4E5j1Hu3NDN5z.jpg",
+      "backdropUrl": "",
+      "genres": [],
+      "seasonNumber": 2,
+      "episodeNumber": null,
+      "kind": "season",
+      "episodes": [
+        {
+          "tmdbId": 3974226,
+          "title": "终点站",
+          "year": "2022",
+          "overview": "在一名前间谍被发现死亡后，杰克逊兰姆处于高度警戒状态。明和路易莎被斯劳部门之外的一项任务吸引。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/henDWWSmXd0Crdb6YnocCxejO0m.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 2,
+          "episodeNumber": 1,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3987733,
+          "title": "阿普肖特之爱",
+          "year": "2022",
+          "overview": "兰姆联络一名可能掌握着潜伏特工线索的俄罗斯叛逃者。瑞弗追踪一个无情的杀手。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/6EH3YmOXblz91dw6H64ZcHpy2H5.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 2,
+          "episodeNumber": 2,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3987734,
+          "title": "饮酒游戏",
+          "year": "2022",
+          "overview": "瑞弗在科茨沃尔德寻找潜伏特工时受到款待。明发现俄罗斯的喝酒游戏是最残酷的。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/wVV3QZ4S5vNEY6A67oTjPLtfImX.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 2,
+          "episodeNumber": 3,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3987735,
+          "title": "蝉",
+          "year": "2022",
+          "overview": "路易莎对帕什金采取行动。凯瑟琳在与一个阴险的陌生人下高风险国际象棋时采取了不同的策略。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/wCnfdJi05f5GCSNu3GJmOStJPGM.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 2,
+          "episodeNumber": 4,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3987736,
+          "title": "会议室政治",
+          "year": "2022",
+          "overview": "兰姆命令他的一众下等马故意走进陷阱。瑞弗相信有令人惊恐的东西正向伦敦逼近。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/bn7PfRXevaN9EEvaK5f9sAdEwMX.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 2,
+          "episodeNumber": 5,
+          "kind": "episode"
+        },
+        {
+          "tmdbId": 3987737,
+          "title": "旧账",
+          "year": "2022",
+          "overview": "兰姆和卡丁斯基正面交锋。何与一名俄罗斯刺客被困在同一趟列车上。",
+          "posterUrl": "https://image.tmdb.org/t/p/w500/j7NQIxyVruZtOm8i6Q3FjS08OUy.jpg",
+          "backdropUrl": "",
+          "genres": [],
+          "seasonNumber": 2,
+          "episodeNumber": 6,
+          "kind": "episode"
+        }
+      ]
+    }
+  ],
+  "originalSeries": {
+    "tmdbId": 68095,
+    "title": "法医秦明",
+    "year": "2016",
+    "overview": "龙番市刑警队长林涛，与法医科科长秦明是多年的老朋友。秦明的助理因不堪忍受秦明的古怪脾气打报告辞职。痕检科的李大宝被借调加入工作小组。起初秦明对身为女生的大宝不信任，但倔强的大宝在破案中，体现出了相当不错的推理和观察能力，并且嗅觉极度灵敏，挑剔的秦明决定留下大宝。龙番警局的铁三角也初告形成。以这起“油爆奇案”为开端，秦明、大宝和林涛接连破获了各种匪夷所思的案件。\n\n本剧改编自秦明所著《法医秦明》系列悬疑小说中的《第十一根手指》。此系列小说先后由漓江出版社、湖南文艺出版社出版，现已出版万象卷六部：《尸语者》、《无声的证词》、《第十一根手指》、《清道夫》、《幸存者》、《偷窥者》，以及众生卷两部：《天谴者》、《遗忘者》。该系列已被改编成多部网络剧，分别为《法医秦明》、《法医秦明2：清道夫》、《法医秦明之幸存者》、《尸语者》、《法医秦明之无声的证词》等。",
+    "posterUrl": "https://image.tmdb.org/t/p/w500/zbvMaY3mrYPOZZXs2qAfD8mfwYp.jpg",
+    "backdropUrl": "https://image.tmdb.org/t/p/w1280/pMGffzDXuLwdUlxmE8B1EQwpN2c.jpg",
+    "genres": [
+      "犯罪",
+      "剧情",
+      "悬疑"
+    ],
+    "seasonNumber": null,
+    "episodeNumber": null,
+    "kind": "series"
+  }
+}

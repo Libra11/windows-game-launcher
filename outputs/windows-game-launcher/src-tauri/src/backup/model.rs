@@ -18,10 +18,16 @@ pub struct Appearance {
 impl Appearance {
     pub fn validate(&self) -> Result<(), String> {
         if !["dark", "light"].contains(&self.theme.as_str())
-            || !["sage", "blue", "violet", "rose", "amber", "teal"].contains(&self.theme_color.as_str())
-            || self.fonts.is_empty() || self.fonts.len() > 64
-            || self.fonts.iter().any(|font| font.trim().is_empty() || font.len() > 800 || font.chars().any(char::is_control))
-        { return Err("备份外观设置无效".into()); }
+            || !["sage", "blue", "violet", "rose", "amber", "teal"]
+                .contains(&self.theme_color.as_str())
+            || self.fonts.is_empty()
+            || self.fonts.len() > 64
+            || self.fonts.iter().any(|font| {
+                font.trim().is_empty() || font.len() > 800 || font.chars().any(char::is_control)
+            })
+        {
+            return Err("备份外观设置无效".into());
+        }
         Ok(())
     }
 }
@@ -56,7 +62,10 @@ pub struct Counts {
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct FileRecord { pub size: u64, pub sha256: String }
+pub struct FileRecord {
+    pub size: u64,
+    pub sha256: String,
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -72,7 +81,10 @@ pub struct Manifest {
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct PathMapping { pub from: String, pub to: String }
+pub struct PathMapping {
+    pub from: String,
+    pub to: String,
+}
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -85,39 +97,59 @@ pub struct PathOverride {
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct Relocation { pub mappings: Vec<PathMapping>, pub overrides: Vec<PathOverride> }
+pub struct Relocation {
+    pub mappings: Vec<PathMapping>,
+    pub overrides: Vec<PathOverride>,
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PathPreview {
-    pub game_id: String, pub title: String, pub source: String,
-    pub original_path: String, pub exe_path: String, pub custom_unlock_path: String,
-    pub status: String, pub record_status: String,
-    pub launcher_path: String, pub launcher_status: String,
+    pub game_id: String,
+    pub title: String,
+    pub source: String,
+    pub original_path: String,
+    pub exe_path: String,
+    pub custom_unlock_path: String,
+    pub status: String,
+    pub record_status: String,
+    pub launcher_path: String,
+    pub launcher_status: String,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Inspection {
-    pub preparation_id: String, pub manifest: Manifest, pub current: Counts,
+    pub preparation_id: String,
+    pub manifest: Manifest,
+    pub current: Counts,
     pub paths: Vec<PathPreview>,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ExportResult { pub path: String, pub manifest: Manifest }
+pub struct ExportResult {
+    pub path: String,
+    pub manifest: Manifest,
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Pending {
-    pub restore_id: String, pub archive: String, pub sha256: String,
-    pub relocation: Relocation, pub safety_backup: String,
+    pub restore_id: String,
+    pub archive: String,
+    pub sha256: String,
+    pub relocation: Relocation,
+    pub safety_backup: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RestoreNotice {
-    pub id: String, pub success: bool, pub message: String, pub safety_backup: String,
+    pub id: String,
+    pub success: bool,
+    pub message: String,
+    pub safety_backup: String,
     pub missing_paths: usize,
     #[serde(default)]
     pub acknowledged: bool,

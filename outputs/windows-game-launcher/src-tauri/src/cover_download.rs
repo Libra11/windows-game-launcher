@@ -21,11 +21,18 @@ pub(crate) fn extension(bytes: &[u8]) -> Option<&'static str> {
 }
 
 pub(crate) async fn fetch(url: &str, refresh: bool) -> Result<(Vec<u8>, &'static str), String> {
+    fetch_with_referer(url, refresh, None).await
+}
+
+pub(crate) async fn fetch_with_referer(url: &str, refresh: bool, referer: Option<&str>) -> Result<(Vec<u8>, &'static str), String> {
     let parsed = reqwest::Url::parse(url).map_err(|_| "封面地址无效")?;
     if !matches!(parsed.scheme(), "http" | "https") || parsed.host_str().is_none() {
         return Err("封面仅支持 HTTP 或 HTTPS 地址".into());
     }
     let mut request = network::client(Service::Image)?.get(parsed);
+    if let Some(referer) = referer {
+        request = request.header(reqwest::header::REFERER, referer);
+    }
     if refresh {
         request = request.header(reqwest::header::CACHE_CONTROL, "no-cache");
     }

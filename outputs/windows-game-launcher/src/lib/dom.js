@@ -19,6 +19,19 @@ export function appIcon(className = '') {
   return image;
 }
 const paths = {
+  film: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4"/>',
+  tv: '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="m8 3 4 4 4-4M17 12h.01M17 16h.01"/>',
+  'file-question': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M10 12a2 2 0 0 1 4 0c0 1.5-2 1.5-2 3m0 3h.01"/>',
+  history: '<path d="M3 11a9 9 0 1 1 2.6 7.4M3 4v7h7M12 7v5l3 2"/>',
+  'circle-check': '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+  'circle-play': '<circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4Z"/>',
+  'scan-check': '<path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M8 12l3 3 5-6"/>',
+  'library-add': '<path d="M4 3v18M8 3v18M12 3v7m0 6v5m4-18 4 7M18 14v8m-4-4h8"/>',
+  'folder-video': '<path d="M3 7V5h6l2 2h10v13H3Z"/><path d="m10 11 5 3-5 3Z"/>',
+  tags: '<path d="M3 3h7l10 10-7 7L3 10Zm4 4h.01M14 3l8 8-2 2"/>',
+  layers: '<path d="m12 3 10 5-10 5L2 8Zm-9 9 9 5 9-5M3 16l9 5 9-5"/>',
+  collection: '<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M6 4h12M9 1h6"/>',
+  locate: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>',
   edit:'<path d="m16 3 5 5-12 12-6 1 1-6L16 3Zm-2 2 5 5"/>',
   family:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2m2-16a3 3 0 0 1 0 6m4 10v-2a6 6 0 0 0-3-5"/>',
   chart: '<path d="M4 3v17h17M8 15v-4m5 4V7m5 8V4"/>',

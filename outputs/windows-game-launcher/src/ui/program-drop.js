@@ -20,6 +20,7 @@ export async function mountProgramDrop(actions) {
     let highlighted;
     return await onFileDrop(event => {
       const { type, paths, position } = event.payload;
+      if(actions.enabled?.()===false){overlay.hidden=true;highlighted?.classList.remove('program-path-hover');highlighted=null;return;}
       const target = ['enter','over','drop'].includes(type) ? programPathTarget(position) : null;
       highlighted?.classList.remove('program-path-hover');
       highlighted = target?.wrapper;

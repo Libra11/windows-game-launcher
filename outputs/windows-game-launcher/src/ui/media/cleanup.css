@@ -1,0 +1,7 @@
+.media-cleanup-preview,.media-cleanup-summary { display:grid; gap:10px; }
+.media-cleanup-list { display:grid; gap:8px; max-height:230px; padding:12px 12px 12px 28px; margin:0; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+.media-cleanup-list li { overflow-wrap:anywhere; font-size:12px; }
+.media-cleanup-list small { display:block; margin-top:3px; }
+.media-cleanup-check { display:flex; align-items:flex-start; gap:8px; font-size:12px; line-height:1.6; }
+.media-cleanup-check input { flex-shrink:0; margin-top:3px; }
+.media-cleanup-confirm { color:var(--error-text); border-color:var(--error-text); }

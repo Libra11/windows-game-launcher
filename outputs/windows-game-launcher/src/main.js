@@ -20,7 +20,8 @@ import { bigScreenView } from './ui/big-screen.js';
 import { createBigScreenMode } from './ui/big-screen-mode.js';
 import { mountSidebar } from './ui/sidebar.js';
 import { el, button, icon } from './lib/dom.js';
-import { command, onAppUpdateProgress, onUnlock, onLibraryChange, onLauncherError, preview } from './lib/bridge.js';
+import { command, chooseFile, onAppUpdateProgress, onUnlock, onLibraryChange, onLauncherError, preview } from './lib/bridge.js';
+import { createMediaController } from './ui/media/index.js';
 import { inCategory, queryGames, bigScreenCategories } from './lib/library-query.js';
 import { patchRuntime } from './ui/game-controls.js';
 import { launchState } from './lib/launch-state.js';
@@ -46,6 +47,8 @@ import { createOnlineSearchPage } from './ui/online-search.js';
 
 const state = { page:'library', games: [], selectedId: '', filter: 'all', search: '', sort: 'az', installedOnly:false, view: 'grid', achievements: [], achievementFilter: 'all', bigScreen: false, bigCategory: 'all', bigCollection:'all', bigFocusedId: '' };
 const appUpdates=createAppUpdateController(command,onAppUpdateProgress);
+state.domain = 'games';
+try { if(window.__YOUJI_MEDIA_VALIDATION__ || localStorage.getItem('youji-library-domain')==='media')state.domain='media'; } catch { /* 无法读取偏好时保留游戏入口。 */ }
 const animateView = createViewMotion();
 const retainArtworkView = createArtworkRetainer();
 const cachedLibraryView = createLibraryViewCache();
@@ -139,7 +142,7 @@ async function refreshOnce(silent) {
     gameContextMenu.reconcile();
     statistics.refresh();
 }
-const dialogActions = { run, refresh, toast, added: async game => { await refresh(); await select(game); toast('游戏已加入收藏'); actions.guide(actions.game(game.id) || game); } };
+const dialogActions = { run, refresh, toast, enabled:()=>state.domain==='games', added: async game => { await refresh(); await select(game); toast('游戏已加入收藏'); actions.guide(actions.game(game.id) || game); } };
 mountProgramDrop(dialogActions).catch(error => toast(`拖入导入暂不可用：${String(error)}`, true));
 const statistics = createStatisticsController({
   command, render, visible:()=>state.page==='statistics' && !state.selectedId && !document.hidden && !document.querySelector('dialog[open]'),
@@ -157,7 +160,7 @@ const actions = { run, toast,
   settings:async(category)=>{
     if(state.bigScreen)await bigMode.exit();
     selectionVersion++;state.page='settings';state.selectedId='';
-    settingsPage ||= createSettingsPage({...dialogActions,updates:appUpdates,add:actions.add,importSteam:actions.importSteam});
+    settingsPage ||= createSettingsPage({...dialogActions,updates:appUpdates,add:actions.add,importSteam:actions.importSteam,media,command,chooseFile});
     if(category)settingsPage.openCategory(category);
     render();window.scrollTo(0,0);
   },
@@ -224,6 +227,7 @@ const bigMode = createBigScreenMode(state, render, toast, {
   },
 });
 mountSidebar($('.sidebar'), {
+  domain: setDomain,
   category: value => { clearOrganizationSelection(state);state.collectionId='';selectionVersion++; state.page='library'; state.filter = value; state.selectedId = ''; render(); },
   back:()=>{
     if (state.page === 'library' && state.selectedId) return actions.back();
@@ -237,6 +241,42 @@ mountSidebar($('.sidebar'), {
 const organizationSidebar=mountOrganizationSidebar($('#navigation'),state,actions);
 const collectionDrag=mountCollectionDrag(state,actions,organizationSidebar);
 const gameContextMenu=mountGameContextMenu(state,actions);
+const gameSidebarNodes=[...$('.sidebar').childNodes];
+let sidebarDomain='games';
+let mediaController;
+let savedGameView={page:'library',selectedId:''};
+function media() {
+  if(!mediaController){
+    mediaController=createMediaController({command,chooseFile,toast,onNavigate:async()=>{
+      if(state.domain!=='media')await setDomain('media');
+      if(state.domain==='media'&&state.page!=='media'){state.page='media';render();}
+    }});
+    mediaController.setActive(state.domain==='media'&&state.page!=='settings');
+  }
+  return mediaController;
+}
+async function setDomain(value) {
+  if(!['games','media'].includes(value)||state.domain===value)return;
+  const focusSwitch=document.activeElement?.classList.contains('domain-switch');
+  if(state.bigScreen)await bigMode.exit();
+  const inSettings=state.page==='settings';
+  if(value==='media'&&!inSettings)savedGameView={page:state.page,selectedId:state.selectedId};
+  state.domain=value;
+  if(value==='media'){state.page='media';state.selectedId='';}
+  else Object.assign(state,savedGameView);
+  if(inSettings){state.page='settings';state.selectedId='';}
+  try{localStorage.setItem('youji-library-domain',value);}catch{/* 偏好不可写时仍可切换。 */}
+  if(value==='games'&&state.page==='social')await actions.social(state.socialMode||'friends');else render();
+  window.scrollTo(0,0);
+  if(focusSwitch)$('.sidebar .domain-switch').focus({preventScroll:true});
+  if(value==='media')await media().refresh();else await refresh(true);
+}
+function domainSidebar() {
+  if(sidebarDomain===state.domain)return;
+  if(state.domain==='games')$('.sidebar').replaceChildren(...gameSidebarNodes);
+  else media().mountSidebar($('.sidebar'),{onDomainChange:setDomain,onSettings:()=>actions.settings(),preview});
+  sidebarDomain=state.domain;
+}
 $('#add-action').append(button('添加游戏', 'primary add-button', actions.add, 'plus'));
 const displayMode=button('','header-icon-button',bigMode.enter,'screen');
 displayMode.id='big-screen-entry';displayMode.title='大屏模式';displayMode.setAttribute('aria-label','大屏模式');
@@ -250,9 +290,27 @@ $('#search').oninput = event => {
 function render(preferredFocus) {
   collectionDrag.reconcile();
   gameContextMenu.reconcile();
+  domainSidebar();
+  const settingsEntry=$('.sidebar [data-page="settings"]');
+  settingsEntry.classList.toggle('active',state.page==='settings');
+  settingsEntry.setAttribute('aria-current',state.page==='settings'?'page':'false');
+  settingsEntry.classList.toggle('update-available',updateAvailable(appUpdates.status));
+  if(state.page==='settings')$('.sidebar').querySelectorAll('[data-media-category],[data-media-collection]').forEach(node=>{node.classList.remove('active');node.setAttribute('aria-current','false');});
+  const mediaVisible=state.domain==='media'&&state.page!=='settings';
+  mediaController?.setActive?.(mediaVisible);
+  if(state.page!=='social'&&socialPage){socialPage.dispose();socialPage=null;}
+  app.classList.toggle('media-active',mediaVisible);
+  $('.topbar').hidden=mediaVisible;
+  if(mediaVisible){
+    $('#page-intro').hidden=true;$('#big-screen-host').hidden=true;
+    app.classList.remove('statistics-active','settings-active');
+    const content=$('#content');content.setAttribute('aria-label','影视库内容');
+    if(content.firstElementChild!==media().element)content.replaceChildren(media().element);
+    if(settingsPage){settingsPage.dispose();settingsPage=null;}
+    return;
+  }
   // 后台刷新只更新内容，不能重新获取焦点、打断前台游戏。
   const restoreFocus = document.hasFocus();
-  if(state.page!=='social'&&socialPage){socialPage.dispose();socialPage=null;}
   if(state.page!=='settings'&&settingsPage){settingsPage.dispose();settingsPage=null;}
   const host = $('#big-screen-host');
   host.hidden = !state.bigScreen;
@@ -285,12 +343,12 @@ function render(preferredFocus) {
   const content = $('#content'); const diagnosticOpen = content.querySelector('details')?.open;
   const focusKey = content.contains(document.activeElement) ? document.activeElement.dataset.focusKey : null;
   const statisticsScroll=state.page==='statistics' && !state.selectedId ? window.scrollY : null;
-  $('#navigation').querySelectorAll('button').forEach(node => {
+  if(state.domain==='games')$('#navigation').querySelectorAll('button').forEach(node => {
     const category = node.dataset.filter; const active=node.dataset.socialMode ? state.page==='social' && node.dataset.socialMode===(state.socialMode==='mine'?'mine':'friends') : node.dataset.page ? state.page===node.dataset.page : state.page==='library' && !state.collectionId && category===state.filter;
     node.classList.toggle('active',active);node.setAttribute('aria-current',active?'page':'false');
     if(category) node.querySelector('.nav-count').textContent = state.games.filter(game => inCategory(game,category)).length;
   });
-  organizationSidebar.update();
+  if(state.domain==='games')organizationSidebar.update();
   const game = state.games.find(item => item.id === state.selectedId);
   if (!game) state.selectedId = '';
   app.classList.toggle('statistics-active',state.page==='statistics'&&!game);
@@ -317,7 +375,7 @@ onUnlock(async event => {
 onLibraryChange(()=>refresh(true).catch(()=>{})).catch(()=>{});
 onLauncherError(event=>toast(String(event.payload),true)).catch(()=>{});
 watchNetworkImages().catch(()=>{});
-if(!preview)command('get_backup_restore_status').then(async notice=>{
+if(!preview&&!window.__YOUJI_MEDIA_VALIDATION__)command('get_backup_restore_status').then(async notice=>{
   if(!notice){
     if(window.__youjiRestoredPreferencesId)await command('ack_backup_restore',{restoreId:window.__youjiRestoredPreferencesId,appearanceApplied:true});
     return;
@@ -325,9 +383,12 @@ if(!preview)command('get_backup_restore_status').then(async notice=>{
   if(!notice.acknowledged)toast(notice.message+(notice.missingPaths?` 尚有 ${notice.missingPaths} 款游戏需要定位。`:''),!notice.success);
   await command('ack_backup_restore',{restoreId:notice.id,appearanceApplied:window.__youjiRestoredPreferencesId===notice.id});
 }).catch(()=>{});
-setInterval(() => { if (!['settings','social'].includes(state.page) && !document.hidden && !document.querySelector('dialog[open]')) refresh(true).catch(() => {}); }, 5000);
+setInterval(() => { if (state.domain==='games' && !['settings','social'].includes(state.page) && !document.hidden && !document.querySelector('dialog[open]')) refresh(true).catch(() => {}); }, 5000);
 $('#content').append(el('div', 'loading-state', '正在打开你的收藏…'));
-appUpdates.subscribe(status=>$('#navigation [data-page="settings"]')?.classList.toggle('update-available',updateAvailable(status)));
-appUpdates.start().catch(()=>{});
-organizationController.start().catch(error=>toast(String(error),true));
-refresh().catch(() => { $('#content').replaceChildren(el('div', 'empty-state', '暂时无法读取游戏库，请在桌面启动器中打开。')); });
+appUpdates.subscribe(status=>$('.sidebar [data-page="settings"]')?.classList.toggle('update-available',updateAvailable(status)));
+if(!window.__YOUJI_MEDIA_VALIDATION__){
+  appUpdates.start().catch(()=>{});
+  organizationController.start().catch(error=>toast(String(error),true));
+  refresh().catch(() => { if(state.domain==='games')$('#content').replaceChildren(el('div', 'empty-state', '暂时无法读取游戏库，请在桌面启动器中打开。')); });
+}
+if(state.domain==='media'){state.page='media';render();media().refresh().catch(error=>toast(String(error),true));}

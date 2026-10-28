@@ -1,201 +1,525 @@
 use super::{archive, export, model::*, paths, restore, schema};
 use crate::db;
-use std::{collections::BTreeMap, io::{Read, Write}};
+use std::{
+    collections::BTreeMap,
+    io::{Read, Write},
+};
 
 const TIME: &str = "2026-10-10T08:00:00+00:00";
 
 #[test]
+fn v3_game_only_restore_preserves_existing_media() {
+    let temp = tempfile::tempdir().unwrap();
+    let mut conn = source();
+    let (data, prefs) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    let path = temp.path().join("game-only.youji-backup");
+    archive::write(&path, data, prefs, temp.path(), "test".into(), |_, _, _| {
+        Ok(())
+    })
+    .unwrap();
+    let manifest = archive::read(&path).unwrap().manifest;
+    assert_eq!(manifest.format_version, 3);
+    assert!(!manifest.files.contains_key("media.json"));
+    assert!(serde_json::to_value(manifest)
+        .unwrap()
+        .get("media")
+        .is_none());
+    let target = temp.path().join("target");
+    std::fs::create_dir_all(target.join("backup-staging")).unwrap();
+    let conn = crate::media::store::open(&target).unwrap();
+    let id = crate::media::store::new_item(
+        &conn,
+        &serde_json::json!({"title":"保留当前影视","independent":true}),
+    )
+    .unwrap();
+    crate::media::store::update_record(
+        &conn,
+        &id,
+        &serde_json::json!({"comment":"原观看记录"}),
+        true,
+    )
+    .unwrap();
+    drop(conn);
+    let restore_id = uuid::Uuid::new_v4().to_string();
+    let name = format!("restore-{restore_id}.youji-backup");
+    std::fs::copy(&path, target.join("backup-staging").join(&name)).unwrap();
+    archive::atomic_json(
+        &target.join("pending-backup-restore.json"),
+        &Pending {
+            restore_id,
+            archive: name,
+            sha256: archive::file_hash(&path).unwrap(),
+            relocation: Relocation::default(),
+            safety_backup: "fixture".into(),
+        },
+    )
+    .unwrap();
+    let mut game = db::open(std::path::Path::new(":memory:")).unwrap();
+    restore::startup(&mut game, &target, &target.join("covers")).unwrap();
+    assert_eq!(
+        crate::media::store::item(&crate::media::store::open(&target).unwrap(), &id).unwrap()
+            ["comment"],
+        "原观看记录"
+    );
+}
+
+#[test]
 fn local_launcher_paths_survive_backup_mapping_and_individual_relocation() {
-    let mut conn=source();
-    let mut game=db::game(&conn,"local-one").unwrap().unwrap();
-    game.launch_uri="E:/Games/Launcher/launcher.exe".into(); db::upsert_game(&conn,&game).unwrap();
-    let (mut data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
-    schema::validate(&data,&prefs).unwrap();
-    let previews=paths::apply(&mut data,&Relocation{mappings:vec![PathMapping{from:"E:/Games".into(),to:"D:/Games".into()}],overrides:vec![]}).unwrap();
-    assert_eq!(previews[0].launcher_path,"D:/Games/Launcher/launcher.exe");
-    let relocation=Relocation{mappings:vec![],overrides:vec![PathOverride{game_id:game.id.clone(),exe_path:"D:/Games/game.exe".into(),launcher_path:Some("C:/Launcher/start.exe".into()),..Default::default()}]};
-    paths::apply(&mut data,&relocation).unwrap(); schema::validate(&data,&prefs).unwrap();
-    let mut target=db::open(std::path::Path::new(":memory:")).unwrap();
-    restore::replace(&mut target,&data,&prefs,"fixture").unwrap();
-    assert_eq!(db::game(&target,&game.id).unwrap().unwrap().launch_uri,"C:/Launcher/start.exe");
-    for invalid in ["steam://run/480","../start.exe","C:/Games/start.lnk","C:/Games/start.exe\n"] {
-        data.tables.get_mut("games").unwrap()[0][5]=invalid.into();
-        assert!(schema::validate(&data,&prefs).is_err());
+    let mut conn = source();
+    let mut game = db::game(&conn, "local-one").unwrap().unwrap();
+    game.launch_uri = "E:/Games/Launcher/launcher.exe".into();
+    db::upsert_game(&conn, &game).unwrap();
+    let (mut data, prefs) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    schema::validate(&data, &prefs).unwrap();
+    let previews = paths::apply(
+        &mut data,
+        &Relocation {
+            mappings: vec![PathMapping {
+                from: "E:/Games".into(),
+                to: "D:/Games".into(),
+            }],
+            overrides: vec![],
+        },
+    )
+    .unwrap();
+    assert_eq!(previews[0].launcher_path, "D:/Games/Launcher/launcher.exe");
+    let relocation = Relocation {
+        mappings: vec![],
+        overrides: vec![PathOverride {
+            game_id: game.id.clone(),
+            exe_path: "D:/Games/game.exe".into(),
+            launcher_path: Some("C:/Launcher/start.exe".into()),
+            ..Default::default()
+        }],
+    };
+    paths::apply(&mut data, &relocation).unwrap();
+    schema::validate(&data, &prefs).unwrap();
+    let mut target = db::open(std::path::Path::new(":memory:")).unwrap();
+    restore::replace(&mut target, &data, &prefs, "fixture").unwrap();
+    assert_eq!(
+        db::game(&target, &game.id).unwrap().unwrap().launch_uri,
+        "C:/Launcher/start.exe"
+    );
+    for invalid in [
+        "steam://run/480",
+        "../start.exe",
+        "C:/Games/start.lnk",
+        "C:/Games/start.exe\n",
+    ] {
+        data.tables.get_mut("games").unwrap()[0][5] = invalid.into();
+        assert!(schema::validate(&data, &prefs).is_err());
     }
 }
 fn appearance() -> Appearance {
-    Appearance { theme:"dark".into(), theme_color:"amber".into(), fonts:vec!["Microsoft YaHei".into(),"system-ui".into()] }
+    Appearance {
+        theme: "dark".into(),
+        theme_color: "amber".into(),
+        fonts: vec!["Microsoft YaHei".into(), "system-ui".into()],
+    }
 }
 fn source() -> rusqlite::Connection {
     let mut conn = db::open(std::path::Path::new(":memory:")).unwrap();
-    let game = crate::model::Game { id:"local-one".into(),source:"local".into(),appid:"480".into(),title:"中文游戏".into(),
-        exe_path:r"E:\Games\中文游戏\game.exe".into(),custom_unlock_path:r"E:\Games\中文游戏\record.ini".into(),metadata_json:"{}".into(),..Default::default() };
-    db::upsert_game(&conn,&game).unwrap();
-    crate::achievement_platform::save(&conn,&game,"steam","",true).unwrap();
-    let tag=crate::organization::store::create(&mut conn,false,"待玩").unwrap();
-    let first=crate::organization::store::create(&mut conn,true,"周末").unwrap();
-    let second=crate::organization::store::create(&mut conn,true,"冒险").unwrap();
-    crate::organization::store::reorder(&mut conn,&[second,first.clone()]).unwrap();
-    crate::organization::store::set(&mut conn,&game.id,vec![tag],vec![first]).unwrap();
-    crate::activity::set_favorite(&conn,&game.id,true).unwrap();
-    crate::activity::start(&mut conn,"session-one",&game.id,TIME).unwrap();
-    crate::activity::checkpoint(&mut conn,"session-one",125,false,&BTreeMap::from([("2026-10-10".into(),125)])).unwrap();
-    conn.execute("INSERT INTO achievements VALUES('480','FIRST','首次','条件','',0)",[]).unwrap();
+    let game = crate::model::Game {
+        id: "local-one".into(),
+        source: "local".into(),
+        appid: "480".into(),
+        title: "中文游戏".into(),
+        exe_path: r"E:\Games\中文游戏\game.exe".into(),
+        custom_unlock_path: r"E:\Games\中文游戏\record.ini".into(),
+        metadata_json: "{}".into(),
+        ..Default::default()
+    };
+    db::upsert_game(&conn, &game).unwrap();
+    crate::achievement_platform::save(&conn, &game, "steam", "", true).unwrap();
+    let tag = crate::organization::store::create(&mut conn, false, "待玩").unwrap();
+    let first = crate::organization::store::create(&mut conn, true, "周末").unwrap();
+    let second = crate::organization::store::create(&mut conn, true, "冒险").unwrap();
+    crate::organization::store::reorder(&mut conn, &[second, first.clone()]).unwrap();
+    crate::organization::store::set(&mut conn, &game.id, vec![tag], vec![first]).unwrap();
+    crate::activity::set_favorite(&conn, &game.id, true).unwrap();
+    crate::activity::start(&mut conn, "session-one", &game.id, TIME).unwrap();
+    crate::activity::checkpoint(
+        &mut conn,
+        "session-one",
+        125,
+        false,
+        &BTreeMap::from([("2026-10-10".into(), 125)]),
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO achievements VALUES('480','FIRST','首次','条件','',0)",
+        [],
+    )
+    .unwrap();
     conn.execute("INSERT INTO unlocks VALUES('local-one','FIRST','manual',?1,'历史证据 E:/Original/record.ini')",[TIME]).unwrap();
-    for key in ["steam_api_key","epic_oauth_session","steam_family_session","runtime_recovery","achievement_definition_error:local-one"] {
-        db::set_setting(&conn,key,"PRIVATE_SENTINEL_MUST_NOT_EXPORT").unwrap();
+    for key in [
+        "steam_api_key",
+        "epic_oauth_session",
+        "steam_family_session",
+        "runtime_recovery",
+        "achievement_definition_error:local-one",
+    ] {
+        db::set_setting(&conn, key, "PRIVATE_SENTINEL_MUST_NOT_EXPORT").unwrap();
     }
-    db::set_setting(&conn,"network_proxy",r#"{"mode":"direct","address":""}"#).unwrap();
-    db::set_setting(&conn,"achievement_notifications","true").unwrap();
+    db::set_setting(&conn, "network_proxy", r#"{"mode":"direct","address":""}"#).unwrap();
+    db::set_setting(&conn, "achievement_notifications", "true").unwrap();
     conn
 }
 
 #[test]
 fn exports_consistent_records_without_credentials_and_only_closes_copy() {
-    let mut conn=source();
-    let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
-    let text=serde_json::to_string(&data).unwrap();
+    let mut conn = source();
+    let (data, prefs) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    let text = serde_json::to_string(&data).unwrap();
     assert!(!text.contains("PRIVATE_SENTINEL"));
     assert!(!data.settings.contains_key("network_proxy"));
-    assert_eq!(data.tables["play_sessions"][0][3],TIME);
-    assert_eq!(conn.query_row("SELECT ended_at FROM play_sessions",[],|row|row.get::<_,String>(0)).unwrap(),"");
-    assert_eq!(data.tables["game_activity"][0][3],125);
-    assert_eq!(schema::counts(&data,0).favorites,1);
-    schema::validate(&data,&prefs).unwrap();
+    assert_eq!(data.tables["play_sessions"][0][3], TIME);
+    assert_eq!(
+        conn.query_row("SELECT ended_at FROM play_sessions", [], |row| row
+            .get::<_, String>(0))
+            .unwrap(),
+        ""
+    );
+    assert_eq!(data.tables["game_activity"][0][3], 125);
+    assert_eq!(schema::counts(&data, 0).favorites, 1);
+    schema::validate(&data, &prefs).unwrap();
 }
 
 #[test]
 fn archive_roundtrip_restores_history_and_proxy_without_logins_or_runtime() {
-    let temp=tempfile::tempdir().unwrap();let covers=temp.path().join("source-covers");std::fs::create_dir(&covers).unwrap();
-    let name=format!("{}.png",uuid::Uuid::new_v4());
-    std::fs::write(covers.join(&name),include_bytes!("../../icons/icon.png")).unwrap();
-    let mut conn=source();
-    db::set_setting(&conn,"cover_cache:local-one:portrait",&serde_json::json!({"appid":"480","source":"local","file":name}).to_string()).unwrap();
-    let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
-    let path=temp.path().join("portable.youji-backup");
-    let manifest=archive::write(&path,data,prefs,&covers,"0.2.5".into(),|_,_,_|Ok(())).unwrap();
-    assert_eq!(manifest.counts.covers,1);assert_eq!(manifest.format_version,FORMAT_VERSION);
-    assert_eq!(manifest.counts.tags,1);assert_eq!(manifest.counts.collections,2);
-    let loaded=archive::read(&path).unwrap();
-    let mut target=db::open(std::path::Path::new(":memory:")).unwrap();
-    db::set_setting(&target,"steam_api_key","TARGET_CREDENTIAL").unwrap();
-    db::set_setting(&target,"network_proxy","target-proxy").unwrap();
-    restore::replace(&mut target,&loaded.data,&loaded.preferences,"fixture-id").unwrap();
-    assert_eq!(db::setting(&target,"steam_api_key").unwrap(),"");
-    assert_eq!(db::setting(&target,"network_proxy").unwrap(),"target-proxy");
-    assert_eq!(db::setting(&target,"runtime_recovery").unwrap(),"[]");
-    assert_eq!(crate::activity::all(&target).unwrap()["local-one"].played_seconds,125);
-    assert_eq!(db::achievements(&target,"local-one").unwrap().len(),1);
-    assert_eq!(serde_json::to_value(crate::organization::store::read(&target).unwrap()).unwrap(),serde_json::to_value(crate::organization::store::read(&conn).unwrap()).unwrap());
-    assert!(restore::appearance_script(&target).unwrap().unwrap().contains("launcher-font-settings"));
+    let temp = tempfile::tempdir().unwrap();
+    let covers = temp.path().join("source-covers");
+    std::fs::create_dir(&covers).unwrap();
+    let name = format!("{}.png", uuid::Uuid::new_v4());
+    std::fs::write(covers.join(&name), include_bytes!("../../icons/icon.png")).unwrap();
+    let mut conn = source();
+    db::set_setting(
+        &conn,
+        "cover_cache:local-one:portrait",
+        &serde_json::json!({"appid":"480","source":"local","file":name}).to_string(),
+    )
+    .unwrap();
+    let (data, prefs) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    let path = temp.path().join("portable.youji-backup");
+    let manifest = archive::write(
+        &path,
+        data,
+        prefs,
+        &covers,
+        "0.2.5".into(),
+        |_, _, _| Ok(()),
+    )
+    .unwrap();
+    assert_eq!(manifest.counts.covers, 1);
+    assert_eq!(manifest.format_version, FORMAT_VERSION);
+    assert_eq!(manifest.counts.tags, 1);
+    assert_eq!(manifest.counts.collections, 2);
+    let loaded = archive::read(&path).unwrap();
+    let mut target = db::open(std::path::Path::new(":memory:")).unwrap();
+    db::set_setting(&target, "steam_api_key", "TARGET_CREDENTIAL").unwrap();
+    db::set_setting(&target, "network_proxy", "target-proxy").unwrap();
+    restore::replace(&mut target, &loaded.data, &loaded.preferences, "fixture-id").unwrap();
+    assert_eq!(db::setting(&target, "steam_api_key").unwrap(), "");
+    assert_eq!(
+        db::setting(&target, "network_proxy").unwrap(),
+        "target-proxy"
+    );
+    assert_eq!(db::setting(&target, "runtime_recovery").unwrap(), "[]");
+    assert_eq!(
+        crate::activity::all(&target).unwrap()["local-one"].played_seconds,
+        125
+    );
+    assert_eq!(db::achievements(&target, "local-one").unwrap().len(), 1);
+    assert_eq!(
+        serde_json::to_value(crate::organization::store::read(&target).unwrap()).unwrap(),
+        serde_json::to_value(crate::organization::store::read(&conn).unwrap()).unwrap()
+    );
+    assert!(restore::appearance_script(&target)
+        .unwrap()
+        .unwrap()
+        .contains("launcher-font-settings"));
 }
 
 #[test]
 fn rollback_preserves_target_data_if_restoring_fails() {
-    let mut original=source();let (data,prefs)=export::capture(&mut original,appearance(),TIME).unwrap();
-    let mut target=db::open(std::path::Path::new(":memory:")).unwrap();
-    db::set_setting(&target,"steam_api_key","ORIGINAL_SECRET").unwrap();
-    let target_tag=crate::organization::store::create(&mut target,false,"原标签").unwrap();
+    let mut original = source();
+    let (data, prefs) = export::capture(&mut original, appearance(), TIME).unwrap();
+    let mut target = db::open(std::path::Path::new(":memory:")).unwrap();
+    db::set_setting(&target, "steam_api_key", "ORIGINAL_SECRET").unwrap();
+    let target_tag = crate::organization::store::create(&mut target, false, "原标签").unwrap();
     target.execute_batch("CREATE TRIGGER reject_game BEFORE INSERT ON games BEGIN SELECT RAISE(ABORT,'fixture failure'); END;").unwrap();
-    assert!(restore::replace(&mut target,&data,&prefs,"fixture").is_err());
-    assert_eq!(db::setting(&target,"steam_api_key").unwrap(),"ORIGINAL_SECRET");
+    assert!(restore::replace(&mut target, &data, &prefs, "fixture").is_err());
+    assert_eq!(
+        db::setting(&target, "steam_api_key").unwrap(),
+        "ORIGINAL_SECRET"
+    );
     assert!(db::games(&target).unwrap().is_empty());
-    assert_eq!(crate::organization::store::read(&target).unwrap().tags[0].id,target_tag);
+    assert_eq!(
+        crate::organization::store::read(&target).unwrap().tags[0].id,
+        target_tag
+    );
 }
 
 #[test]
 fn directory_mapping_obeys_boundaries_drive_roots_and_preserves_historical_fields() {
-    let mappings=vec![PathMapping{from:"E:/Games".into(),to:"D:/库".into()}];
-    assert_eq!(paths::mapped(r"e:\Games\中文\game.exe",&mappings),"D:/库/中文/game.exe");
-    assert_eq!(paths::mapped("E:/Games2/game.exe",&mappings),"E:/Games2/game.exe");
-    assert_eq!(paths::mapped("E:/Games/game.exe",&[PathMapping{from:"E:/".into(),to:"D:/".into()}]),"D:/Games/game.exe");
-    let mut conn=source();let (mut data,_)=export::capture(&mut conn,appearance(),TIME).unwrap();
-    let evidence=data.tables["unlocks"][0][4].clone();let appid=data.tables["games"][0][2].clone();
-    paths::apply(&mut data,&Relocation{mappings,overrides:vec![]}).unwrap();
-    assert_eq!(data.tables["games"][0][2],appid);assert_eq!(data.tables["unlocks"][0][4],evidence);
+    let mappings = vec![PathMapping {
+        from: "E:/Games".into(),
+        to: "D:/库".into(),
+    }];
+    assert_eq!(
+        paths::mapped(r"e:\Games\中文\game.exe", &mappings),
+        "D:/库/中文/game.exe"
+    );
+    assert_eq!(
+        paths::mapped("E:/Games2/game.exe", &mappings),
+        "E:/Games2/game.exe"
+    );
+    assert_eq!(
+        paths::mapped(
+            "E:/Games/game.exe",
+            &[PathMapping {
+                from: "E:/".into(),
+                to: "D:/".into()
+            }]
+        ),
+        "D:/Games/game.exe"
+    );
+    let mut conn = source();
+    let (mut data, _) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    let evidence = data.tables["unlocks"][0][4].clone();
+    let appid = data.tables["games"][0][2].clone();
+    paths::apply(
+        &mut data,
+        &Relocation {
+            mappings,
+            overrides: vec![],
+        },
+    )
+    .unwrap();
+    assert_eq!(data.tables["games"][0][2], appid);
+    assert_eq!(data.tables["unlocks"][0][4], evidence);
 }
 
 #[test]
 fn malformed_records_and_unsupported_archive_entries_are_rejected() {
-    let mut conn=source();let (mut data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
-    data.tables.get_mut("play_sessions").unwrap()[0][4]=(-1).into();
-    assert!(schema::validate(&data,&prefs).is_err());
-    let temp=tempfile::tempdir().unwrap();let path=temp.path().join("bad.youji-backup");
-    let mut zip=zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
-    zip.start_file("../outside.txt",zip::write::SimpleFileOptions::default()).unwrap();zip.write_all(b"bad").unwrap();zip.finish().unwrap();
-    assert!(archive::read(&path).is_err());assert!(!temp.path().join("outside.txt").exists());
+    let mut conn = source();
+    let (mut data, prefs) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    data.tables.get_mut("play_sessions").unwrap()[0][4] = (-1).into();
+    assert!(schema::validate(&data, &prefs).is_err());
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("bad.youji-backup");
+    let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+    zip.start_file("../outside.txt", zip::write::SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(b"bad").unwrap();
+    zip.finish().unwrap();
+    assert!(archive::read(&path).is_err());
+    assert!(!temp.path().join("outside.txt").exists());
 }
 
 #[test]
 fn cancellation_does_not_publish_a_partial_file() {
-    let temp=tempfile::tempdir().unwrap();let mut conn=source();let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
-    let path=temp.path().join("cancelled.youji-backup");
-    assert!(archive::write(&path,data,prefs,temp.path(),"0.2.5".into(),|_,_,_|Err("取消".into())).is_err());
+    let temp = tempfile::tempdir().unwrap();
+    let mut conn = source();
+    let (data, prefs) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    let path = temp.path().join("cancelled.youji-backup");
+    assert!(archive::write(
+        &path,
+        data,
+        prefs,
+        temp.path(),
+        "0.2.5".into(),
+        |_, _, _| Err("取消".into())
+    )
+    .is_err());
     assert!(!path.exists());
 }
 
 #[test]
 fn digest_failure_is_detected_before_replacing_any_data() {
-    let temp=tempfile::tempdir().unwrap();let mut conn=source();let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
-    let path=temp.path().join("valid.youji-backup");archive::write(&path,data,prefs,temp.path(),"0.2.5".into(),|_,_,_|Ok(())).unwrap();
-    let mut zip=zip::ZipArchive::new(std::fs::File::open(&path).unwrap()).unwrap();
-    let bad=temp.path().join("changed.youji-backup");let mut writer=zip::ZipWriter::new(std::fs::File::create(&bad).unwrap());
-    for index in 0..zip.len(){let mut file=zip.by_index(index).unwrap();let name=file.name().unwrap().into_owned();let mut bytes=Vec::new();file.read_to_end(&mut bytes).unwrap();
-        if name=="data.json"{bytes.push(b' ');}writer.start_file(name,zip::write::SimpleFileOptions::default()).unwrap();writer.write_all(&bytes).unwrap();}
-    writer.finish().unwrap();assert!(archive::read(&bad).is_err());
+    let temp = tempfile::tempdir().unwrap();
+    let mut conn = source();
+    let (data, prefs) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    let path = temp.path().join("valid.youji-backup");
+    archive::write(
+        &path,
+        data,
+        prefs,
+        temp.path(),
+        "0.2.5".into(),
+        |_, _, _| Ok(()),
+    )
+    .unwrap();
+    let mut zip = zip::ZipArchive::new(std::fs::File::open(&path).unwrap()).unwrap();
+    let bad = temp.path().join("changed.youji-backup");
+    let mut writer = zip::ZipWriter::new(std::fs::File::create(&bad).unwrap());
+    for index in 0..zip.len() {
+        let mut file = zip.by_index(index).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes).unwrap();
+        if name == "data.json" {
+            bytes.push(b' ');
+        }
+        writer
+            .start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&bytes).unwrap();
+    }
+    writer.finish().unwrap();
+    assert!(archive::read(&bad).is_err());
 }
 
 #[test]
 fn organization_backup_rejects_orphans_duplicate_names_and_invalid_order() {
-    let mut conn=source();let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
-    let mut broken=data.clone();broken.tables.get_mut("game_tags").unwrap()[0][1]="unknown".into();assert!(schema::validate(&broken,&prefs).is_err());
-    let mut broken=data.clone();let mut row=broken.tables["library_tags"][0].clone();row[0]=uuid::Uuid::new_v4().to_string().into();broken.tables.get_mut("library_tags").unwrap().push(row);assert!(schema::validate(&broken,&prefs).is_err());
-    let mut broken=data.clone();broken.tables.get_mut("library_collections").unwrap()[0][2]=(-1).into();assert!(schema::validate(&broken,&prefs).is_err());
-    let mut broken=data.clone();let position=broken.tables["library_collections"][0][2].clone();broken.tables.get_mut("library_collections").unwrap()[1][2]=position;assert!(schema::validate(&broken,&prefs).is_err());
+    let mut conn = source();
+    let (data, prefs) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    let mut broken = data.clone();
+    broken.tables.get_mut("game_tags").unwrap()[0][1] = "unknown".into();
+    assert!(schema::validate(&broken, &prefs).is_err());
+    let mut broken = data.clone();
+    let mut row = broken.tables["library_tags"][0].clone();
+    row[0] = uuid::Uuid::new_v4().to_string().into();
+    broken.tables.get_mut("library_tags").unwrap().push(row);
+    assert!(schema::validate(&broken, &prefs).is_err());
+    let mut broken = data.clone();
+    broken.tables.get_mut("library_collections").unwrap()[0][2] = (-1).into();
+    assert!(schema::validate(&broken, &prefs).is_err());
+    let mut broken = data.clone();
+    let position = broken.tables["library_collections"][0][2].clone();
+    broken.tables.get_mut("library_collections").unwrap()[1][2] = position;
+    assert!(schema::validate(&broken, &prefs).is_err());
 }
 #[test]
 fn v1_archive_is_explicitly_rejected() {
-    let temp=tempfile::tempdir().unwrap();let mut conn=source();let (data,prefs)=export::capture(&mut conn,appearance(),TIME).unwrap();
-    let path=temp.path().join("new.youji-backup");archive::write(&path,data,prefs,temp.path(),"0.2.5".into(),|_,_,_|Ok(())).unwrap();
-    let mut zip=zip::ZipArchive::new(std::fs::File::open(&path).unwrap()).unwrap();
-    let old=temp.path().join("old.youji-backup");let mut writer=zip::ZipWriter::new(std::fs::File::create(&old).unwrap());
-    for index in 0..zip.len(){let mut file=zip.by_index(index).unwrap();let name=file.name().unwrap().into_owned();let mut bytes=Vec::new();file.read_to_end(&mut bytes).unwrap();
-        if name=="manifest.json"{let mut manifest:serde_json::Value=serde_json::from_slice(&bytes).unwrap();manifest["formatVersion"]=1.into();bytes=serde_json::to_vec(&manifest).unwrap();}
-        writer.start_file(name,zip::write::SimpleFileOptions::default()).unwrap();writer.write_all(&bytes).unwrap();}
-    writer.finish().unwrap();assert_eq!(archive::read(&old).err().unwrap(),"不支持此备份格式版本");
+    let temp = tempfile::tempdir().unwrap();
+    let mut conn = source();
+    let (data, prefs) = export::capture(&mut conn, appearance(), TIME).unwrap();
+    let path = temp.path().join("new.youji-backup");
+    archive::write(
+        &path,
+        data,
+        prefs,
+        temp.path(),
+        "0.2.5".into(),
+        |_, _, _| Ok(()),
+    )
+    .unwrap();
+    for version in [1, 2, 4] {
+        let mut zip = zip::ZipArchive::new(std::fs::File::open(&path).unwrap()).unwrap();
+        let old = temp.path().join("old.youji-backup");
+        let mut writer = zip::ZipWriter::new(std::fs::File::create(&old).unwrap());
+        for index in 0..zip.len() {
+            let mut file = zip.by_index(index).unwrap();
+            let name = file.name().unwrap().into_owned();
+            let mut bytes = Vec::new();
+            file.read_to_end(&mut bytes).unwrap();
+            if name == "manifest.json" {
+                let mut manifest: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+                manifest["formatVersion"] = version.into();
+                bytes = serde_json::to_vec(&manifest).unwrap();
+            }
+            writer
+                .start_file(name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(&bytes).unwrap();
+        }
+        writer.finish().unwrap();
+        assert_eq!(archive::read(&old).err().unwrap(), "不支持此备份格式版本");
+    }
 }
 
 #[test]
 fn update_installation_gate_refuses_an_active_backup_operation() {
-    let manager=super::Manager::default();let operation=manager.operation.lock().unwrap();
-    assert!(manager.prevent_operations().is_err());drop(operation);assert!(manager.prevent_operations().is_ok());
+    let manager = super::Manager::default();
+    let operation = manager.operation.lock().unwrap();
+    assert!(manager.prevent_operations().is_err());
+    drop(operation);
+    assert!(manager.prevent_operations().is_ok());
 }
 
 #[test]
 fn backup_preserves_shared_identity_but_never_replays_device_queue() {
-    let mut original=source();
-    let cloud_id=uuid::Uuid::new_v4().to_string();
-    db::set_setting(&original,"cloud_achievement_namespace:local-one","480").unwrap();
-    original.execute("INSERT INTO sync_game_links VALUES('local-one',?1)",[&cloud_id]).unwrap();
-    original.execute("INSERT INTO historical_playtime_baselines VALUES('local-one',3600)",[]).unwrap();
-    original.execute("INSERT INTO cloud_archives VALUES('local-one',1)",[]).unwrap();
-    original.execute("INSERT INTO achievement_facts VALUES('local-one','480','FIRST','manual',NULL,0)",[]).unwrap();
+    let mut original = source();
+    let cloud_id = uuid::Uuid::new_v4().to_string();
+    db::set_setting(&original, "cloud_achievement_namespace:local-one", "480").unwrap();
+    original
+        .execute(
+            "INSERT INTO sync_game_links VALUES('local-one',?1)",
+            [&cloud_id],
+        )
+        .unwrap();
+    original
+        .execute(
+            "INSERT INTO historical_playtime_baselines VALUES('local-one',3600)",
+            [],
+        )
+        .unwrap();
+    original
+        .execute("INSERT INTO cloud_archives VALUES('local-one',1)", [])
+        .unwrap();
+    original
+        .execute(
+            "INSERT INTO achievement_facts VALUES('local-one','480','FIRST','manual',NULL,0)",
+            [],
+        )
+        .unwrap();
     original.execute("INSERT INTO account_binding VALUES(1,'original-user','original-device','original-library')",[]).unwrap();
-    db::set_setting(&original,"cloud_login_user","PRIVATE_SENTINEL_CLOUD_USER").unwrap();
+    db::set_setting(&original, "cloud_login_user", "PRIVATE_SENTINEL_CLOUD_USER").unwrap();
     original.execute("INSERT INTO sync_outbox(operation_id,kind,id,payload,base_revision) VALUES('private-operation','favorite',?1,'{\"value\":true}',0)",[&cloud_id]).unwrap();
-    let (data,prefs)=export::capture(&mut original,appearance(),TIME).unwrap();
-    let encoded=serde_json::to_string(&data).unwrap();
-    for forbidden in ["original-user","original-device","original-library","private-operation","PRIVATE_SENTINEL_CLOUD_USER"] {assert!(!encoded.contains(forbidden));}
-    assert_eq!(data.tables["sync_game_links"][0][1],cloud_id);
-    let mut target=db::open(std::path::Path::new(":memory:")).unwrap();
-    target.execute("INSERT INTO account_binding VALUES(1,'target-user','target-device','target-library')",[]).unwrap();
-    target.execute("INSERT INTO sync_outbox(operation_id,kind,id,payload,base_revision) VALUES('target-operation','favorite','id','{}',0)",[]).unwrap();
-    restore::replace(&mut target,&data,&prefs,"test-cloud-restore").unwrap();
-    for table in ["account_binding","sync_outbox","sync_shadow","sync_conflicts","cloud_session_owners"] {
-        assert_eq!(target.query_row(&format!("SELECT COUNT(*) FROM {table}"),[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    let (data, prefs) = export::capture(&mut original, appearance(), TIME).unwrap();
+    let encoded = serde_json::to_string(&data).unwrap();
+    for forbidden in [
+        "original-user",
+        "original-device",
+        "original-library",
+        "private-operation",
+        "PRIVATE_SENTINEL_CLOUD_USER",
+    ] {
+        assert!(!encoded.contains(forbidden));
     }
-    assert_eq!(target.query_row("SELECT cloud_id FROM sync_game_links",[],|r|r.get::<_,String>(0)).unwrap(),cloud_id);
-    assert_eq!(target.query_row("SELECT present FROM achievement_facts",[],|r|r.get::<_,i64>(0)).unwrap(),0);
-    assert_eq!(db::setting(&target,"cloud_login_user").unwrap(),"");
-    assert_eq!(db::setting(&target,"cloud_achievement_namespace:local-one").unwrap(),"480");
+    assert_eq!(data.tables["sync_game_links"][0][1], cloud_id);
+    let mut target = db::open(std::path::Path::new(":memory:")).unwrap();
+    target
+        .execute(
+            "INSERT INTO account_binding VALUES(1,'target-user','target-device','target-library')",
+            [],
+        )
+        .unwrap();
+    target.execute("INSERT INTO sync_outbox(operation_id,kind,id,payload,base_revision) VALUES('target-operation','favorite','id','{}',0)",[]).unwrap();
+    restore::replace(&mut target, &data, &prefs, "test-cloud-restore").unwrap();
+    for table in [
+        "account_binding",
+        "sync_outbox",
+        "sync_shadow",
+        "sync_conflicts",
+        "cloud_session_owners",
+    ] {
+        assert_eq!(
+            target
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r
+                    .get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+    }
+    assert_eq!(
+        target
+            .query_row("SELECT cloud_id FROM sync_game_links", [], |r| r
+                .get::<_, String>(0))
+            .unwrap(),
+        cloud_id
+    );
+    assert_eq!(
+        target
+            .query_row("SELECT present FROM achievement_facts", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        0
+    );
+    assert_eq!(db::setting(&target, "cloud_login_user").unwrap(), "");
+    assert_eq!(
+        db::setting(&target, "cloud_achievement_namespace:local-one").unwrap(),
+        "480"
+    );
 }
