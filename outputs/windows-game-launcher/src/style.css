@@ -64,7 +64,7 @@ h1,h2,h3,p {
 #app {
   min-height:100vh;
   display:grid;
-  grid-template-columns:224px minmax(0,1fr);
+  grid-template-columns:248px minmax(0,1fr);
 }
 .main {
   min-width:0;

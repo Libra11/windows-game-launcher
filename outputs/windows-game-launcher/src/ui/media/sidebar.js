@@ -1,14 +1,14 @@
 import { el, button } from '../../lib/dom.js';
 import { mediaCategories, queryMedia } from '../../lib/media-query.js';
-import { sidebarBrand } from '../sidebar-brand.js';
 import { sidebarBottom } from '../sidebar-bottom.js';
+import { sidebarRail } from '../domain-switch.js';
 
 export function mountMediaSidebar(
   host,
   controller,
   { onDomainChange, onSettings, preview = false } = {}
 ) {
-  const brand = sidebarBrand('media', { back: () => controller.navigate('all'), onDomainChange });
+  const rail = sidebarRail('media', { back: () => controller.navigate('all'), onDomainChange, settings: onSettings });
   const nav = el('nav');
   nav.id = 'media-navigation';
   nav.setAttribute('aria-label', '影视主导航');
@@ -66,8 +66,10 @@ export function mountMediaSidebar(
     features.append(node);
   }
   nav.append(features);
-  const bottom = sidebarBottom({ settings: onSettings, preview });
-  host.replaceChildren(brand, nav, bottom);
+  const bottom = sidebarBottom({ preview });
+  const menu = el('div', 'sidebar-menu');
+  menu.append(nav, bottom);
+  host.replaceChildren(rail, menu);
   let previousView = '', previousCollectionsView = '', previousItems = null;
   function update() {
     const state = controller.state,

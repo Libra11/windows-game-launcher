@@ -1,6 +1,15 @@
-.domain-switch{display:flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;min-height:36px;padding:0 7px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--text-secondary);font-size:12px;font-weight:500;white-space:nowrap}
-.domain-switch>.icon{width:20px;height:20px}
-.domain-switch:hover{border-color:var(--accent-line);color:var(--accent-ink);background:var(--accent-soft)}
-.domain-switch:active:not(:disabled){transform:none}
-.domain-switch:focus-visible{outline:2px solid var(--accent-ink);outline-offset:4px}
-@media(max-width:800px) and (min-width:561px){.domain-switch{width:52px;min-height:42px;flex-direction:column;gap:2px;padding:3px 2px;font-size:10px}}
+.domain-switch { display:grid; gap:10px; width:100%; flex:0 0 auto; }
+.domain-switch-option { position:relative; width:40px; height:40px; min-height:40px; padding:0; align-self:center; display:flex; align-items:center; justify-content:center; border:0; border-radius:11px; background:transparent; color:var(--muted); }
+.domain-switch-option::before { content:""; position:absolute; left:0; top:50%; width:3px; height:16px; border-radius:999px; background:var(--accent-ink); opacity:0; transform:translateY(-50%) scaleY(.4); transition:opacity 200ms ease,transform 240ms var(--ease-out); }
+.domain-switch-option>.icon { width:20px; height:20px; }
+.domain-switch-option:hover { border-color:color-mix(in srgb,var(--accent-line) 55%,transparent); color:var(--text); background:color-mix(in srgb,var(--surface-hover) 60%,transparent); transform:translateY(-1px); }
+.domain-switch-option[aria-pressed=true] { background:var(--accent-soft); color:var(--accent-ink); }
+.domain-switch-option[aria-pressed=true]::before { opacity:1; transform:translateY(-50%) scaleY(1); }
+.domain-switch-option:active:not(:disabled) { transform:none; }
+.domain-switch-option:focus-visible { outline:2px solid var(--accent-ink); outline-offset:3px; }
+@media(max-width:560px) {
+  .domain-switch { display:flex; width:auto; gap:6px; }
+  .domain-switch-option { width:40px; min-width:40px; }
+  .domain-switch-option::before { display:none; }
+  .domain-switch-option>.icon { width:20px; height:20px; }
+}

@@ -257,7 +257,7 @@ function media() {
 }
 async function setDomain(value) {
   if(!['games','media'].includes(value)||state.domain===value)return;
-  const focusSwitch=document.activeElement?.classList.contains('domain-switch');
+  const focusSwitch=document.activeElement?.classList.contains('domain-switch-option');
   if(state.bigScreen)await bigMode.exit();
   const inSettings=state.page==='settings';
   if(value==='media'&&!inSettings)savedGameView={page:state.page,selectedId:state.selectedId};
@@ -268,7 +268,7 @@ async function setDomain(value) {
   try{localStorage.setItem('youji-library-domain',value);}catch{/* 偏好不可写时仍可切换。 */}
   if(value==='games'&&state.page==='social')await actions.social(state.socialMode||'friends');else render();
   window.scrollTo(0,0);
-  if(focusSwitch)$('.sidebar .domain-switch').focus({preventScroll:true});
+  if(focusSwitch)$(`.sidebar .domain-switch-option[data-domain-option="${state.domain}"]`)?.focus({preventScroll:true});
   if(value==='media')await media().refresh();else await refresh(true);
 }
 function domainSidebar() {

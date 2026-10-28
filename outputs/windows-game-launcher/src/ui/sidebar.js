@@ -1,11 +1,11 @@
 import { el, button } from '../lib/dom.js';
 import { categories, platformCategories } from '../lib/library-query.js';
 import './sidebar.css';
-import { sidebarBrand } from './sidebar-brand.js';
 import { sidebarBottom } from './sidebar-bottom.js';
+import { sidebarRail } from './domain-switch.js';
 
 export function mountSidebar(host, actions) {
-  const brand = sidebarBrand('games', { back: actions.back, onDomainChange: actions.domain });
+  const rail = sidebarRail('games', { back: actions.back, onDomainChange: actions.domain, settings: actions.settings });
 
   const navigation = el('nav'); navigation.id = 'navigation'; navigation.setAttribute('aria-label', '主导航');
   for (const [label, values] of [['收藏', ['all', 'recent', 'favorites', 'steam-family']], ['平台', platformCategories.map(([value]) => value)]]) {
@@ -19,7 +19,7 @@ export function mountSidebar(host, actions) {
     navigation.append(group);
   }
 
-  const bottom = sidebarBottom(actions); bottom.id = 'sidebar-bottom';
+  const bottom = sidebarBottom({ preview: actions.preview }); bottom.id = 'sidebar-bottom';
   const features=el('div','nav-group');features.setAttribute('role','group');features.setAttribute('aria-label','功能');
   features.append(el('div','nav-group-label','功能'));
   const statistics = button('游戏统计', 'nav-item', actions.statistics, 'chart');
@@ -30,5 +30,6 @@ export function mountSidebar(host, actions) {
   const friends=button('好友','nav-item',()=>actions.social('friends'),'family');friends.dataset.page='social';friends.dataset.socialMode='friends';
   const space=button('我的空间','nav-item',()=>actions.social('mine'),'game');space.dataset.page='social';space.dataset.socialMode='mine';
   features.append(friends,space,onlineSearch,statistics);navigation.append(features);
-  host.replaceChildren(brand, navigation, bottom);
+  const menu=el('div','sidebar-menu');menu.append(navigation,bottom);
+  host.replaceChildren(rail,menu);
 }
