@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>影视库交互验证</title>
+  </head>
+  <body>
+    <div id="validation-toolbar">
+      <button id="library">影视库</button><button id="series">两季电视剧</button
+      ><button id="movie">多版本电影</button><button id="orphan">从单集进入</button
+      ><button id="theme">切换明暗</button><button id="refresh">模拟后台刷新</button>
+      <button id="playback">模拟播放器切集</button><button id="stop-playback">模拟播放结束</button>
+      <output id="result" role="status">示例验证 · 不启动播放器，不接触真实资料库</output>
+    </div>
+    <div id="app">
+      <aside id="sidebar" class="sidebar"></aside>
+      <main class="main" id="host"></main>
+    </div>
+    <script type="module">
+      import '/src/style.css';
+      import '/src/ui/theme.css';
+      import '/src/ui/library.css';
+      import '/src/ui/dialogs.css';
+      import '/src/ui/sidebar.css';
+      import '/src/ui/responsive.css';
+      import { createMediaController } from '/src/ui/media/index.js';
+      import { createMediaPreview } from '/src/lib/media-preview.js';
+      const preview = createMediaPreview();
+      const result = document.querySelector('#result');
+      const controller = createMediaController({
+        command: async (name, args) => {
+          if (name === 'media_play') {
+            const input = args.input;
+            result.textContent = `播放请求：${input.itemId} · 资源 ${input.resourceId || '自动选择'} · ${input.resume ? '续播' : '从头'}`;
+          }
+          return preview(name, args);
+        },
+        toast: (message) => {
+          if (!message.startsWith('浏览器预览不启动')) result.textContent = message;
+        },
+      });
+      document.querySelector('#host').append(controller.element);
+      controller.mountSidebar(document.querySelector('#sidebar'), {
+        onSettings: () => {},
+        onDomainChange: () => {},
+        preview: true,
+      });
+      await controller.refresh();
+      document.querySelector('#library').onclick = () => controller.navigate('all');
+      document.querySelector('#series').onclick = () =>
+        controller.open({ id: 'preview-slow-horses' });
+      document.querySelector('#movie').onclick = () => controller.open({ id: 'preview-movie-1' });
+      document.querySelector('#orphan').onclick = () =>
+        controller.open({ id: 'preview-slow-s2e4' });
+      document.querySelector('#theme').onclick = () => {
+        document.documentElement.dataset.theme =
+          document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      };
+      document.querySelector('#refresh').onclick = () => controller.refreshDetail();
+      let playbackTimer;
+      document.querySelector('#playback').onclick = () => {
+        clearInterval(playbackTimer);
+        let position = 8;
+        playbackTimer = setInterval(() => {
+          position += 0.2;
+          controller.receivePlayback({
+            active: true,
+            state: 'playing',
+            itemId: 'preview-slow-s1e3',
+            resourceId: 'preview-file-preview-slow-s1e3',
+            positionSeconds: position,
+            durationSeconds: 3240,
+            sampleAt: performance.now(),
+          });
+        }, 200);
+        result.textContent = '模拟：播放器已切换至 S01E03，保留当前浏览选择';
+      };
+      document.querySelector('#stop-playback').onclick = () => {
+        clearInterval(playbackTimer);
+        controller.receivePlayback({
+          active: false,
+          state: 'idle',
+          sampleAt: performance.now(),
+        });
+      };
+      const params = new URLSearchParams(location.search);
+      if (params.get('theme')) document.documentElement.dataset.theme = params.get('theme');
+      if (params.get('detail') === 'series') await controller.open({ id: 'preview-slow-horses' });
+    </script>
+    <style>
+      #validation-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--line);
+        font-size: 11px;
+        background: var(--panel);
+      }
+      #validation-toolbar button {
+        padding: 8px 12px;
+        background: var(--input);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+      #result {
+        color: var(--muted);
+      }
+    </style>
+  </body>
+</html>

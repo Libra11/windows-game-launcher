@@ -1,0 +1,94 @@
+const { chromium } = require(process.env.YOUJI_PLAYWRIGHT_PATH || 'playwright');
+const assert = require('node:assert/strict');
+
+(async () => {
+  const browser = await chromium.launch({ headless: true, channel: 'msedge' });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const errors = [];
+    page.on('pageerror', error => errors.push(String(error)));
+    await page.route('https://image.tmdb.org/**', route => route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=', 'base64') }));
+    await page.route('**/test/large-library', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body><aside id="sidebar"></aside><main id="host"></main></body></html>' }));
+    await page.goto((process.env.YOUJI_TEST_URL || 'http://127.0.0.1:5178') + '/test/large-library');
+    await page.evaluate(async () => {
+      const { createMediaController } = await import('/src/ui/media/index.js');
+      window.items = Array.from({ length: 2500 }, (_, index) => ({ id: `movie-${String(index).padStart(4,'0')}`, kind: 'movie', title: `作品${String(index).padStart(4,'0')}`, recognized: true, playable: false, watched: index % 2 === 0, posterUrl: `https://image.tmdb.org/t/p/w500/${index}.png`, externalIds: [] }));
+      window.person = { id: 1, name: '测试演员', departments: ['cast'], credits: items.map(item => ({ itemId: item.id, roles: [], departments: ['cast'] })) };
+      window.calls = [];
+      window.controller = createMediaController({ command: async (name, args) => {
+        calls.push([name, args?.input]);
+        if (name === 'media_snapshot') return { items, sources: [{ id: 'source', path: 'C:/media', available: true }], collections: [], tags: [], jobs: [], settings: {}, peopleIndex: { total: 0, completed: 0, failed: 0 }, ...(args.input.includePeople === false ? {} : { people: [] }) };
+        if (name === 'media_people_snapshot') return { people: [person], peopleIndex: { total: 0, completed: 0, failed: 0 } };
+        if (name === 'media_browse') return { path: 'C:/media', parentPath: null, entries: items.map(item => ({ kind: 'item', name: item.title, path: `C:/media/${item.id}.mkv`, item })) };
+        if (name === 'media_player_status') return { state: 'idle', active: false };
+        if (name === 'media_detail') { await new Promise(resolve => setTimeout(resolve, 200)); return { item: items.find(item => item.id === args.input.itemId), parents: [], children: [], resources: [] }; }
+        if (name === 'media_presentation') return { people: [], logoUrl: '' };
+        throw Error(name);
+      } });
+      document.querySelector('#host').append(controller.element);
+      controller.mountSidebar(document.querySelector('#sidebar'), {});
+      await controller.refresh();
+    });
+    await page.waitForSelector('[data-media-item-id="movie-0000"] img');
+    await page.waitForFunction(() => document.querySelector('[data-media-item-id="movie-0000"] .media-art')?.classList.contains('loaded'));
+    const initial = await page.evaluate(() => {
+      window.firstImage = document.querySelector('[data-media-item-id="movie-0000"] img');
+      return { count: document.querySelectorAll('.media-virtual-grid [data-media-item-id]').length, snapshots: calls.filter(call => call[0] === 'media_snapshot').length, light: calls.filter(call => call[0] === 'media_snapshot').every(call => call[1].includePeople === false) };
+    });
+    assert.ok(initial.count < 150, `首屏卡片数量过多：${initial.count}`);
+    assert.equal(initial.light, true);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForSelector('[data-media-item-id="movie-2499"]', { timeout: 10000 });
+    assert.ok(await page.locator('[data-media-item-id="movie-2499"]').evaluate(node => { const rect = node.getBoundingClientRect(); return rect.top < innerHeight && rect.bottom > 0; }), '滚动到底部时最后一项应在可见区域');
+    assert.ok(await page.locator('.media-virtual-grid [data-media-item-id]').count() < 150);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForSelector('[data-media-item-id="movie-0000"]');
+    assert.equal(await page.evaluate(() => document.querySelector('[data-media-item-id="movie-0000"] img') === firstImage), true);
+    await page.setViewportSize({ width: 840, height: 800 });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForSelector('[data-media-item-id="movie-2499"]', { timeout: 10000 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForSelector('[data-media-item-id="movie-0000"]');
+    const beforeNavigation = await page.evaluate(() => calls.filter(call => call[0] === 'media_snapshot').length);
+    await page.evaluate(() => controller.navigate('watched'));
+    await page.waitForSelector('[data-media-item-id="movie-0000"]');
+    assert.equal(await page.evaluate(() => calls.filter(call => call[0] === 'media_snapshot').length), beforeNavigation);
+    assert.equal(await page.evaluate(() => document.querySelector('[data-media-item-id="movie-0000"] img') === firstImage), true);
+    await page.evaluate(async () => controller.open({ id: 'movie-0000' }));
+    assert.ok(await page.locator('[data-detail-id="movie-0000"]').count());
+    await page.evaluate(() => { controller.back(); window.openAgain = controller.open({ id: 'movie-0000' }); });
+    assert.equal(await page.locator('[data-detail-id="movie-0000"]').count(), 1, '返回同一详情时立即显示缓存');
+    await page.evaluate(() => openAgain);
+    await page.evaluate(() => controller.navigate('all'));
+    await page.getByRole('button', { name: '批量整理' }).click();
+    await page.getByRole('button', { name: '全选当前结果' }).click();
+    assert.equal(await page.evaluate(() => controller.state.selection.size), 2500);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForSelector('[data-media-item-id="movie-2499"]');
+    assert.equal(await page.locator('[data-media-item-id="movie-2499"] input[type="checkbox"]').isChecked(), true);
+    await page.getByRole('button', { name: '结束整理' }).click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.getByRole('button', { name: '列表视图' }).click();
+    await page.waitForSelector('.media-virtual-grid.media-list');
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForSelector('[data-media-item-id="movie-2499"]', { timeout: 10000 });
+    assert.ok(await page.locator('.media-virtual-grid [data-media-item-id]').count() < 150);
+    await page.setViewportSize({ width: 760, height: 800 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForSelector('[data-media-item-id="movie-0000"]');
+    await page.evaluate(() => controller.browse('source'));
+    await page.waitForSelector('.media-files .media-virtual-grid [data-media-item-id="movie-0000"]');
+    assert.ok(await page.locator('.media-files .media-virtual-grid [data-media-item-id]').count() < 150);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForSelector('.media-files [data-media-item-id="movie-2499"]', { timeout: 10000 });
+    await page.evaluate(() => controller.openPerson(person));
+    await page.waitForSelector('[data-media-surface="person"] .media-virtual-grid [data-media-item-id="movie-0000"]');
+    assert.ok(await page.locator('[data-media-surface="person"] .media-virtual-grid [data-media-item-id]').count() < 150);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForSelector('[data-media-surface="person"] [data-media-item-id="movie-2499"]', { timeout: 10000 });
+    assert.deepEqual(errors, []);
+    await page.evaluate(() => controller.dispose());
+    console.log(`大库 2500 条：首屏 ${initial.count} 张卡片，滚动、返回、详情和列表视图通过`);
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

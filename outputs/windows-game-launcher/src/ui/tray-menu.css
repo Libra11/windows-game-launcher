@@ -1,0 +1,72 @@
+@import './theme.css';
+
+/* 公共主题的 :root 背景优先级高于 html，须在这里显式清除圆角外的底色。 */
+:root, :root[data-theme] { background:transparent; color-scheme:normal; }
+* { box-sizing:border-box; }
+html,body { width:100%; height:100%; margin:0; background:transparent; overflow:hidden; }
+body {
+  padding:8px;
+  color:var(--text);
+  font-family:var(--app-font-family,"Segoe UI","Microsoft YaHei",sans-serif);
+  user-select:none;
+}
+button { font:inherit; }
+.tray-card {
+  max-height:calc(100vh - 16px);
+  padding:6px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:var(--accent-line) transparent;
+  border:1px solid color-mix(in srgb,var(--line) 88%,var(--theme-accent));
+  border-radius:16px;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--panel) 96%,var(--theme-accent)),var(--panel) 58%);
+  /* 外阴影会被透明窗口边界裁成方框，只保留卡片内部高光。 */
+  box-shadow:inset 0 1px 0 #ffffff09;
+  animation:tray-menu-enter 140ms ease-out;
+}
+.tray-brand { display:flex; align-items:center; gap:10px; height:40px; padding:2px 8px 8px; }
+.tray-brand-icon { width:26px; height:26px; flex:0 0 26px; border-radius:8px; box-shadow:0 2px 8px var(--shadow); }
+.tray-brand-copy { display:flex; align-items:baseline; gap:8px; min-width:0; }
+.tray-brand-copy strong { color:var(--text); font-size:13px; font-weight:650; letter-spacing:1px; }
+.tray-brand-copy>span { overflow:hidden; color:var(--muted); font-size:10px; white-space:nowrap; text-overflow:ellipsis; }
+.tray-brand-caption { margin-left:auto; padding:3px 7px; border:1px solid var(--accent-line); border-radius:999px; background:var(--accent-soft); color:var(--accent-ink); font-size:9px; letter-spacing:.5px; white-space:nowrap; }
+.tray-section-heading { display:flex; align-items:center; height:30px; padding:0 10px; color:var(--muted); }
+.tray-section-label { display:flex; align-items:center; gap:7px; font-size:10px; font-weight:600; letter-spacing:1px; }
+.tray-section-label>.icon { width:13px; height:13px; color:var(--accent-ink); }
+.tray-section-count { margin-left:auto; font-size:9px; opacity:.75; }
+.tray-item {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  height:38px;
+  padding:0 9px;
+  border:0;
+  border-radius:9px;
+  outline:none;
+  background:transparent;
+  color:var(--text-secondary);
+  text-align:left;
+  cursor:pointer;
+}
+.tray-item-mark { display:grid; place-items:center; flex:0 0 25px; width:25px; height:25px; border:1px solid transparent; border-radius:7px; background:color-mix(in srgb,var(--text) 4%,transparent); color:var(--muted); transition:background 120ms,color 120ms; }
+.tray-item-mark>.icon { width:14px; height:14px; }
+.tray-item-title { flex:1; min-width:0; overflow:hidden; font-size:12px; white-space:nowrap; text-overflow:ellipsis; }
+.tray-item-trailing { display:grid; place-items:center; width:16px; color:var(--accent-ink); opacity:0; transform:translateX(-3px); transition:opacity 120ms,transform 120ms; }
+.tray-item-trailing>.icon { width:13px; height:13px; }
+.tray-item:is(:hover,:focus-visible) { background:var(--accent-soft); color:var(--accent-ink); }
+.tray-item:focus-visible { box-shadow:inset 0 0 0 1px var(--accent-line); }
+.tray-item:is(:hover,:focus-visible) .tray-item-mark { border-color:color-mix(in srgb,var(--accent-line) 60%,transparent); background:color-mix(in srgb,var(--accent) 13%,transparent); color:var(--accent-ink); }
+.tray-item:is(:hover,:focus-visible) .tray-item-trailing { opacity:1; transform:translateX(0); }
+.tray-empty { display:flex; align-items:center; gap:9px; height:38px; padding:0 12px; color:var(--muted); font-size:11px; }
+.tray-empty>.icon { width:14px; height:14px; opacity:.7; }
+.tray-separator { height:1px; margin:4px 8px; background:linear-gradient(90deg,transparent,var(--line) 12%,var(--line) 88%,transparent); }
+.tray-quit { height:40px; color:var(--text-secondary); }
+.tray-quit .tray-item-title { flex:1; }
+.tray-quit:is(:hover,:focus-visible) { background:var(--error-bg); color:var(--error-text); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--error-line) 60%,transparent); }
+.tray-quit:is(:hover,:focus-visible) .tray-item-mark { border-color:transparent; background:color-mix(in srgb,var(--error-text) 8%,transparent); color:var(--error-text); }
+@keyframes tray-menu-enter { from { opacity:0; transform:translateY(5px) scale(.985); } to { opacity:1; transform:translateY(0) scale(1); } }
+@media(prefers-reduced-motion:reduce) {
+  .tray-card { animation:none; }
+  .tray-item-mark,.tray-item-trailing { transition:none; }
+}

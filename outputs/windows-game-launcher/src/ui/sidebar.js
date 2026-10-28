@@ -1,15 +1,12 @@
-import { el, button, appIcon } from '../lib/dom.js';
+import { el, button } from '../lib/dom.js';
 import { categories, platformCategories } from '../lib/library-query.js';
 import './sidebar.css';
+import { sidebarBrand } from './sidebar-brand.js';
+import { sidebarBottom } from './sidebar-bottom.js';
 
 export function mountSidebar(host, actions) {
-  const brand = el('a', 'brand');
-  brand.href = '#'; brand.setAttribute('aria-label', '游迹，返回游戏库');
-  const symbol = appIcon('brand-symbol');
-  brand.append(symbol, el('span', 'brand-name', '游迹'));
-  brand.onclick = event => { event.preventDefault(); actions.back(); };
+  const brand = sidebarBrand('games', { back: actions.back, onDomainChange: actions.domain });
 
-  const caption = el('div', 'nav-caption', '游戏库');
   const navigation = el('nav'); navigation.id = 'navigation'; navigation.setAttribute('aria-label', '主导航');
   for (const [label, values] of [['收藏', ['all', 'recent', 'favorites', 'steam-family']], ['平台', platformCategories.map(([value]) => value)]]) {
     const group = el('div', 'nav-group'); group.setAttribute('role', 'group'); group.setAttribute('aria-label', label);
@@ -22,24 +19,16 @@ export function mountSidebar(host, actions) {
     navigation.append(group);
   }
 
-  const bottom = el('div', 'sidebar-bottom'); bottom.id = 'sidebar-bottom';
+  const bottom = sidebarBottom(actions); bottom.id = 'sidebar-bottom';
   const features=el('div','nav-group');features.setAttribute('role','group');features.setAttribute('aria-label','功能');
   features.append(el('div','nav-group-label','功能'));
   const statistics = button('游戏统计', 'nav-item', actions.statistics, 'chart');
   statistics.dataset.page = 'statistics';
   statistics.title = '游戏统计';
-  const settings = button('设置','nav-item',actions.settings,'settings');settings.dataset.page='settings';settings.title='设置';
   const onlineSearch = button('在线搜索', 'nav-item', actions.onlineSearch, 'search');
   onlineSearch.dataset.page = 'online-search'; onlineSearch.title = '在线搜索 Gamer520';
   const friends=button('好友','nav-item',()=>actions.social('friends'),'family');friends.dataset.page='social';friends.dataset.socialMode='friends';
   const space=button('我的空间','nav-item',()=>actions.social('mine'),'game');space.dataset.page='social';space.dataset.socialMode='mine';
-  features.append(friends,space);
-  features.append(onlineSearch,statistics,settings);navigation.append(features);
-
-  const footer = el('div', 'sidebar-footer');
-  const version = el('div', 'app-version');
-  version.append(el('span', 'status-dot'), el('span', '', actions.preview ? '设计预览 · 示例数据' : '游迹'));
-  footer.append(version);
-  bottom.append(footer);
-  host.replaceChildren(brand, caption, navigation, bottom);
+  features.append(friends,space,onlineSearch,statistics);navigation.append(features);
+  host.replaceChildren(brand, navigation, bottom);
 }

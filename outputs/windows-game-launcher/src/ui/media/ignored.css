@@ -1,0 +1,76 @@
+.media-ignored-list,
+.media-ignored-group,
+.media-ignored-heading,
+.media-ignored-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.media-ignored-list {
+  gap: 22px;
+}
+.media-ignored-heading {
+  margin-bottom: 8px;
+}
+.media-ignored-heading strong {
+  font-size: 13px;
+}
+.media-ignored-path {
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  user-select: text;
+}
+.media-ignored-heading small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.media-ignored-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.media-ignored-row > .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+.media-ignored-copy {
+  flex: 1;
+}
+.media-ignored-row > button {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  font-size: 11px;
+}
+.media-file-ignore {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+  opacity: 0;
+}
+.media-file-ignore .icon {
+  width: 13px;
+  height: 13px;
+}
+.media-tile:hover > .media-file-ignore,
+.media-tile:focus-within > .media-file-ignore {
+  opacity: 1;
+}
+@media (hover: none) {
+  .media-file-ignore {
+    opacity: 1;
+  }
+}

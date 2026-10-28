@@ -6,6 +6,7 @@ import { demoArtwork } from './preview-artwork.js';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { createMediaPreview } from './media-preview.js';
 export const preview = import.meta.env.DEV && !isTauri();
 const demoGames = [
   ['1123050', 'GRIME', 'local', '探索超现实的异域世界，用活体武器吞噬敌人，在不断进化中寻找自己的起源。'],
@@ -43,11 +44,13 @@ const demoAchievements = [
 const demoSettings={steamApiKey:'',steamId:'',minimizeOnLaunch:false,closeToTray:true,achievementNotifications:true,checkUpdatesOnStartup:true};
 const demoNetwork={mode:'system',address:'',webviewRestartRequired:false};
 const onlineSearchPreview=createOnlineSearchPreview(demoGames);
+const mediaPreview = preview ? createMediaPreview() : null;
 export async function command(name, args = {}) {
   if (!preview) {
     if (!isTauri()) throw new Error('请在桌面启动器中使用此功能。');
     return invoke(name, args);
   }
+  if(name.startsWith('media_'))return mediaPreview(name,args);
   if (name === 'get_statistics' || name === 'list_statistics_sessions') return statisticsPreview(name,args);
   if (name === 'cloud_status') return {phase:'unsupported',loggedIn:false,pending:0,conflicts:[],baseUrl:'',error:'浏览器预览不保存登录凭据或上传资料。'};
   if (name === 'get_achievement_overlay_options') return {position:'bottom-right',duration:5,sound:'chime'};

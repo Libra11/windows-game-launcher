@@ -1,0 +1,32 @@
+.media-files .media-card-copy h3 {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.media-directory-art .media-art-placeholder > .icon {
+  width: 48px;
+  height: 48px;
+  color: var(--accent-ink);
+  opacity: 0.8;
+}
+.media-directory-art .media-art-placeholder {
+  position: relative;
+  inset: auto;
+  aspect-ratio: 2/3;
+}
+.media-directory-path,
+.media-directory-error {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.media-directory-error {
+  color: var(--error-text);
+}

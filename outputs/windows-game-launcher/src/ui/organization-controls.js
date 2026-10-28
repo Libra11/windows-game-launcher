@@ -83,7 +83,7 @@ export function mountOrganizationSidebar(host,state,actions) {
     }
     for(const node of list.querySelectorAll('[data-organization-collection]')){const active=state.page==='library'&&state.collectionId===node.dataset.organizationCollection;node.classList.toggle('active',active);node.setAttribute('aria-current',active?'page':'false');}
   };
-  const scrollElement=group.closest('.sidebar');
+  const scrollElement=host;
   return {
     update,scrollElement,
     isAvailable:()=>state.organization.collections.length>0&&group.getBoundingClientRect().width>0,

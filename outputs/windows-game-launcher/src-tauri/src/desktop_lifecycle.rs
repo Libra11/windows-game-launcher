@@ -1,11 +1,13 @@
 use crate::{db, lock_db, runtime_persistence, AppState};
+pub(crate) mod popup;
+mod recent;
 use tauri::{
-    menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
 
 pub(crate) fn show(app: &tauri::AppHandle) {
+    popup::hide(app);
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.unminimize();
@@ -13,50 +15,55 @@ pub(crate) fn show(app: &tauri::AppHandle) {
     }
 }
 
-pub(crate) fn initialize(app: &tauri::AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "show", "打开游迹", true, None::<&str>)?;
-    let quit = MenuItem::with_id(
-        app,
-        "quit",
-        "退出启动器（游戏继续运行）",
-        true,
-        None::<&str>,
-    )?;
-    let menu = Menu::with_items(app, &[&open, &quit])?;
+pub(crate) fn initialize(
+    app: &tauri::AppHandle,
+    restored_appearance: Option<&str>,
+) -> tauri::Result<()> {
+    app.manage(recent::State::default());
+    popup::initialize(app, restored_appearance).map_err(std::io::Error::other)?;
     let mut tray = TrayIconBuilder::with_id("launcher")
         .tooltip("游迹 · 后台计时与成就检测")
-        .menu(&menu)
         .show_menu_on_left_click(false)
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "show" => show(app),
-            "quit" => {
-                if let Err(error) = quit_launcher(app.clone()) {
-                    show(app);
-                    let _ = app.emit("launcher-error", error);
-                }
-            }
-            _ => {}
-        })
         .on_tray_icon_event(|tray, event| {
-            if matches!(
-                event,
+            match event {
                 TrayIconEvent::Click {
                     button: MouseButton::Left,
                     button_state: MouseButtonState::Up,
                     ..
+                } => show(tray.app_handle()),
+                TrayIconEvent::Click {
+                    button: MouseButton::Right,
+                    button_state: MouseButtonState::Up,
+                    position,
+                    ..
+                } => {
+                    if let Err(error) = popup::show(tray.app_handle(), position.x, position.y) {
+                        eprintln!("托盘菜单显示失败：{error}");
+                    }
                 }
-            ) {
-                show(tray.app_handle());
+                _ => {}
             }
         });
     if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());
     }
     tray.build(app)?;
+    recent::watch(app.clone());
     Ok(())
 }
 
 pub(crate) fn closing(window: &tauri::Window, event: &tauri::WindowEvent) {
+    if window.label() == popup::LABEL {
+        match event {
+            tauri::WindowEvent::Focused(false) => popup::hide(window.app_handle()),
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                api.prevent_close();
+                popup::hide(window.app_handle());
+            }
+            _ => {}
+        }
+        return;
+    }
     if window.label() != "main" {
         return;
     }

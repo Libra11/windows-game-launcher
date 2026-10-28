@@ -8,11 +8,13 @@ import { settingsNotifications } from './settings-notifications.js';
 import { settingsGeneral } from './settings-general.js';
 import { settingsNetwork } from './settings-network.js';
 import { settingsData } from './settings-data.js';
+import { settingsMedia } from './settings-media.js';
 import './settings.css';
 
 const categories=[
   ['appearance','外观与字体','sun','主题与字体回退'],
   ['connections','游戏库与账号','library','账号连接与导入'],
+  ['media','影视库','screen','媒体目录、资料与播放'],
   ['cloud','游迹云同步','network','账号、设备与同步冲突'],
   ['notifications','成就提示','trophy','位置、声音与通知'],
   ['general','后台与运行','settings','启动与退出行为'],
@@ -38,9 +40,11 @@ export function createSettingsPage(actions) {
   });
   const stopUpdateIndicator=actions.updates.subscribe(status=>tabs.at(-1).classList.toggle('update-available',updateAvailable(status)));
   function show(key,scroll=false) {
+    parts.forEach((part,index)=>{if(categories[index][0]!==key)part.deactivate?.();});
     active=key;
     tabs.forEach((tab,index)=>{const selected=categories[index][0]===key;tab.classList.toggle('active',selected);tab.setAttribute('aria-selected',String(selected));});
     parts.forEach((part,index)=>{part.element.hidden=categories[index][0]!==key;});
+    parts[categories.findIndex(category=>category[0]===key)]?.activate?.();
     if(scroll)window.scrollTo({top:0});
   }
   function save(patch) {
@@ -60,7 +64,7 @@ export function createSettingsPage(actions) {
       const networkPart=settingsNetwork(network,actions,saved);
       const notifications=await settingsNotifications(settings,actions,save,options,saved);
       const general=settingsGeneral(settings,actions,save);
-      const built=[appearance,connections,settingsCloud(actions),notifications,general,networkPart,settingsData(actions),settingsUpdates(settings,actions,save)];
+      const built=[appearance,connections,settingsMedia(actions),settingsCloud(actions),notifications,general,networkPart,settingsData(actions),settingsUpdates(settings,actions,save)];
       if(disposed){built.forEach(part=>part.dispose());return;}
       parts=built;
       parts.forEach((part,index)=>{

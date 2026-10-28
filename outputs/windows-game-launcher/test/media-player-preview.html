@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <title>影视播放状态验证</title>
+  </head>
+  <body>
+    <main style="max-width: 1000px; margin: 30px auto; padding: 20px">
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px">
+        <button id="playing">模拟播放</button><button id="paused">模拟暂停</button
+        ><button id="buffering">模拟缓冲</button><button id="seeking">模拟跳转</button
+        ><button id="untracked">模拟未收录文件</button><button id="starting">模拟等待确认</button
+        ><button id="unavailable">模拟无法确认</button><button id="error">模拟后台失败</button
+        ><button id="refresh">再次刷新</button><button id="theme">切换主题</button>
+      </div>
+      <output id="result" role="status"></output>
+      <div id="host"></div>
+    </main>
+    <script type="module">
+      import '/src/style.css';
+      import '/src/ui/theme.css';
+      import '/src/ui/library.css';
+      import '/src/ui/dialogs.css';
+      import { createMediaController } from '/src/ui/media/index.js';
+      import '/src/ui/settings.css';
+      import { createMediaSettings } from '/src/ui/media/settings.js';
+      import { createMediaPreview } from '/src/lib/media-preview.js';
+      const preview = createMediaPreview();
+      let stops = 0,
+        errors = 0;
+      let player = {
+        state: 'starting',
+        active: true,
+        itemId: 'preview-movie-1',
+        message: '正在等待播放器确认当前文件',
+      };
+      const result = document.querySelector('#result');
+      const controller = createMediaController({
+        command: async (name, args) => {
+          if (name === 'media_player_status') return { ...player };
+          if (name === 'media_player_stop') {
+            stops++;
+            player = { ...player, state: 'stopping' };
+            controller.receivePlayback(player);
+            result.textContent = `停止请求：${stops} 次`;
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            player = { state: 'idle', active: false };
+            return { state: 'stopping' };
+          }
+          return preview(name, args);
+        },
+        toast: (message, error) => {
+          if (error) errors++;
+          result.textContent = `${message}；错误提示：${errors} 次`;
+        },
+      });
+      document.querySelector('#host').append(controller.element);
+      await controller.refresh();
+      const settings = createMediaSettings(controller);
+      settings.element.classList.add('settings-page');
+      controller.element.querySelector('.media-page-host').replaceChildren(settings.element);
+      controller.setActive(false);
+      controller.subscribe((data) => settings.update(data));
+      document.querySelector('#starting').onclick = () => {
+        player = {
+          state: 'starting',
+          active: true,
+          itemId: 'preview-movie-1',
+          message: '正在等待播放器确认当前文件',
+        };
+        controller.refresh();
+      };
+      document.querySelector('#unavailable').onclick = () => {
+        player = {
+          state: 'unavailable',
+          active: true,
+          itemId: 'preview-movie-1',
+          message: '未能确认续播位置，已保留原进度并暂停记录；可停止后重试',
+        };
+        controller.refresh();
+      };
+      document.querySelector('#error').onclick = () => {
+        player = {
+          state: 'error',
+          active: false,
+          message: '测试：播放器启动失败',
+        };
+        controller.refresh();
+      };
+      document.querySelector('#refresh').onclick = () => controller.refresh();
+      for (const state of ['playing', 'paused', 'buffering', 'seeking'])
+        document.querySelector('#' + state).onclick = () => {
+          player = {
+            state,
+            active: true,
+            itemId: 'preview-slow-s2e4',
+            positionSeconds: 1040,
+            durationSeconds: 2700,
+          };
+          controller.receivePlayback(player);
+        };
+      document.querySelector('#untracked').onclick = () => {
+        player = {
+          state: 'untracked',
+          active: true,
+          message: '播放器已切换到未收录文件，暂停记录当前资源的时间',
+        };
+        controller.receivePlayback(player);
+      };
+      document.querySelector('#theme').onclick = () => {
+        document.documentElement.dataset.theme =
+          document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      };
+    </script>
+  </body>
+</html>

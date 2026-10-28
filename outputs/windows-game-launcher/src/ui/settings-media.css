@@ -1,0 +1,18 @@
+.settings-media { display:grid; gap:22px; min-width:0; }
+.settings-media .form { min-width:0; }
+.settings-media .settings-credentials { align-items:start; }
+.settings-media-heading,.settings-media-source-title { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.settings-media-sources { display:grid; }
+.settings-media-source { display:grid; gap:14px; padding:18px 0; border-bottom:1px solid var(--line); min-width:0; }
+.settings-media-source:first-child { padding-top:0; }
+.settings-media-source:last-child { padding-bottom:0; border-bottom:0; }
+.settings-media-source-copy { display:grid; gap:7px; min-width:0; }
+.settings-media-source-title strong { font-size:14px; font-weight:500; overflow-wrap:anywhere; }
+.settings-media-source-title>.settings-description { flex-shrink:0; }
+.settings-media-path { overflow-wrap:anywhere; }
+.settings-media-source .settings-row { padding:10px 0 0; border:0; }
+.settings-media .field .custom-select { width:100%; }
+.settings-media .settings-row { margin:0; }
+.settings-media .input-row>input { min-width:0; }
+.settings-media-connection { display:grid; gap:7px; }
+@media(max-width:650px) { .settings-media-heading { align-items:flex-start; flex-wrap:wrap; } }

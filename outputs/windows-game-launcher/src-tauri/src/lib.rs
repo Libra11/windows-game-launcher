@@ -25,6 +25,7 @@ mod library_commands;
 mod library_removal;
 mod local_import;
 mod maintenance;
+mod media;
 mod model;
 mod network;
 mod organization;
@@ -100,12 +101,13 @@ pub fn run() {
             let mut conn = db::open(&dir.join("games.sqlite")).map_err(std::io::Error::other)?;
             cloud::secrets::migrate(&conn).map_err(std::io::Error::other)?;
             let covers = app.path().app_cache_dir()?.join("covers");
-            backup::startup(&mut conn, &dir, &covers);
+            backup::startup(&mut conn, &dir, &covers).map_err(std::io::Error::other)?;
             saves::startup(&dir).map_err(std::io::Error::other)?;
             app.manage(saves::ManagerState::default());
             let restored_appearance =
                 backup::appearance_script(&conn).map_err(std::io::Error::other)?;
             let proxy = network::initialize(&conn, app.handle()).map_err(std::io::Error::other)?;
+            media::initialize(app.handle(),dir.clone()).map_err(std::io::Error::other)?;
             app.manage(webview_proxy::WebviewProxy::from(&proxy));
             app.manage(cover_cache::CoverCache::default());
             app.manage(backup::Manager::default());
@@ -133,7 +135,7 @@ pub fn run() {
                 app.handle(),
                 &app.config().app.windows[0],
             )?;
-            let main = if let Some(script) = restored_appearance {
+            let main = if let Some(script) = &restored_appearance {
                 main.initialization_script(script)
             } else {
                 main
@@ -143,7 +145,10 @@ pub fn run() {
                 eprintln!("成就弹层初始化失败：{error}");
             }
             runtime_persistence::restore(app.handle()).map_err(std::io::Error::other)?;
-            if let Err(error) = desktop_lifecycle::initialize(app.handle()) {
+            if let Err(error) = desktop_lifecycle::initialize(
+                app.handle(),
+                restored_appearance.as_deref(),
+            ) {
                 eprintln!("托盘初始化失败：{error}");
             }
             app_update::start(app.handle().clone());
@@ -151,6 +156,7 @@ pub fn run() {
             app.manage(social::Social::default());
             social::start(app.handle().clone());
             saves::start(app.handle().clone());
+            media::start(app.handle().clone());
             start_metadata_refresh(app.handle().clone());
             steam_playtime::watch(app.handle().clone());
             runtime_commands::watch(app.handle().clone());
@@ -190,6 +196,38 @@ pub fn run() {
             social::social_call,
             social::social_local,
             social::social_test_notice,
+            media::media_snapshot,
+            media::media_people_snapshot,
+            media::media_settings_snapshot,
+            media::media_artwork,
+            media::media_detail,
+            media::media_presentation,
+            media::media_create_item,
+            media::media_set_record,
+            media::media_organization,
+            media::media_update_settings,
+            media::media_add_source,
+            media::media_scan,
+            media::media_browse,
+            media::media_ignored_paths,
+            media::media_ignore_path,
+            media::media_remove_source,
+            media::media_search_metadata,
+            media::media_identify,
+            media::media_match_season,
+            media::media_cleanup,
+            media::media_refresh_metadata,
+            media::media_probe,
+            media::media_douban_begin_login,
+            media::media_douban_status,
+            media::media_douban_sync,
+            media::media_douban_disconnect,
+            media::media_douban_metadata,
+            media::media_open_source,
+            media::media_play,
+            media::media_player_status,
+            media::media_player_stop,
+            media::media_statistics,
             cloud::cloud_status,
             cloud::cloud_challenge,
             cloud::cloud_verify,
@@ -291,6 +329,9 @@ pub fn run() {
             achievement_notifications::list_recent_unlocks,
             achievement_notifications::test_achievement_notification,
             desktop_lifecycle::quit_launcher,
+            desktop_lifecycle::popup::tray_menu_snapshot,
+            desktop_lifecycle::popup::tray_menu_dismiss,
+            desktop_lifecycle::popup::tray_menu_activate,
             steam_sync::sync_game
         ])
         .build(tauri::generate_context!())
