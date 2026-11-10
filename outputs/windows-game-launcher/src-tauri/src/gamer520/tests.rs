@@ -93,10 +93,11 @@ fn excludes_external_links_duplicates_recommendations_and_wrong_next_page() {
 #[tokio::test]
 #[ignore = "显式联网验证搜索、空结果和分页"]
 async fn live_search_with_launcher_network_client() {
+    let fresh_query = format!("游迹不存在的游戏{}", uuid::Uuid::new_v4().simple());
     for (query, page, empty) in [
         ("空洞骑士", 1, false),
         ("星露谷物语", 1, false),
-        ("游迹不存在的游戏abcdef987654", 1, true),
+        (fresh_query.as_str(), 1, true),
         ("马里奥", 1, false),
         ("马里奥", 2, false),
     ] {
